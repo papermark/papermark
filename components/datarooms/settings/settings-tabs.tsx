@@ -6,6 +6,7 @@ import {
   BookOpenIcon,
   CogIcon,
   DownloadIcon,
+  LockIcon,
   ShieldIcon,
 } from "lucide-react";
 
@@ -80,6 +81,18 @@ export default function SettingsTabs({ dataroomId }: SettingsTabsProps) {
       >
         <ShieldIcon className="h-4 w-4" />
         File Permissions
+      </Link>
+      <Link
+        href={`/datarooms/${dataroomId}/settings/freeze`}
+        className={cn(
+          "flex items-center gap-x-2 rounded-md p-2 text-primary hover:bg-muted",
+          {
+            "bg-muted font-medium": router.pathname.includes("freeze"),
+          },
+        )}
+      >
+        <LockIcon className="h-4 w-4" />
+        Freeze
       </Link>
     </nav>
   );

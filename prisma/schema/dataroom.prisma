@@ -50,6 +50,14 @@ model Dataroom {
   introductionEnabled Boolean @default(false) // Toggle to show introduction on first visit
   introductionContent Json?   // TipTap JSON content for the introduction page
 
+  // Freeze / close dataroom
+  isFrozen          Boolean   @default(false)
+  frozenAt          DateTime?
+  frozenBy          String?
+  frozenByUser      User?     @relation("frozenDatarooms", fields: [frozenBy], references: [id], onDelete: SetNull)
+  freezeArchiveUrl  String?
+  freezeArchiveHash String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

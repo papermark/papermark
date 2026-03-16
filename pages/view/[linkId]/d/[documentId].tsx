@@ -52,10 +52,12 @@ type DataroomDocumentProps = {
   useCustomAccessForm: boolean;
   logoOnAccessForm: boolean;
   textSelectionEnabled?: boolean;
+  frozen?: boolean;
   error?: boolean;
 };
 
 export default function DataroomDocumentViewPage({
+  frozen,
   linkData,
   notionData,
   meta,
@@ -89,6 +91,12 @@ export default function DataroomDocumentViewPage({
       <div className="flex h-screen items-center justify-center bg-black">
         <LoadingSpinner className="h-20 w-20" />
       </div>
+    );
+  }
+
+  if (frozen) {
+    return (
+      <NotFound message="This data room has been closed and is no longer available." />
     );
   }
 
@@ -209,6 +217,13 @@ export async function getStaticProps(context: GetStaticPropsContext) {
       linkId,
       dataroomDocumentId: documentId,
     });
+
+    if (result.status === "frozen") {
+      return {
+        props: { frozen: true },
+        revalidate: 10,
+      };
+    }
 
     if (result.status !== "ok") {
       return { notFound: true };

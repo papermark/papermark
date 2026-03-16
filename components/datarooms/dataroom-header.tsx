@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { useState } from "react";
 
-import { BellRingIcon } from "lucide-react";
+import { BellRingIcon, LockIcon } from "lucide-react";
 
 import { useDataroom, useDataroomLinks } from "@/lib/swr/use-dataroom";
 
@@ -39,6 +39,17 @@ export const DataroomHeader = ({
 
   return (
     <section className="mb-4">
+      {dataroom?.isFrozen && (
+        <div className="mb-3 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-2.5">
+          <LockIcon className="h-4 w-4 text-destructive" />
+          <span className="text-sm font-medium text-destructive">
+            This data room is frozen
+          </span>
+          <span className="text-sm text-muted-foreground">
+            &mdash; all viewer access has been revoked
+          </span>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div className="flex min-h-10 items-center gap-x-2 space-y-1">
           <div>

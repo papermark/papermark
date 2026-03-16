@@ -47,6 +47,12 @@ export default async function handle(
         },
         include: {
           _count: { select: { viewerGroups: true, permissionGroups: true } },
+          frozenByUser: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
           tags: {
             include: {
               tag: {

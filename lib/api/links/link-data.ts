@@ -16,7 +16,7 @@ import { sortItemsByIndexAndName } from "@/lib/utils/sort-items-by-index-name";
 // Types
 // ============================================================================
 
-type LinkFetchStatus = "ok" | "not_found" | "archived" | "deleted" | "free";
+type LinkFetchStatus = "ok" | "not_found" | "archived" | "deleted" | "free" | "frozen";
 
 export type LinkFetchResult =
   | {
@@ -204,6 +204,7 @@ export async function fetchDataroomLinkData({
           name: true,
           description: true,
           teamId: true,
+          isFrozen: true,
           allowBulkDownload: true,
           showLastUpdated: true,
           introductionEnabled: true,
@@ -399,6 +400,7 @@ export async function fetchDataroomDocumentLinkData({
           name: true,
           description: true,
           teamId: true,
+          isFrozen: true,
           allowBulkDownload: true,
           showLastUpdated: true,
           documents: {
@@ -659,6 +661,10 @@ async function processLinkData(
       } catch {
         return { status: "not_found" };
       }
+    }
+
+    if (linkData?.dataroom?.isFrozen) {
+      return { status: "frozen" };
     }
   }
 

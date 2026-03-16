@@ -70,6 +70,8 @@ model User {
   installedIntegrations InstalledIntegration[]
 
   links Link[] @relation("LinkOwner")
+
+  frozenDatarooms Dataroom[] @relation("frozenDatarooms")
 }
 
 model Brand {
