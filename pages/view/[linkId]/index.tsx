@@ -88,6 +88,7 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
     if (result.status !== "ok") {
       return {
         notFound: true,
+        revalidate: 10,
       };
     }
 
@@ -96,6 +97,7 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
     if (!linkType) {
       return {
         notFound: true,
+        revalidate: 10,
       };
     }
 
@@ -134,6 +136,7 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
     if (!link) {
       return {
         notFound: true,
+        revalidate: 10,
       };
     }
 
@@ -151,7 +154,7 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
           theme = new URL(file).searchParams.get("mode");
           const notionPageId = parsePageId(file, { uuid: false });
           if (!notionPageId) {
-            return { notFound: true };
+            return { notFound: true, revalidate: 10 };
           }
 
           pageId = notionPageId;
