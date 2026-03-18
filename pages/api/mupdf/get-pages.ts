@@ -21,16 +21,24 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
 
   try {
     const { url } = req.body as { url: string };
-    // Fetch the PDF data
-    const response = await fetch(url);
-    // Convert the response to an ArrayBuffer
+    // Fetch the PDF data with a 90s timeout to avoid indefinite hangs on slow storage
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(90_000),
+    });
+
+    if (!response.ok) {
+      console.error(
+        `Failed to fetch PDF: HTTP ${response.status} ${response.statusText}`,
+      );
+      res.status(502).json({ error: "Failed to fetch PDF from storage" });
+      return;
+    }
+
     const pdfData = await response.arrayBuffer();
-    // Create a MuPDF instance
     var doc = new mupdf.PDFDocument(pdfData);
 
     var n = doc.countPages();
 
-    // Send the images as a response
     res.status(200).json({ numPages: n });
   } catch (error) {
     console.error("Error:", error);

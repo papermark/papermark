@@ -41,10 +41,12 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     };
 
   try {
-    // Fetch the PDF data
+    // Fetch the PDF data with a 120s timeout to avoid indefinite hangs on slow storage
     let response: Response;
     try {
-      response = await fetch(url);
+      response = await fetch(url, {
+        signal: AbortSignal.timeout(120_000),
+      });
     } catch (error) {
       log({
         message: `Failed to fetch PDF in conversion process with error: \n\n Error: ${error} \n\n \`Metadata: {teamId: ${teamId}, documentVersionId: ${documentVersionId}, pageNumber: ${pageNumber}}\``,

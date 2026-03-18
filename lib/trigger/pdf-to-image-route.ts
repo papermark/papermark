@@ -12,6 +12,97 @@ type ConvertPdfToImagePayload = {
   versionNumber?: number;
 };
 
+const MAX_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 5_000;
+const CONVERT_PAGE_TIMEOUT_MS = 240_000; // 4 min (endpoint maxDuration is 180s)
+const GET_PAGES_TIMEOUT_MS = 120_000; // 2 min
+
+function isTransientError(error: unknown): boolean {
+  if (error instanceof AbortTaskRunError) return false;
+  if (error instanceof DOMException && error.name === "AbortError") return false;
+
+  const message = error instanceof Error ? error.message : String(error);
+  const causeStr =
+    error instanceof Error && error.cause ? String(error.cause) : "";
+
+  return (
+    message.includes("fetch failed") ||
+    message.includes("HeadersTimeoutError") ||
+    message.includes("ECONNRESET") ||
+    message.includes("ECONNREFUSED") ||
+    message.includes("ETIMEDOUT") ||
+    causeStr.includes("HeadersTimeoutError") ||
+    causeStr.includes("TimeoutError") ||
+    causeStr.includes("ECONNRESET")
+  );
+}
+
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  {
+    maxRetries = MAX_RETRIES,
+    baseDelayMs = RETRY_BASE_DELAY_MS,
+    timeoutMs,
+    label = "fetch",
+  }: {
+    maxRetries?: number;
+    baseDelayMs?: number;
+    timeoutMs?: number;
+    label?: string;
+  } = {},
+): Promise<Response> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const fetchOptions: RequestInit = { ...options };
+      if (timeoutMs) {
+        fetchOptions.signal = AbortSignal.timeout(timeoutMs);
+      }
+
+      const response = await fetch(url, fetchOptions);
+
+      if (response.ok || response.status < 500) {
+        return response;
+      }
+
+      if (attempt < maxRetries) {
+        const delay = baseDelayMs * Math.pow(2, attempt - 1);
+        logger.warn(`${label}: server error (${response.status}), retrying`, {
+          attempt,
+          maxRetries,
+          delayMs: delay,
+        });
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+
+      return response;
+    } catch (error) {
+      if (error instanceof AbortTaskRunError) throw error;
+
+      if (attempt < maxRetries && isTransientError(error)) {
+        const delay = baseDelayMs * Math.pow(2, attempt - 1);
+        logger.warn(`${label}: transient error, retrying`, {
+          attempt,
+          maxRetries,
+          delayMs: delay,
+          error: error instanceof Error ? error.message : String(error),
+          cause:
+            error instanceof Error && error.cause
+              ? String(error.cause)
+              : undefined,
+        });
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new Error(`${label}: exhausted all ${maxRetries} retries`);
+}
+
 export const convertPdfToImageRoute = task({
   id: "convert-pdf-to-image-route",
   run: async (payload: ConvertPdfToImagePayload) => {
@@ -63,7 +154,7 @@ export const convertPdfToImageRoute = task({
       logger.info("Sending file to api/get-pages endpoint");
 
       try {
-        const response = await fetch(
+        const response = await fetchWithRetry(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/mupdf/get-pages`,
           {
             method: "POST",
@@ -73,6 +164,7 @@ export const convertPdfToImageRoute = task({
               Authorization: `Bearer ${process.env.INTERNAL_API_KEY}`,
             },
           },
+          { timeoutMs: GET_PAGES_TIMEOUT_MS, label: "get-pages" },
         );
 
         if (!response.ok) {
@@ -105,7 +197,6 @@ export const convertPdfToImageRoute = task({
 
         numPages = numPagesResult;
       } catch (error: unknown) {
-        // Re-throw AbortTaskRunError so it propagates without retry
         if (error instanceof AbortTaskRunError) {
           throw error;
         }
@@ -148,8 +239,7 @@ export const convertPdfToImageRoute = task({
       });
 
       try {
-        // send page number to api/convert-page endpoint in a task and get back page img url
-        const response = await fetch(
+        const response = await fetchWithRetry(
           `${process.env.NEXT_PUBLIC_BASE_URL}/api/mupdf/convert-page`,
           {
             method: "POST",
@@ -165,12 +255,15 @@ export const convertPdfToImageRoute = task({
               Authorization: `Bearer ${process.env.INTERNAL_API_KEY}`,
             },
           },
+          {
+            timeoutMs: CONVERT_PAGE_TIMEOUT_MS,
+            label: `convert-page-${currentPage}`,
+          },
         );
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
 
-          // If document was blocked, stop processing entirely
           if (response.status === 400 && errorData.error?.includes("blocked")) {
             logger.error("Document blocked", {
               pageNumber: currentPage,
@@ -201,7 +294,6 @@ export const convertPdfToImageRoute = task({
           payload,
         });
       } catch (error: unknown) {
-        // Re-throw AbortTaskRunError so it propagates without retry
         if (error instanceof AbortTaskRunError) {
           throw error;
         }
