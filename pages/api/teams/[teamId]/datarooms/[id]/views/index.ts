@@ -54,15 +54,25 @@ export default async function handle(
           id: true,
           teamId: true,
           name: true,
-          views: {
-            where: {
-              viewType: "DATAROOM_VIEW",
-              ...(team.pauseStartsAt && {
-                viewedAt: {
-                  lt: team.pauseStartsAt,
-                },
-              }),
-            },
+         views: {
+  where: {
+    OR: [
+      {
+        viewType: "DATAROOM_VIEW",
+        ...(team.pauseStartsAt && {
+          viewedAt: { lt: team.pauseStartsAt },
+        }),
+      },
+      {
+        viewType: "DOCUMENT_VIEW",
+        downloadType: { in: ["FOLDER", "BULK"] },
+        dataroomId: dataroomId,
+        ...(team.pauseStartsAt && {
+          viewedAt: { lt: team.pauseStartsAt },
+        }),
+      },
+    ],
+  },
             orderBy: {
               viewedAt: "desc",
             },
@@ -105,12 +115,15 @@ export default async function handle(
       const hiddenViewsFromPause = team.pauseStartsAt
         ? await prisma.view.count({
             where: {
-              dataroomId: dataroomId,
-              viewType: "DATAROOM_VIEW",
-              viewedAt: {
-                gte: team.pauseStartsAt,
-              },
-            },
+  dataroomId: dataroomId,
+  OR: [
+    { viewType: "DATAROOM_VIEW" },
+    { viewType: "DOCUMENT_VIEW", downloadType: { in: ["FOLDER", "BULK"] } },
+  ],
+  viewedAt: {
+    gte: team.pauseStartsAt,
+  },
+},
           })
         : 0;
 
