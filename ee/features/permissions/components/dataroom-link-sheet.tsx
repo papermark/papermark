@@ -20,12 +20,14 @@ import z from "zod";
 
 import { useAnalytics } from "@/lib/analytics";
 import { usePlan } from "@/lib/swr/use-billing";
+import { useDocument } from "@/lib/swr/use-document";
 import useDataroomGroups from "@/lib/swr/use-dataroom-groups";
 import { useDomains } from "@/lib/swr/use-domains";
 import useLimits from "@/lib/swr/use-limits";
 import { LinkWithViews } from "@/lib/types";
 import { convertDataUrlToFile, fetcher, uploadImage } from "@/lib/utils";
 
+import { isDocumentProcessing } from "@/components/documents/document-preview-button";
 import {
   DEFAULT_LINK_PROPS as BASE_DEFAULT_LINK_PROPS,
   DEFAULT_LINK_TYPE as BASE_DEFAULT_LINK_TYPE,
@@ -138,6 +140,15 @@ export function DataroomLinkSheet({
       dedupingInterval: 10000,
     },
   );
+
+  // Document data for processing status check
+  const { document: documentData, primaryVersion } = useDocument();
+
+  // Check if document is processing (only for DOCUMENT_LINK)
+  const isDocumentCurrentlyProcessing = 
+    linkType === LinkType.DOCUMENT_LINK && primaryVersion 
+      ? isDocumentProcessing(primaryVersion)
+      : false;
 
   useEffect(() => {
     setData(currentLink || DEFAULT_LINK_PROPS(linkType, groupId, !isDatarooms));
@@ -1126,6 +1137,7 @@ export function DataroomLinkSheet({
                       : "outline"
                   }
                   loading={isSaving}
+                  disabled={isDocumentCurrentlyProcessing}
                   onClick={(e) => handleSubmit(e, false)}
                 >
                   {currentLink ? "Update Link" : "Save Link"}
@@ -1137,6 +1149,7 @@ export function DataroomLinkSheet({
                     type="button"
                     variant="link"
                     loading={isLoading}
+                    disabled={isDocumentCurrentlyProcessing}
                     onClick={(e) => handleSubmit(e, true)}
                     className="flex items-center gap-2"
                   >

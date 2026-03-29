@@ -14,12 +14,14 @@ import useSWR from "swr";
 
 import { useAnalytics } from "@/lib/analytics";
 import { usePlan } from "@/lib/swr/use-billing";
+import { useDocument } from "@/lib/swr/use-document";
 import useDataroomGroups from "@/lib/swr/use-dataroom-groups";
 import { useDomains } from "@/lib/swr/use-domains";
 import useLimits from "@/lib/swr/use-limits";
 import { LinkWithViews, WatermarkConfig } from "@/lib/types";
 import { convertDataUrlToFile, fetcher, uploadImage } from "@/lib/utils";
 
+import { isDocumentProcessing } from "@/components/documents/document-preview-button";
 import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -199,6 +201,15 @@ export default function LinkSheet({
       dedupingInterval: 10000,
     },
   );
+
+  // Document data for processing status check
+  const { document: documentData, primaryVersion } = useDocument();
+
+  // Check if document is processing (only for DOCUMENT_LINK)
+  const isDocumentCurrentlyProcessing = 
+    linkType === LinkType.DOCUMENT_LINK && primaryVersion 
+      ? isDocumentProcessing(primaryVersion)
+      : false;
 
   useEffect(() => {
     setData(currentLink || DEFAULT_LINK_PROPS(linkType, groupId, !isDatarooms));
@@ -887,6 +898,7 @@ export default function LinkSheet({
               <Button
                 type="submit"
                 loading={isSaving}
+                disabled={isDocumentCurrentlyProcessing}
                 onClick={(e) => handleSubmit(e, false)}
               >
                 {currentLink ? "Update Link" : "Save Link"}
@@ -895,6 +907,7 @@ export default function LinkSheet({
                 type="button"
                 variant="outline"
                 loading={isLoading}
+                disabled={isDocumentCurrentlyProcessing}
                 onClick={(e) => handleSubmit(e, true)}
               >
                 {currentLink ? "Update & Preview" : "Save & Preview"}
