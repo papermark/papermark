@@ -84,7 +84,7 @@ const copyFileInS3Server = async ({
     teamId,
   );
 
-  console.log("response", response);
+  // Debug logging removed
 
   return {
     type: DocumentStorageType.S3_PATH,
