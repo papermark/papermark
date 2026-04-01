@@ -11,6 +11,7 @@ import {
   HIERARCHICAL_DISPLAY_STYLE,
   getHierarchicalDisplayName,
 } from "@/lib/utils/hierarchical-display";
+import { sortByIndexThenName } from "@/lib/utils/sort-items-by-index-name";
 
 import { FileTree } from "@/components/ui/nextra-filetree";
 import { useViewerSurfaceTheme } from "@/components/view/viewer/viewer-surface-theme";
@@ -46,6 +47,7 @@ type DataroomDocumentWithVersion = {
   folderId: string | null;
   id: string;
   name: string;
+  orderIndex: number | null;
   hierarchicalIndex: string | null;
   versions: {
     id: string;
@@ -61,6 +63,7 @@ type DataroomFolderWithDocuments = DataroomFolder & {
     folderId: string | null;
     id: string;
     name: string;
+    orderIndex: number | null;
     hierarchicalIndex: string | null;
   }[];
 };
@@ -86,6 +89,10 @@ function findFolderPath(
   return null;
 }
 
+type MixedViewItem =
+  | (DataroomFolderWithDocuments & { itemType: "folder" })
+  | (DataroomFolderWithDocuments["documents"][0] & { itemType: "document" });
+
 const FolderComponent = memo(
   ({
     folder,
@@ -102,49 +109,53 @@ const FolderComponent = memo(
   }) => {
     const router = useRouter();
 
-    // Get hierarchical display name for the folder
     const folderDisplayName = getHierarchicalDisplayName(
       folder.name,
       folder.hierarchicalIndex,
       dataroomIndexEnabled || false,
     );
 
-    // Memoize the rendering of the current folder's documents
-    const documents = useMemo(
-      () =>
-        folder.documents.map((doc) => (
-          <ViewerDocumentFileItem
-            key={doc.id}
-            document={{
-              ...doc,
-              versions: [], // Not needed for display
-            }}
-            dataroomIndexEnabled={dataroomIndexEnabled}
-          />
-        )),
-      [folder.documents, dataroomIndexEnabled],
-    );
+    const mixedItems = useMemo(() => {
+      const allItems: MixedViewItem[] = [
+        ...(folder.childFolders || []).map((f) => ({
+          ...f,
+          itemType: "folder" as const,
+        })),
+        ...(folder.documents || []).map((d) => ({
+          ...d,
+          itemType: "document" as const,
+        })),
+      ];
+      return sortByIndexThenName(allItems);
+    }, [folder.childFolders, folder.documents]);
 
-    // Recursively render child folders if they exist
-    const childFolders = useMemo(
+    const renderedItems = useMemo(
       () =>
-        folder.childFolders.map((childFolder) => (
-          <FolderComponent
-            key={childFolder.id}
-            folder={childFolder}
-            folderId={folderId}
-            setFolderId={setFolderId}
-            folderPath={folderPath}
-            dataroomIndexEnabled={dataroomIndexEnabled}
-          />
-        )),
-      [
-        folder.childFolders,
-        folderId,
-        setFolderId,
-        folderPath,
-        dataroomIndexEnabled,
-      ],
+        mixedItems.map((item: MixedViewItem) => {
+          if (item.itemType === "folder") {
+            return (
+              <FolderComponent
+                key={item.id}
+                folder={item}
+                folderId={folderId}
+                setFolderId={setFolderId}
+                folderPath={folderPath}
+                dataroomIndexEnabled={dataroomIndexEnabled}
+              />
+            );
+          }
+          return (
+            <ViewerDocumentFileItem
+              key={item.id}
+              document={{
+                ...item,
+                versions: [],
+              }}
+              dataroomIndexEnabled={dataroomIndexEnabled}
+            />
+          );
+        }),
+      [mixedItems, folderId, setFolderId, folderPath, dataroomIndexEnabled],
     );
 
     const isActive = folder.id === folderId;
@@ -167,8 +178,7 @@ const FolderComponent = memo(
           childActive={isChildActive}
           onToggle={() => setFolderId(folder.id)}
         >
-          {childFolders}
-          {documents}
+          {renderedItems}
         </FileTree.Folder>
       </div>
     );
