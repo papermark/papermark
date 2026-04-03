@@ -39,6 +39,7 @@
   max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  border: 1px solid rgb(233, 233, 231);
 }
 
 .notion-simple-table > table {
@@ -46,9 +47,36 @@
   width: auto; /* Size to content, don't force full width */
 }
 
-/* Give table cells proper spacing */
+/* Give table cells visible borders and proper spacing */
 .notion-simple-table td {
   padding: 8px 10px;
+  border: 1px solid rgb(233, 233, 231);
+}
+
+/* Simple table header rows get a subtle background tint */
+.notion-simple-table-header-row td {
+  background: rgb(247, 246, 243);
+}
+
+.notion-simple-table-header-cell {
+  background: rgb(247, 246, 243);
+}
+
+/* Dark mode: lighter borders for simple tables */
+.dark-mode .notion-simple-table {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.dark-mode .notion-simple-table td {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.dark-mode .notion-simple-table-header-row td {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.dark-mode .notion-simple-table-header-cell {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 /* On mobile, everything uses full width */
@@ -204,6 +232,50 @@ textarea,
 
 .notion-simple-table-row td {
   vertical-align: top;
+}
+
+/* Collection/Database table: visible header and cell borders */
+.notion-table-header-inner {
+  border-top: 1px solid rgb(233, 233, 231);
+  border-bottom: 1px solid rgb(233, 233, 231);
+}
+
+.notion-table-view-header-cell-inner {
+  border-right: 1px solid rgb(233, 233, 231);
+}
+
+.notion-table-th:last-child .notion-table-view-header-cell-inner {
+  border-right: 0 none;
+}
+
+.notion-table-row {
+  border-bottom: 1px solid rgb(233, 233, 231);
+}
+
+.notion-table-cell {
+  border-right: 1px solid rgb(233, 233, 231);
+}
+
+.notion-table-cell:last-child {
+  border-right: 0 none;
+}
+
+/* Dark mode: collection/database table borders */
+.dark-mode .notion-table-header-inner {
+  border-top-color: rgba(255, 255, 255, 0.15);
+  border-bottom-color: rgba(255, 255, 255, 0.15);
+}
+
+.dark-mode .notion-table-view-header-cell-inner {
+  border-right-color: rgba(255, 255, 255, 0.15);
+}
+
+.dark-mode .notion-table-row {
+  border-bottom-color: rgba(255, 255, 255, 0.15);
+}
+
+.dark-mode .notion-table-cell {
+  border-right-color: rgba(255, 255, 255, 0.15);
 }
 
 /* Collection/Database table wrapper for horizontal scroll */
