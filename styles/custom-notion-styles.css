@@ -39,7 +39,7 @@
   max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  border: 1px solid rgb(233, 233, 231);
+  border: none;
 }
 
 .notion-simple-table > table {
@@ -47,10 +47,23 @@
   width: auto; /* Size to content, don't force full width */
 }
 
-/* Give table cells visible borders and proper spacing */
+/*
+ * Cell borders use bottom+right only, with first-row top and first-column left,
+ * to produce single 1px lines despite display:block disabling border-collapse.
+ */
 .notion-simple-table td {
   padding: 8px 10px;
-  border: 1px solid rgb(233, 233, 231);
+  border: none;
+  border-bottom: 1px solid rgb(233, 233, 231);
+  border-right: 1px solid rgb(233, 233, 231);
+}
+
+.notion-simple-table tr:first-child td {
+  border-top: 1px solid rgb(233, 233, 231);
+}
+
+.notion-simple-table td:first-child {
+  border-left: 1px solid rgb(233, 233, 231);
 }
 
 /* Simple table header rows get a subtle background tint */
@@ -63,12 +76,17 @@
 }
 
 /* Dark mode: lighter borders for simple tables */
-.dark-mode .notion-simple-table {
-  border-color: rgba(255, 255, 255, 0.15);
+.dark-mode .notion-simple-table td {
+  border-bottom-color: rgba(255, 255, 255, 0.15);
+  border-right-color: rgba(255, 255, 255, 0.15);
 }
 
-.dark-mode .notion-simple-table td {
-  border-color: rgba(255, 255, 255, 0.15);
+.dark-mode .notion-simple-table tr:first-child td {
+  border-top-color: rgba(255, 255, 255, 0.15);
+}
+
+.dark-mode .notion-simple-table td:first-child {
+  border-left-color: rgba(255, 255, 255, 0.15);
 }
 
 .dark-mode .notion-simple-table-header-row td {
