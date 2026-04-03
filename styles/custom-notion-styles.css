@@ -76,25 +76,26 @@
 }
 
 /* Dark mode: lighter borders for simple tables */
-.dark-mode .notion-simple-table td {
+.dark .notion-simple-table td {
   border-bottom-color: rgba(255, 255, 255, 0.15);
   border-right-color: rgba(255, 255, 255, 0.15);
 }
 
-.dark-mode .notion-simple-table tr:first-child td {
+.dark .notion-simple-table tr:first-child td {
   border-top-color: rgba(255, 255, 255, 0.15);
 }
 
-.dark-mode .notion-simple-table td:first-child {
+.dark .notion-simple-table td:first-child {
   border-left-color: rgba(255, 255, 255, 0.15);
 }
 
-.dark-mode .notion-simple-table-header-row td {
+.dark .notion-simple-table-header-row td {
   background: rgba(255, 255, 255, 0.06);
 }
 
-.dark-mode .notion-simple-table-header-cell {
+.dark .notion-simple-table-header-cell {
   background: rgba(255, 255, 255, 0.06);
+}
 }
 
 /* On mobile, everything uses full width */
