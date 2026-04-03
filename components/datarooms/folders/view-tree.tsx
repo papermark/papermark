@@ -238,10 +238,6 @@ const HomeLink = memo(
 );
 HomeLink.displayName = "HomeLink";
 
-type RootMixedItem =
-  | (DataroomFolderWithDocuments & { itemType: "folder" })
-  | (DataroomDocumentWithVersion & { itemType: "document" });
-
 const SidebarFolders = ({
   folders,
   documents,
@@ -263,15 +259,6 @@ const SidebarFolders = ({
     }
     return [];
   }, [folders, documents]);
-
-  const rootItems = useMemo(() => {
-    const rootDocs = (documents || []).filter((doc) => doc.folderId === null);
-    const allItems: RootMixedItem[] = [
-      ...nestedFolders.map((f) => ({ ...f, itemType: "folder" as const })),
-      ...rootDocs.map((d) => ({ ...d, itemType: "document" as const })),
-    ];
-    return sortByIndexThenName(allItems);
-  }, [nestedFolders, documents]);
 
   const folderPath = useMemo(() => {
     if (!folderId) {
@@ -303,24 +290,16 @@ const SidebarFolders = ({
       }
     >
       <HomeLink folderId={folderId} setFolderId={setFolderId} />
-      {rootItems.map((item) =>
-        item.itemType === "folder" ? (
-          <FolderComponent
-            key={item.id}
-            folder={item}
-            folderId={folderId}
-            setFolderId={setFolderId}
-            folderPath={folderPath}
-            dataroomIndexEnabled={dataroomIndexEnabled}
-          />
-        ) : (
-          <ViewerDocumentFileItem
-            key={item.id}
-            document={item}
-            dataroomIndexEnabled={dataroomIndexEnabled}
-          />
-        ),
-      )}
+      {nestedFolders.map((folder) => (
+        <FolderComponent
+          key={folder.id}
+          folder={folder}
+          folderId={folderId}
+          setFolderId={setFolderId}
+          folderPath={folderPath}
+          dataroomIndexEnabled={dataroomIndexEnabled}
+        />
+      ))}
     </FileTree>
   );
 };
