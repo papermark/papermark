@@ -488,6 +488,8 @@ export async function fetchDocumentLinkData({
   const linkData = await prisma.link.findUnique({
     where: { id: linkId, teamId, deletedAt: null },
     select: {
+      id: true,
+      enableConversation: true,
       document: {
         select: {
           id: true,

@@ -20,6 +20,7 @@ type Props = {
     href: string;
     segment: string | null;
     tag?: string;
+    count?: number;
     disabled?: boolean;
     limited?: boolean;
   }[];
@@ -37,13 +38,14 @@ export const NavMenu: React.FC<React.PropsWithChildren<Props>> = ({
       <div className="flex w-full items-center overflow-x-auto px-4 pl-1">
         <ul className="flex flex-row gap-4">
           {navigation.map(
-            ({ label, href, segment, tag, disabled, limited }) => (
+            ({ label, href, segment, tag, count, disabled, limited }) => (
               <NavItem
                 key={label}
                 label={label}
                 href={href}
                 segment={segment}
                 tag={tag}
+                count={count}
                 disabled={disabled}
                 limited={limited}
               />
@@ -61,6 +63,7 @@ const NavItem: React.FC<Props["navigation"][0]> = ({
   href,
   segment,
   tag,
+  count,
   disabled,
   limited,
 }) => {
@@ -121,7 +124,11 @@ const NavItem: React.FC<Props["navigation"][0]> = ({
           )}
         >
           {label}
-          {tag ? (
+          {count !== undefined && count > 0 ? (
+            <div className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">
+              {count > 99 ? "99+" : count}
+            </div>
+          ) : tag ? (
             <div className="text-content-subtle rounded border bg-background px-1 py-0.5 font-mono text-xs">
               {tag}
             </div>

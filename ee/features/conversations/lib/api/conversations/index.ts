@@ -51,7 +51,7 @@ export const conversationService = {
     viewerId,
     userId,
   }: {
-    dataroomId: string;
+    dataroomId?: string;
     viewId: string;
     data: CreateConversationInput;
     teamId: string;
@@ -70,7 +70,7 @@ export const conversationService = {
     return prisma.conversation.create({
       data: {
         title: data.title || sanitizedInitialMessage.slice(0, 20),
-        dataroomId,
+        ...(dataroomId ? { dataroomId } : {}),
         teamId,
         dataroomDocumentId: data.dataroomDocumentId,
         documentPageNumber: data.documentPageNumber,
@@ -108,7 +108,7 @@ export const conversationService = {
         participants: true,
         messages: true,
         views: true,
-        dataroom: true,
+        ...(dataroomId ? { dataroom: true } : {}),
         dataroomDocument: {
           include: {
             document: true,

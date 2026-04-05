@@ -119,9 +119,21 @@ export async function getLimits({
         }),
       };
     } else {
+      // For conversationsInDataroom, preserve default value if parsedData has null/undefined
+      // Only override if explicitly set to a boolean value
+      const conversationsInDataroom =
+        parsedData.conversationsInDataroom !== null &&
+        parsedData.conversationsInDataroom !== undefined
+          ? parsedData.conversationsInDataroom
+          : (defaultLimits as any).conversationsInDataroom;
+
       return {
         ...defaultLimits,
         ...parsedData,
+        // Preserve plan default for conversationsInDataroom if not explicitly set
+        ...(conversationsInDataroom !== undefined && {
+          conversationsInDataroom,
+        }),
         // if account is paid, but link and document limits are not set, then set them to Infinity
         links: parsedData.links === 50 ? Infinity : parsedData.links,
         documents:
@@ -136,7 +148,10 @@ export async function getLimits({
     const defaultLimits = planLimitsMap[basePlan] || FREE_PLAN_LIMITS;
     return {
       ...defaultLimits,
-      conversationsInDataroom: false,
+      // Preserve conversationsInDataroom from default limits if it exists
+      ...((defaultLimits as any).conversationsInDataroom === undefined && {
+        conversationsInDataroom: false,
+      }),
       usage: { documents: documentCount, links: linkCount, users: userCount },
       ...(isTrial && {
         users: 3,

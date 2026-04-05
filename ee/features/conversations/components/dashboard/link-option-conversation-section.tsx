@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { LinkType } from "@prisma/client";
+
 import { DEFAULT_LINK_TYPE } from "@/components/links/link-sheet";
 import LinkItem from "@/components/links/link-sheet/link-item";
 import { LinkUpgradeOptions } from "@/components/links/link-sheet/link-options";
@@ -9,6 +11,7 @@ export default function ConversationSection({
   setData,
   isAllowed,
   handleUpgradeStateChange,
+  linkType,
 }: {
   data: DEFAULT_LINK_TYPE;
   setData: React.Dispatch<React.SetStateAction<DEFAULT_LINK_TYPE>>;
@@ -18,6 +21,7 @@ export default function ConversationSection({
     trigger,
     plan,
   }: LinkUpgradeOptions) => void;
+  linkType?: Omit<LinkType, "WORKFLOW_LINK">;
 }) {
   const { enableConversation } = data;
   const [enabled, setEnabled] = useState<boolean>(true);
@@ -46,20 +50,25 @@ export default function ConversationSection({
     setEnabled(updatedEnableConversation);
   };
 
+  const isDocumentLink = linkType === LinkType.DOCUMENT_LINK;
+  const tooltipContent = isDocumentLink
+    ? "Private conversations between you and your viewers related to this document."
+    : "Private conversations between you and your viewers related to this dataroom.";
+
   return (
     <div className="pb-5">
       <LinkItem
         title="Enable Q&A Conversations"
-        tooltipContent="Private conversations between you and your viewers related to this dataroom."
+        tooltipContent={tooltipContent}
         enabled={enabled}
         action={handleEnableConversation}
         isAllowed={isAllowed}
-        requiredPlan="data rooms plus"
+        requiredPlan={isDocumentLink ? "Pro" : "data rooms plus"}
         upgradeAction={() =>
           handleUpgradeStateChange({
             state: true,
             trigger: "link_sheet_conversation_section",
-            plan: "Data Rooms Plus",
+            plan: isDocumentLink ? "Pro" : "Data Rooms Plus",
           })
         }
       />

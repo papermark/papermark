@@ -17,9 +17,11 @@ export function ConversationListItem({
 }) {
   // Helper function to format document reference
   const formatDocumentReference = () => {
-    if (!conversation.dataroomDocumentName) return "Untitled conversation";
+    // Support both dataroom and document conversations
+    const documentName =
+      conversation.dataroomDocumentName || conversation.documentName;
+    if (!documentName) return "Untitled conversation";
 
-    const documentName = conversation.dataroomDocumentName;
     const parts = [];
 
     if (conversation.documentPageNumber) {

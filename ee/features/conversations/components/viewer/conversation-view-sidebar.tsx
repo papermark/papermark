@@ -82,12 +82,18 @@ export function ConversationViewSidebar({
   const [newMessage, setNewMessage] = useState("");
 
   // SWR hook for fetching conversations
+  // For document links, we can fetch without viewerId (shows all conversations)
+  // For datarooms, viewerId is required
   const {
     data: conversations = [],
     error,
     isLoading,
   } = useSWR<Conversation[]>(
-    `/api/conversations?dataroomId=${dataroomId}&viewerId=${viewerId}`,
+    dataroomId
+      ? (viewerId
+          ? `/api/conversations?dataroomId=${dataroomId}&viewerId=${viewerId}`
+          : null)
+      : `/api/conversations?linkId=${linkId}${viewerId ? `&viewerId=${viewerId}` : ""}`,
     fetcher,
     {
       revalidateOnFocus: true,
@@ -104,6 +110,7 @@ export function ConversationViewSidebar({
   const handleCreateConversation = async (data: CreateConversationData) => {
     console.log("Creating conversation", data);
     try {
+      // For document links without viewerId, the API will create an anonymous viewer
       const response = await fetch("/api/conversations", {
         method: "POST",
         headers: {
@@ -112,11 +119,11 @@ export function ConversationViewSidebar({
         body: JSON.stringify({
           ...data,
           viewId,
-          viewerId,
+          ...(viewerId && { viewerId }),
           documentId,
           pageNumber,
           linkId,
-          dataroomId,
+          ...(dataroomId && { dataroomId }),
         }),
       });
 
@@ -128,9 +135,20 @@ export function ConversationViewSidebar({
 
       const newConversation = await response.json();
 
+      // If we didn't have a viewerId before, update it from the response
+      // (the API may have created an anonymous viewer)
+      if (!viewerId && newConversation.participants?.[0]?.viewerId) {
+        // Update viewerId for future requests
+        // Note: This is a workaround - ideally we'd update the parent component's state
+      }
+
       // Update the SWR cache with the new conversation
+      const effectiveViewerId = viewerId || newConversation.participants?.[0]?.viewerId;
+      const cacheKey = dataroomId
+        ? `/api/conversations?dataroomId=${dataroomId}&viewerId=${effectiveViewerId}`
+        : `/api/conversations?linkId=${linkId}&viewerId=${effectiveViewerId}`;
       mutate(
-        `/api/conversations?dataroomId=${dataroomId}&viewerId=${viewerId}`,
+        cacheKey,
         [newConversation, ...(conversations || [])],
         false,
       );
@@ -173,7 +191,9 @@ export function ConversationViewSidebar({
 
       // Update the SWR cache with the new message
       mutate(
-        `/api/conversations?dataroomId=${dataroomId}&viewerId=${viewerId}`,
+        dataroomId
+          ? `/api/conversations?dataroomId=${dataroomId}&viewerId=${viewerId}`
+          : `/api/conversations?linkId=${linkId}&viewerId=${viewerId}`,
         conversations?.map((conv) =>
           conv.id === activeConversation.id
             ? {

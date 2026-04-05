@@ -7,8 +7,8 @@ model Conversation {
   visibilityMode ConversationVisibility @default(PRIVATE)
 
   // Core relationships
-  dataroomId String
-  dataroom   Dataroom @relation(fields: [dataroomId], references: [id], onDelete: Cascade)
+  dataroomId String?
+  dataroom   Dataroom? @relation(fields: [dataroomId], references: [id], onDelete: Cascade)
 
   // Optional attachments
   dataroomDocumentId    String?
