@@ -386,7 +386,21 @@ export async function fetchDataroomDocumentLinkData({
 
     // if it's a group/permission link, we need to check if the document is accessible
     if (!hasAccess) {
-      throw new Error("Document not found in group");
+      // Allow externally uploaded documents (visitor uploads) to pass through
+      // so the page can render. Runtime checks in views-dataroom will verify
+      // the specific viewer is the uploader before serving file content.
+      const dataroomDoc = await prisma.dataroomDocument.findUnique({
+        where: { id: dataroomDocumentId },
+        select: {
+          document: {
+            select: { isExternalUpload: true },
+          },
+        },
+      });
+
+      if (!dataroomDoc?.document?.isExternalUpload) {
+        throw new Error("Document not found in group");
+      }
     }
   }
 

@@ -156,6 +156,24 @@ export default async function handle(
         downloadDocuments = downloadDocuments.filter((doc) =>
           permittedDocumentIds.includes(doc.id),
         );
+
+        // If no group permission, check if this is the viewer's own upload
+        if (downloadDocuments.length === 0 && view.viewerId) {
+          const originalDocs = view.dataroom.documents;
+          if (originalDocs.length > 0) {
+            const upload = await prisma.documentUpload.findFirst({
+              where: {
+                documentId: documentId,
+                viewerId: view.viewerId,
+                dataroomId: view.dataroom.id,
+              },
+              select: { id: true },
+            });
+            if (upload) {
+              downloadDocuments = originalDocs;
+            }
+          }
+        }
       }
 
       //creates new view for document

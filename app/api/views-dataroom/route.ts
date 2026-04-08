@@ -808,6 +808,83 @@ export async function POST(request: NextRequest) {
 
     // ** DOCUMENT_VIEW **
     try {
+      // For group/permission-restricted links, verify the viewer has access to this document.
+      // If not, allow access only if the viewer uploaded the document themselves.
+      const effectiveGroupIdForDocAccess =
+        link.groupId || link.permissionGroupId;
+      if (
+        !isPreview &&
+        effectiveGroupIdForDocAccess &&
+        (link.audienceType === LinkAudienceType.GROUP ||
+          link.permissionGroupId) &&
+        documentId &&
+        link.dataroomId
+      ) {
+        const dataroomDoc = await prisma.dataroomDocument.findUnique({
+          where: {
+            dataroomId_documentId: {
+              dataroomId: link.dataroomId,
+              documentId: documentId,
+            },
+          },
+          select: { id: true },
+        });
+
+        let hasGroupAccess = false;
+        if (dataroomDoc) {
+          if (link.groupId) {
+            const perm =
+              await prisma.viewerGroupAccessControls.findFirst({
+                where: {
+                  groupId: link.groupId,
+                  itemId: dataroomDoc.id,
+                  itemType: ItemType.DATAROOM_DOCUMENT,
+                  OR: [{ canView: true }, { canDownload: true }],
+                },
+              });
+            hasGroupAccess = !!perm;
+          } else if (link.permissionGroupId) {
+            const perm =
+              await prisma.permissionGroupAccessControls.findFirst({
+                where: {
+                  groupId: link.permissionGroupId,
+                  itemId: dataroomDoc.id,
+                  itemType: ItemType.DATAROOM_DOCUMENT,
+                  OR: [{ canView: true }, { canDownload: true }],
+                },
+              });
+            hasGroupAccess = !!perm;
+          }
+        }
+
+        if (!hasGroupAccess) {
+          const viewerId =
+            viewer?.id ?? dataroomSession?.viewerId ?? undefined;
+          if (!viewerId) {
+            return NextResponse.json(
+              { message: "Unauthorized access" },
+              { status: 403 },
+            );
+          }
+
+          const upload = await prisma.documentUpload.findFirst({
+            where: {
+              documentId: documentId,
+              viewerId: viewerId,
+              dataroomId: link.dataroomId,
+            },
+            select: { id: true },
+          });
+
+          if (!upload) {
+            return NextResponse.json(
+              { message: "Unauthorized access" },
+              { status: 403 },
+            );
+          }
+        }
+      }
+
       let newView: { id: string } | null = null;
       let dataroomView: { id: string } | null = null;
       if (!isPreview) {
