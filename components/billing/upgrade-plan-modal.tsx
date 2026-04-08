@@ -234,18 +234,16 @@ export function UpgradePlanModal({
     : children;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{buttonChild}</DialogTrigger>
-      <DialogContent
-        className="max-h-[90vh] min-h-fit overflow-y-auto bg-gray-50 text-foreground dark:bg-gray-900"
-        style={{
-          width: "90vw",
-          maxWidth: "900px",
-        }}
-      >
+  <Dialog open={open} onOpenChange={setOpen}>
+    <DialogTrigger asChild>{buttonChild}</DialogTrigger>
+    <DialogContent
+      isPreviewDialog
+      className="flex max-h-[90svh] w-[calc(100vw-2rem)] flex-col overflow-hidden bg-gray-50 p-0 text-foreground dark:bg-gray-900 rounded-b-lg md:w-[90vw] md:max-w-[900px]"
+    >
+      <div className="overflow-y-auto p-4 sm:p-6 w-full">
         {trigger === "invite_team_members" && (
           <p
-            className="cursor-pointer text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="cursor-pointer text-center text-sm text-muted-foreground transition-colors hover:text-foreground mb-4"
             onClick={() => setUnlimitedModalOpen(true)}
           >
             Interested in unlimited seats?{" "}
@@ -275,7 +273,7 @@ export function UpgradePlanModal({
             p === PlanEnum.DataRoomsPremium,
         ) && (
           <p
-            className="cursor-pointer text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="mt-4 cursor-pointer text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
             onClick={() => setUnlimitedModalOpen(true)}
           >
             Deals with everything unlimited?{" "}
@@ -285,14 +283,12 @@ export function UpgradePlanModal({
           </p>
         )}
 
-        <div className="isolate grid grid-cols-1 gap-4 overflow-hidden rounded-xl p-4 md:grid-cols-2">
+        <div className="isolate grid grid-cols-1 gap-4 rounded-xl p-2 sm:p-4 sm:grid-cols-2">
           {plansToShow.map((planOption) => {
-            const isDataRoomsUpgrade = plansToShow.includes(PlanEnum.DataRooms);
-
-            // Determine which plan to show based on selection for Data Rooms
             let effectivePlan = planOption;
             let displayPlanName = planOption;
 
+            const isDataRoomsUpgrade = plansToShow.includes(PlanEnum.DataRooms);
             const isDataRoomsPlusUpgrade = plansToShow.includes(PlanEnum.DataRooms) && plansToShow.includes(PlanEnum.DataRoomsPlus);
 
             if (planOption === PlanEnum.DataRooms && isDataRoomsUpgrade && !isDataRoomsPlusUpgrade) {
@@ -319,14 +315,13 @@ export function UpgradePlanModal({
             return (
               <div
                 key={displayPlanName}
-                className={`relative flex flex-col rounded-lg border ${
-                  planOption === PlanEnum.Business
-                    ? "border-[#fb7a00]"
-                    : planOption === PlanEnum.DataRoomsPlus &&
-                        isDataRoomsUpgrade
-                      ? "border-gray-900"
-                      : "border-gray-200"
-                } bg-white p-6 shadow-sm dark:bg-gray-900`}
+                className={`relative flex flex-col rounded-lg border ${planOption === PlanEnum.Business
+                  ? "border-[#fb7a00]"
+                  : planOption === PlanEnum.DataRoomsPlus &&
+                    isDataRoomsUpgrade
+                    ? "border-gray-900"
+                    : "border-gray-200"
+                  } bg-white p-4 sm:p-6 shadow-sm dark:bg-gray-900`}
               >
                 <div className="mb-4 border-b border-gray-200 pb-2">
                   <div className="flex items-center justify-between">
@@ -339,7 +334,7 @@ export function UpgradePlanModal({
                       "absolute right-2 top-2 rounded px-2 py-1 text-xs text-white",
                       planOption === PlanEnum.Business && "bg-[#fb7a00]",
                       displayPlanName === PlanEnum.DataRoomsPlus &&
-                        "bg-gray-800 dark:bg-gray-200 dark:text-gray-900",
+                      "bg-gray-800 dark:bg-gray-200 dark:text-gray-900",
                     )}
                   >
                     {planOption === PlanEnum.Business && "Most popular"}
@@ -348,7 +343,7 @@ export function UpgradePlanModal({
                 </div>
 
                 <div className="mb-2">
-                  <span className="text-balance text-4xl font-medium tabular-nums text-gray-900 dark:text-white">
+                  <span className="text-balance text-3xl sm:text-4xl font-medium tabular-nums text-gray-900 dark:text-white">
                     €
                     {
                       PLANS.find((p) => p.name === displayPlanName)?.price[
@@ -430,11 +425,10 @@ export function UpgradePlanModal({
                     variant={
                       planOption === PlanEnum.Business ? "default" : "outline"
                     }
-                    className={`w-full py-2 text-sm ${
-                      planOption === PlanEnum.Business
-                        ? "bg-[#fb7a00]/90 text-white hover:bg-[#fb7a00]"
-                        : "bg-gray-800 text-white hover:bg-gray-900 hover:text-white dark:hover:bg-gray-700/80"
-                    }`}
+                    className={`w-full py-2 text-sm ${planOption === PlanEnum.Business
+                      ? "bg-[#fb7a00]/90 text-white hover:bg-[#fb7a00]"
+                      : "bg-gray-800 text-white hover:bg-gray-900 hover:text-white dark:hover:bg-gray-700/80"
+                      }`}
                     loading={selectedPlan === planOption}
                     disabled={selectedPlan !== null}
                     onClick={() => {
@@ -466,9 +460,7 @@ export function UpgradePlanModal({
                           });
                       } else {
                         fetch(
-                          `/api/teams/${teamId}/billing/upgrade?priceId=${
-                            priceId
-                          }`,
+                          `/api/teams/${teamId}/billing/upgrade?priceId=${priceId}`,
                           {
                             method: "POST",
                             headers: {
@@ -498,36 +490,39 @@ export function UpgradePlanModal({
             );
           })}
         </div>
-        <div className="text-center text-sm text-muted-foreground">
-          All plans include unlimited visitors and page by page document
-          analytics.{" "}
-          <Link
-            href={`/settings/upgrade${
-              clickedPlan === PlanEnum.Pro
+        <div className="flex flex-col items-center px-4 pb-4 sm:px-6 sm:pb-6 text-center text-sm text-muted-foreground">
+          <p>
+            All plans include unlimited visitors and page by page document analytics.
+          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <Link
+              href={`/settings/upgrade${clickedPlan === PlanEnum.Pro
                 ? "?view=documents"
                 : clickedPlan === PlanEnum.Business
                   ? "?view=business-datarooms"
                   : ""
-            }`}
-            className="underline underline-offset-4 hover:text-foreground"
-          >
-            See all plans
-          </Link>
-          {((teamPlan === "free" && !isTrial) ||
-            (teamPlan === "pro" && !isTrial)) && (
-            <>
-              {" | "}
-              <StartDataRoomTrialButton teamId={teamId} />
-            </>
-          )}
+                }`}
+              className="underline underline-offset-4 hover:text-foreground"
+            >
+              See all plans
+            </Link>
+            {((teamPlan === "free" && !isTrial) ||
+              (teamPlan === "pro" && !isTrial)) && (
+                <>
+                  <span>|</span>
+                  <StartDataRoomTrialButton teamId={teamId} />
+                </>
+              )}
+          </div>
         </div>
+      </div>
 
-        <UnlimitedPlanModal
-          period={period}
-          open={unlimitedModalOpen}
-          setOpen={setUnlimitedModalOpen}
-        />
-      </DialogContent>
-    </Dialog>
-  );
+      <UnlimitedPlanModal
+        period={period}
+        open={unlimitedModalOpen}
+        setOpen={setUnlimitedModalOpen}
+      />
+    </DialogContent>
+  </Dialog>
+);
 }
