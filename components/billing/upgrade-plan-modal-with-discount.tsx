@@ -245,7 +245,7 @@ export function UpgradePlanModalWithDiscount({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{buttonChild}</DialogTrigger>
       <DialogContent
-        className="max-h-[90vh] min-h-fit overflow-y-auto bg-white p-0 text-foreground dark:bg-gray-900"
+        className="max-h-[90vh] overflow-y-auto bg-white p-0 text-foreground dark:bg-gray-900"
         style={{
           width: "95vw",
           maxWidth: "1200px",
