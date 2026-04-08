@@ -1,16 +1,16 @@
 model Team {
-  id           String        @id @default(cuid())
-  name         String
-  slug         String?       @unique // Optional human-readable identifier (e.g. "acme"), used for SSO login
-  users        UserTeam[]
-  documents    Document[]
-  folders      Folder[]
-  domains      Domain[]
-  invitations  Invitation[]
-  sentEmails   SentEmail[]
-  brand        Brand?
-  datarooms    Dataroom[]
-  agreements   Agreement[]
+  id            String         @id @default(cuid())
+  name          String
+  slug          String?        @unique // Optional human-readable identifier (e.g. "acme"), used for SSO login
+  users         UserTeam[]
+  documents     Document[]
+  folders       Folder[]
+  domains       Domain[]
+  invitations   Invitation[]
+  sentEmails    SentEmail[]
+  brand         Brand?
+  datarooms     Dataroom[]
+  agreements    Agreement[]
   viewerGroups  ViewerGroup[]
   visitorGroups VisitorGroup[]
   viewers       Viewer[]
@@ -67,6 +67,8 @@ model Team {
 
   ignoredDomains  String[] // Domains that are ignored for the team
   globalBlockList String[] // Email and domains that are blocked for the team
+
+  notificationPreferences NotificationPreference[]
 }
 
 enum Role {

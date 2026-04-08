@@ -47,6 +47,7 @@ export default function UpgradePlanContainer() {
     isFree,
     isDataroomsPlus,
     isDataroomsPremium,
+    isDataroomsUnlimited,
     isPaused,
     isCancelled,
     isCustomer,
@@ -290,11 +291,13 @@ export default function UpgradePlanContainer() {
         <Card className="bg-transparent">
           <CardHeader>
             <CardTitle>
-              {isDataroomsPremium
-                ? "Premium"
-                : isDataroomsPlus
-                  ? "Datarooms+"
-                  : plan.charAt(0).toUpperCase() + plan.slice(1)}{" "}
+              {isDataroomsUnlimited
+                ? "Unlimited"
+                : isDataroomsPremium
+                  ? "Premium"
+                  : isDataroomsPlus
+                    ? "Datarooms+"
+                    : plan.charAt(0).toUpperCase() + plan.slice(1)}{" "}
               Plan
             </CardTitle>
             {!isCancelled && startsAt && endsAt && isBillingCycleCurrent() && (

@@ -53,6 +53,7 @@ const concurrencyConfig: Record<string, number> = {
   datarooms: 10,
   "datarooms-plus": 10,
   "datarooms-premium": 10,
+  "datarooms-unlimited": 10,
 };
 
 export const conversionFreeQueue = queue({
@@ -81,6 +82,10 @@ export const conversionDataroomsPlusQueue = queue({
 });
 export const conversionDataroomsPremiumQueue = queue({
   name: "conversion-datarooms-premium",
+  concurrencyLimit: 10,
+});
+export const conversionDataroomsUnlimitedQueue = queue({
+  name: "conversion-datarooms-unlimited",
   concurrencyLimit: 10,
 });
 

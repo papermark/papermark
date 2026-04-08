@@ -265,7 +265,7 @@ export function DataroomTrialModal({
                 <UpgradePlanModal clickedPlan={PlanEnum.Business}>
                   <button className="underline">Papermark Business</button>
                 </UpgradePlanModal>{" "}
-                to continue using data rooms.
+                to continue using Data Room plan features.
               </div>
             </div>
           </DialogFooter>

@@ -17,7 +17,7 @@ import { useIsAdmin } from "@/lib/hooks/use-is-admin";
 import AppLayout from "@/components/layouts/app";
 import { SettingsHeader } from "@/components/settings/settings-header";
 
-const SSO_ELIGIBLE_PLANS = ["datarooms-premium", "datarooms-premium+old"];
+const SSO_ELIGIBLE_PLANS = ["datarooms-premium", "datarooms-premium+old", "datarooms-unlimited", "datarooms-unlimited+old"];
 
 export default function SecuritySettings() {
   const router = useRouter();
@@ -65,7 +65,7 @@ export default function SecuritySettings() {
                 <p className="text-sm text-muted-foreground">
                   Enterprise security features including SAML Single Sign-On and
                   SCIM directory sync are available as an add-on on the
-                  Datarooms Premium plan.
+                  Datarooms Premium or Unlimited plan.
                 </p>
                 {!isPlanEligible && (
                   <p className="mt-2 text-sm text-muted-foreground">
@@ -73,7 +73,7 @@ export default function SecuritySettings() {
                       href="/settings/billing"
                       className="font-medium underline"
                     >
-                      Upgrade to Datarooms Premium
+                      Upgrade to Datarooms Premium or Unlimited
                     </Link>{" "}
                     to add SSO for your team.
                   </p>

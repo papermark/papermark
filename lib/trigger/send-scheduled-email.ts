@@ -92,6 +92,7 @@ export const sendDataroomTrialExpiredEmailTask = task({
         "datarooms",
         "datarooms-plus",
         "datarooms-premium",
+        "datarooms-unlimited",
       ].includes(updatedTeam.plan);
 
       if (!isPaid) {
@@ -152,7 +153,7 @@ export const sendUpgradeOneMonthCheckinEmailTask = task({
       }
 
       if (
-        !["pro", "business", "datarooms", "datarooms-plus", "datarooms-premium"].includes(team.plan)
+        !["pro", "business", "datarooms", "datarooms-plus", "datarooms-premium", "datarooms-unlimited"].includes(team.plan)
       ) {
         logger.info("Team not on paid plan - no further action", {
           teamId: payload.teamId,

@@ -157,8 +157,9 @@ export default async function handle(
 
       if (
         !team.plan.includes("drtrial") &&
-        ["business", "datarooms", "datarooms-plus", "datarooms-premium"].includes(stripedTeamPlan) &&
+        ["business", "datarooms", "datarooms-plus", "datarooms-premium", "datarooms-unlimited"].includes(stripedTeamPlan) &&
         limits &&
+        limits.datarooms !== null &&
         team._count.datarooms >= limits.datarooms
       ) {
         return res.status(403).json({

@@ -105,14 +105,17 @@ export default async function handle(
         "datarooms",
         "datarooms-plus",
         "datarooms-premium",
+        "datarooms-unlimited",
         "business+old",
         "datarooms+old",
         "datarooms-plus+old",
         "datarooms-premium+old",
+        "datarooms-unlimited+old",
         "datarooms+drtrial",
         "business+drtrial",
         "datarooms-plus+drtrial",
         "datarooms-premium+drtrial",
+        "datarooms-unlimited+drtrial",
         "free+drtrial",
       ];
 
@@ -153,6 +156,7 @@ export default async function handle(
 
       if (
         limits &&
+        limits.datarooms !== null &&
         !(isFreePlan && isFirstDataroom) &&
         dataroomCount >= limits.datarooms
       ) {

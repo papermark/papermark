@@ -372,6 +372,7 @@ export type BasePlan =
   | "datarooms"
   | "datarooms-plus"
   | "datarooms-premium"
+  | "datarooms-unlimited"
   | "enterprise";
 
 export const tagColors = [

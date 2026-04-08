@@ -6,8 +6,11 @@ import { sendViewedDataroomEmail } from "@/lib/emails/send-viewed-dataroom";
 import { sendViewedDataroomPausedEmail } from "@/lib/emails/send-viewed-dataroom-paused";
 import { sendViewedDocumentEmail } from "@/lib/emails/send-viewed-document";
 import { sendViewedDocumentPausedEmail } from "@/lib/emails/send-viewed-document-paused";
+import { dispatchNotification } from "@/lib/notifications/dispatch";
+import type { NotificationRecipient } from "@/lib/notifications/resolve-recipients";
 import prisma from "@/lib/prisma";
 import { log } from "@/lib/utils";
+import type { TeamNotificationType } from "@/lib/zod/schemas/notifications";
 
 export const config = {
   maxDuration: 60,
@@ -17,17 +20,14 @@ export default async function handle(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  // We only allow POST requests
   if (req.method !== "POST") {
     res.status(405).json({ message: "Method Not Allowed" });
     return;
   }
 
-  // Extract the API Key from the Authorization header
   const authHeader = req.headers.authorization;
-  const token = authHeader?.split(" ")[1]; // Assuming the format is "Bearer [token]"
+  const token = authHeader?.split(" ")[1];
 
-  // Check if the API Key matches
   if (token !== process.env.INTERNAL_API_KEY) {
     res.status(401).json({ message: "Unauthorized" });
     return;
@@ -67,42 +67,19 @@ export default async function handle(
   } | null;
 
   try {
-    // Fetch the view with data
     view = await prisma.view.findUnique({
-      where: {
-        id: viewId,
-      },
+      where: { id: viewId },
       select: {
         viewType: true,
         viewerEmail: true,
         linkId: true,
-        link: {
-          select: {
-            name: true,
-            ownerId: true,
-          },
-        },
+        link: { select: { name: true, ownerId: true } },
         document: {
-          select: {
-            teamId: true,
-            id: true,
-            name: true,
-            ownerId: true,
-          },
+          select: { teamId: true, id: true, name: true, ownerId: true },
         },
-        dataroom: {
-          select: {
-            teamId: true,
-            id: true,
-            name: true,
-          },
-        },
+        dataroom: { select: { teamId: true, id: true, name: true } },
         team: {
-          select: {
-            plan: true,
-            ignoredDomains: true,
-            pauseStartsAt: true,
-          },
+          select: { plan: true, ignoredDomains: true, pauseStartsAt: true },
         },
       },
     });
@@ -128,84 +105,23 @@ export default async function handle(
 
   if (view.viewerEmail) {
     const viewerDomain = view.viewerEmail.split("@").pop();
-    if (viewerDomain) {
-      if (view?.team?.ignoredDomains) {
-        const ignoredDomainList = view.team.ignoredDomains.map((d) =>
-          d.startsWith("@") ? d.substring(1) : d,
-        );
-
-        if (ignoredDomainList.includes(viewerDomain)) {
-          return res.status(200).json({
-            message: "Notification skipped for ignored domain.",
-            viewId,
-          });
-        }
+    if (viewerDomain && view?.team?.ignoredDomains) {
+      const ignoredDomainList = view.team.ignoredDomains.map((d) =>
+        d.startsWith("@") ? d.substring(1) : d,
+      );
+      if (ignoredDomainList.includes(viewerDomain)) {
+        return res.status(200).json({
+          message: "Notification skipped for ignored domain.",
+          viewId,
+        });
       }
     }
   }
 
-  // Get all active team members who are admins or managers to be notified
-  const users = await prisma.userTeam.findMany({
-    where: {
-      role: { in: ["ADMIN", "MANAGER"] },
-      status: "ACTIVE",
-      teamId: teamId,
-    },
-    select: {
-      role: true,
-      user: {
-        select: {
-          email: true,
-        },
-      },
-    },
-  });
+  const notificationType: TeamNotificationType =
+    view.viewType === "DOCUMENT_VIEW" ? "DOCUMENT_VIEW" : "DATAROOM_VIEW";
 
-  // Fetch document owner and link owner emails in parallel (async-parallel best practice)
-  const [ownerEmail, linkOwnerEmail] = await Promise.all([
-    // Get the active owner of the document
-    view.document?.ownerId
-      ? prisma.userTeam
-          .findUnique({
-            where: {
-              userId_teamId: {
-                userId: view.document.ownerId,
-                teamId: teamId,
-              },
-              status: "ACTIVE",
-            },
-            select: {
-              user: {
-                select: {
-                  email: true,
-                },
-              },
-            },
-          })
-          .then((result) => result?.user.email || null)
-      : null,
-    // Get the active owner of the link
-    view.link?.ownerId
-      ? prisma.userTeam
-          .findUnique({
-            where: {
-              userId_teamId: {
-                userId: view.link.ownerId,
-                teamId: teamId,
-              },
-              status: "ACTIVE",
-            },
-            select: {
-              user: {
-                select: {
-                  email: true,
-                },
-              },
-            },
-          })
-          .then((result) => result?.user.email || null)
-      : null,
-  ]);
+  const linkName = view.link!.name || `Link #${view.linkId.slice(-5)}`;
 
   const includeLocation =
     !view.team?.plan?.includes("free") &&
@@ -217,99 +133,35 @@ export default async function handle(
       ? `${locationData.city}, ${locationData.region}, ${locationData.country}`
       : `${locationData.city}, ${locationData.country}`;
 
-  // POST /api/jobs/send-notification
   try {
-    const adminEmail = users.find((user) => user.role === "ADMIN")?.user.email;
+    const recipients = await dispatchNotification({
+      teamId,
+      notificationType,
+      linkOwnerId: view.link?.ownerId,
+      documentOwnerId: view.document?.ownerId,
+    });
 
-    // Guard: ensure we have an admin email to send notifications to
-    if (!adminEmail) {
-      log({
-        message: `No admin email found for team when sending notification. \n\n*Metadata*: \`{teamId: ${teamId}, viewId: ${viewId}}\``,
-        type: "error",
-      });
-      return res.status(400).json({ message: "No admin email found for team" });
+    if (recipients.length === 0) {
+      return res
+        .status(200)
+        .json({ message: "No recipients", viewId });
     }
 
-    // Check if team is paused
     const teamIsPaused = await isTeamPausedById(teamId);
+    const primaryRecipient = recipients[0];
+    const ccRecipients = recipients
+      .slice(1)
+      .map((r) => r.email);
 
-    if (view.viewType === "DOCUMENT_VIEW") {
-      const teamMembers = users
-        .map((user) => user.user.email!)
-        .filter((email) => email !== adminEmail);
-
-      // Add ownerEmail to teamMembers if it exists and isn't already included
-      if (
-        ownerEmail &&
-        ownerEmail !== adminEmail &&
-        !teamMembers.includes(ownerEmail)
-      ) {
-        teamMembers.push(ownerEmail);
-      }
-
-      // Add linkOwnerEmail to teamMembers if it exists and isn't already included
-      if (
-        linkOwnerEmail &&
-        linkOwnerEmail !== adminEmail &&
-        linkOwnerEmail !== ownerEmail &&
-        !teamMembers.includes(linkOwnerEmail)
-      ) {
-        teamMembers.push(linkOwnerEmail);
-      }
-
-      // send appropriate email based on team pause status
-      if (teamIsPaused) {
-        await sendViewedDocumentPausedEmail({
-          ownerEmail: adminEmail,
-          documentName: view.document!.name,
-          linkName: view.link!.name || `Link #${view.linkId.slice(-5)}`,
-          teamMembers,
-        });
-      } else {
-        await sendViewedDocumentEmail({
-          ownerEmail: adminEmail,
-          documentId: view.document!.id,
-          documentName: view.document!.name,
-          linkName: view.link!.name || `Link #${view.linkId.slice(-5)}`,
-          viewerEmail: view.viewerEmail,
-          teamMembers,
-          locationString: includeLocation ? locationString : undefined,
-        });
-      }
-    } else {
-      const teamMembers = users
-        .map((user) => user.user.email!)
-        .filter((email) => email !== adminEmail);
-
-      // Add linkOwnerEmail to teamMembers if it exists and isn't already included
-      if (
-        linkOwnerEmail &&
-        linkOwnerEmail !== adminEmail &&
-        !teamMembers.includes(linkOwnerEmail)
-      ) {
-        teamMembers.push(linkOwnerEmail);
-      }
-
-      // send appropriate email based on team pause status
-      if (teamIsPaused) {
-        await sendViewedDataroomPausedEmail({
-          ownerEmail: adminEmail,
-          dataroomName: view.dataroom!.name,
-          linkName: view.link!.name || `Link #${view.linkId.slice(-5)}`,
-          teamMembers,
-        });
-      } else {
-        await sendViewedDataroomEmail({
-          ownerEmail: adminEmail,
-          dataroomId: view.dataroom!.id,
-          dataroomName: view.dataroom!.name,
-          viewerEmail: view.viewerEmail,
-          linkName: view.link!.name || `Link #${view.linkId.slice(-5)}`,
-          teamMembers,
-          locationString: includeLocation ? locationString : undefined,
-        });
-      }
-    }
+    await sendImmediateEmail({
+      view,
+      teamIsPaused,
+      primaryRecipient,
+      ccRecipients,
+      linkName,
+      includeLocation,
+      locationString,
+    });
 
     res.status(200).json({ message: "Successfully sent notification", viewId });
     return;
@@ -320,5 +172,69 @@ export default async function handle(
       mention: true,
     });
     return res.status(500).json({ message: (error as Error).message });
+  }
+}
+
+async function sendImmediateEmail({
+  view,
+  teamIsPaused,
+  primaryRecipient,
+  ccRecipients,
+  linkName,
+  includeLocation,
+  locationString,
+}: {
+  view: {
+    viewType: string;
+    viewerEmail: string | null;
+    linkId: string;
+    document: { id: string; name: string } | null;
+    dataroom: { id: string; name: string } | null;
+  };
+  teamIsPaused: boolean;
+  primaryRecipient: NotificationRecipient;
+  ccRecipients: string[];
+  linkName: string;
+  includeLocation: boolean;
+  locationString: string;
+}) {
+  if (view.viewType === "DOCUMENT_VIEW") {
+    if (teamIsPaused) {
+      await sendViewedDocumentPausedEmail({
+        ownerEmail: primaryRecipient.email,
+        documentName: view.document!.name,
+        linkName,
+        teamMembers: ccRecipients,
+      });
+    } else {
+      await sendViewedDocumentEmail({
+        ownerEmail: primaryRecipient.email,
+        documentId: view.document!.id,
+        documentName: view.document!.name,
+        linkName,
+        viewerEmail: view.viewerEmail,
+        teamMembers: ccRecipients,
+        locationString: includeLocation ? locationString : undefined,
+      });
+    }
+  } else {
+    if (teamIsPaused) {
+      await sendViewedDataroomPausedEmail({
+        ownerEmail: primaryRecipient.email,
+        dataroomName: view.dataroom!.name,
+        linkName,
+        teamMembers: ccRecipients,
+      });
+    } else {
+      await sendViewedDataroomEmail({
+        ownerEmail: primaryRecipient.email,
+        dataroomId: view.dataroom!.id,
+        dataroomName: view.dataroom!.name,
+        viewerEmail: view.viewerEmail,
+        linkName,
+        teamMembers: ccRecipients,
+        locationString: includeLocation ? locationString : undefined,
+      });
+    }
   }
 }

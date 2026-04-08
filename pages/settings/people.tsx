@@ -17,6 +17,7 @@ import { useTeams } from "@/lib/swr/use-teams";
 import { CustomUser } from "@/lib/types";
 
 import { AddSeatModal } from "@/components/billing/add-seat-modal";
+import { UnlimitedPlanModal } from "@/components/billing/unlimited-plan-modal";
 import AppLayout from "@/components/layouts/app";
 import { SettingsHeader } from "@/components/settings/settings-header";
 import Folder from "@/components/shared/icons/folder";
@@ -42,8 +43,8 @@ export default function Billing() {
   const { data: session } = useSession();
   const { team, loading } = useGetTeam()!;
   const teamInfo = useTeam();
-  const { isTrial } = usePlan();
-  const { canAddUsers, showUpgradePlanModal } = useLimits();
+  const { isTrial, isDataroomsUnlimited } = usePlan();
+  const { canAddUsers, showUpgradePlanModal, limits } = useLimits();
   const { teams } = useTeams();
   const analytics = useAnalytics();
 
@@ -232,7 +233,18 @@ export default function Billing() {
                 Team Members
               </h3>
               <p className="text-sm text-muted-foreground">
-                Manage your team members
+                Manage your team members.{" "}
+                {isDataroomsUnlimited ? (
+                  <span className="ml-1 font-medium">
+                    Your team has unlimited seats 💫
+                  </span>
+                ) : (
+                  <UnlimitedPlanModal>
+                    <span className="cursor-pointer underline underline-offset-4 hover:text-foreground">
+                      Interested in unlimited team members?
+                    </span>
+                  </UnlimitedPlanModal>
+                )}
               </p>
             </div>
           </div>
@@ -242,6 +254,11 @@ export default function Billing() {
                 <h2 className="text-xl font-medium">Team</h2>
                 <p className="text-sm text-secondary-foreground">
                   Teammates that have access to this project.
+                  {!isDataroomsUnlimited && limits?.users && limits.users !== Infinity && (
+                    <span className="ml-1">
+                      ({limits.usage?.users ?? 0}/{limits.users} seats used)
+                    </span>
+                  )}
                 </p>
               </div>
               {showUpgradePlanModal ? (
@@ -252,14 +269,16 @@ export default function Billing() {
                 />
               ) : (
                 <div className="flex items-center gap-2">
-                  <AddSeatModal
-                    open={isAddSeatModalOpen}
-                    setOpen={setAddSeatModalOpen}
-                  >
-                    <Button variant="outline" className="whitespace-nowrap">
-                      Add Seat
-                    </Button>
-                  </AddSeatModal>
+                  {!isDataroomsUnlimited && (
+                    <AddSeatModal
+                      open={isAddSeatModalOpen}
+                      setOpen={setAddSeatModalOpen}
+                    >
+                      <Button variant="outline" className="whitespace-nowrap">
+                        Add Seat
+                      </Button>
+                    </AddSeatModal>
+                  )}
                   {showInvite ? (
                     <AddTeamMembers
                       open={isTeamMemberInviteModalOpen}

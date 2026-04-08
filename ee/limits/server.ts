@@ -7,6 +7,7 @@ import {
   DATAROOMS_PLAN_LIMITS,
   DATAROOMS_PLUS_PLAN_LIMITS,
   DATAROOMS_PREMIUM_PLAN_LIMITS,
+  DATAROOMS_UNLIMITED_PLAN_LIMITS,
   FREE_PLAN_LIMITS,
   PRO_PLAN_LIMITS,
   TPlanLimits,
@@ -26,10 +27,13 @@ const planLimitsMap: Record<string, TPlanLimits> = {
   datarooms: DATAROOMS_PLAN_LIMITS,
   "datarooms-plus": DATAROOMS_PLUS_PLAN_LIMITS,
   "datarooms-premium": DATAROOMS_PREMIUM_PLAN_LIMITS,
+  "datarooms-unlimited": DATAROOMS_UNLIMITED_PLAN_LIMITS,
 };
 
 export const configSchema = z.object({
-  datarooms: z.number().optional(),
+  datarooms: z
+    .preprocess((v) => (v === null ? Infinity : v !== undefined ? Number(v) : undefined), z.number())
+    .optional(),
   links: z
     .preprocess((v) => (v === null ? Infinity : Number(v)), z.number())
     .optional()
@@ -38,8 +42,12 @@ export const configSchema = z.object({
     .preprocess((v) => (v === null ? Infinity : Number(v)), z.number())
     .optional()
     .default(50),
-  users: z.number().optional(),
-  domains: z.number().optional(),
+  users: z
+    .preprocess((v) => (v === null ? Infinity : v !== undefined ? Number(v) : undefined), z.number())
+    .optional(),
+  domains: z
+    .preprocess((v) => (v === null ? Infinity : v !== undefined ? Number(v) : undefined), z.number())
+    .optional(),
   customDomainOnPro: z.boolean().optional(),
   customDomainInDataroom: z.boolean().optional(),
   advancedLinkControlsOnPro: z.boolean().nullish(),
@@ -126,6 +134,9 @@ export async function getLimits({
         links: parsedData.links === 50 ? Infinity : parsedData.links,
         documents:
           parsedData.documents === 50 ? Infinity : parsedData.documents,
+        users: parsedData.users ?? (defaultLimits?.users === null ? Infinity : defaultLimits?.users),
+        domains: parsedData.domains ?? (defaultLimits?.domains === null ? Infinity : defaultLimits?.domains),
+        datarooms: parsedData.datarooms ?? (defaultLimits?.datarooms === null ? Infinity : defaultLimits?.datarooms),
         usage: { documents: documentCount, links: linkCount, users: userCount },
       };
     }
@@ -136,6 +147,9 @@ export async function getLimits({
     const defaultLimits = planLimitsMap[basePlan] || FREE_PLAN_LIMITS;
     return {
       ...defaultLimits,
+      users: defaultLimits.users === null ? Infinity : defaultLimits.users,
+      domains: defaultLimits.domains === null ? Infinity : defaultLimits.domains,
+      datarooms: defaultLimits.datarooms === null ? Infinity : defaultLimits.datarooms,
       conversationsInDataroom: false,
       usage: { documents: documentCount, links: linkCount, users: userCount },
       ...(isTrial && {
