@@ -443,3 +443,44 @@ export function useDataroomVisitHistory({
     error,
   };
 }
+
+export type DataroomDocumentViewStats = {
+  duration: {
+    data: { pageNumber: string; sum_duration: number }[];
+  };
+  total_duration: number;
+  numPages: number;
+  versionNumber?: number;
+  documentName: string;
+};
+
+export function useDataroomDocumentViewStats({
+  dataroomId,
+  documentId,
+  viewId,
+}: {
+  dataroomId: string;
+  documentId: string;
+  viewId: string;
+}) {
+  const teamInfo = useTeam();
+  const teamId = teamInfo?.currentTeam?.id;
+
+  const { data: stats, error } = useSWR<DataroomDocumentViewStats>(
+    teamId &&
+      dataroomId &&
+      documentId &&
+      viewId &&
+      `/api/teams/${teamId}/datarooms/${dataroomId}/documents/${documentId}/views/${viewId}/stats`,
+    fetcher,
+    {
+      dedupingInterval: 10000,
+    },
+  );
+
+  return {
+    stats,
+    loading: !error && !stats,
+    error,
+  };
+}

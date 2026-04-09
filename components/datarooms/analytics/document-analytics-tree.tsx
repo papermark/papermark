@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Dispatch, SetStateAction } from "react";
 
 import { useTeam } from "@/context/team-context";
@@ -32,6 +32,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+import { DocumentViewPreviewModal } from "./document-view-preview-modal";
 
 // Define types for the file/folder structure with analytics
 type FileOrFolder = {
@@ -71,6 +73,15 @@ export default function DocumentAnalyticsTree({
   });
   const { stats: dataroomStats, loading: statsLoading } = useDataroomStats();
 
+  // State for view preview modal
+  const [viewPreviewDocument, setViewPreviewDocument] = useState<{
+    id: string;
+    documentId: string;
+    name: string;
+    views: number;
+    downloads: number;
+  } | null>(null);
+
   // Memoize the tree data building
   const data = useMemo(() => {
     if (!folders || foldersLoading || !dataroomStats || statsLoading) {
@@ -97,6 +108,27 @@ export default function DocumentAnalyticsTree({
       }
     },
     [selectedDocument, setSelectedDocument],
+  );
+
+  const handleViewsClick = useCallback(
+    (row: FileOrFolder, e: React.MouseEvent) => {
+      e.stopPropagation();
+      // Only open modal for documents with views
+      if (
+        row.itemType === ItemType.DATAROOM_DOCUMENT &&
+        row.documentId &&
+        row.analytics.views > 0
+      ) {
+        setViewPreviewDocument({
+          id: row.id,
+          documentId: row.documentId,
+          name: row.name,
+          views: row.analytics.views,
+          downloads: row.analytics.downloads,
+        });
+      }
+    },
+    [],
   );
 
   const createColumns = useCallback(
@@ -145,9 +177,30 @@ export default function DocumentAnalyticsTree({
             <span>Views</span>
           </div>
         ),
-        cell: ({ row }) => (
-          <div className="text-center">{row.original.analytics.views}</div>
-        ),
+        cell: ({ row }) => {
+          const isDocument =
+            row.original.itemType === ItemType.DATAROOM_DOCUMENT;
+          const hasViews = row.original.analytics.views > 0;
+          const isClickable = isDocument && hasViews;
+
+          return (
+            <div
+              className={cn(
+                "text-center",
+                isClickable &&
+                  "cursor-pointer rounded px-2 py-1 font-medium text-primary underline-offset-2 transition-colors hover:bg-primary/10 hover:underline",
+              )}
+              onClick={
+                isClickable
+                  ? (e) => handleViewsClick(row.original, e)
+                  : undefined
+              }
+              title={isClickable ? "Click to see visitor details" : undefined}
+            >
+              {row.original.analytics.views}
+            </div>
+          );
+        },
       },
       {
         id: "downloads",
@@ -162,7 +215,7 @@ export default function DocumentAnalyticsTree({
         ),
       },
     ],
-    [],
+    [handleViewsClick],
   );
 
   const columns = useMemo(() => createColumns(), [createColumns]);
@@ -180,65 +233,77 @@ export default function DocumentAnalyticsTree({
   }
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <TableHead key={header.id} className="py-2 first:w-12">
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() && "selected"}
-                className={cn(
-                  "cursor-pointer hover:bg-muted/50",
-                  // Highlight the selected document
-                  selectedDocument &&
-                    row.original.documentId === selectedDocument.id &&
-                    "bg-muted",
-                )}
-                onClick={() => handleRowClick(row.original)}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    style={{
-                      paddingLeft:
-                        cell.column.id === "name"
-                          ? `${row.depth * 1.25 + 1}rem`
-                          : undefined,
-                    }}
-                    className="py-2"
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
+    <>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} className="py-2 first:w-12">
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                  </TableHead>
                 ))}
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
-                No analytics data available.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </div>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  className={cn(
+                    "cursor-pointer hover:bg-muted/50",
+                    // Highlight the selected document
+                    selectedDocument &&
+                      row.original.documentId === selectedDocument.id &&
+                      "bg-muted",
+                  )}
+                  onClick={() => handleRowClick(row.original)}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      style={{
+                        paddingLeft:
+                          cell.column.id === "name"
+                            ? `${row.depth * 1.25 + 1}rem`
+                            : undefined,
+                      }}
+                      className="py-2"
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  No analytics data available.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* View Preview Modal */}
+      {viewPreviewDocument && (
+        <DocumentViewPreviewModal
+          isOpen={!!viewPreviewDocument}
+          onClose={() => setViewPreviewDocument(null)}
+          dataroomId={dataroomId}
+          document={viewPreviewDocument}
+        />
+      )}
+    </>
   );
 }
 

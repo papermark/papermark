@@ -1,6 +1,9 @@
 import Link from "next/link";
 
+import { useState } from "react";
+
 import {
+  ChevronDownIcon,
   DownloadCloudIcon,
   FileCheckIcon,
   FileIcon,
@@ -8,9 +11,14 @@ import {
 } from "lucide-react";
 
 import { useDataroomVisitHistory } from "@/lib/swr/use-dataroom";
-import { timeAgo } from "@/lib/utils";
+import { cn, timeAgo } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Popover,
   PopoverContent,
@@ -20,6 +28,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { TimestampTooltip } from "@/components/ui/timestamp-tooltip";
+
+import DataroomDocumentViewChart from "./dataroom-document-view-chart";
 
 export default function DataroomVisitHistory({
   viewId,
@@ -280,37 +290,12 @@ export default function DataroomVisitHistory({
           if (event.type === "view") {
             const view = event.data;
             return (
-              <TableRow key={`view-${view.id}`}>
-                <TableCell>
-                  <div className="flex items-center gap-x-4 overflow-visible">
-                    <FileCheckIcon className="h-5 w-5 text-[#fb7a00]" />
-                    Viewed {view.document.name}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <TimestampTooltip
-                    timestamp={event.timestamp}
-                    side="right"
-                    rows={["local", "utc", "unix"]}
-                  >
-                    <time
-                      className="select-none truncate text-sm text-muted-foreground"
-                      dateTime={event.timestamp.toISOString()}
-                    >
-                      {timeAgo(event.timestamp)}
-                    </time>
-                  </TimestampTooltip>
-                </TableCell>
-                <TableCell className="table-cell">
-                  <div className="flex items-center justify-end space-x-4">
-                    <Button size={"sm"} variant={"link"}>
-                      <Link href={`/documents/${view.document.id}`}>
-                        See document
-                      </Link>
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
+              <DocumentViewRow
+                key={`view-${view.id}`}
+                view={view}
+                timestamp={event.timestamp}
+                dataroomId={dataroomId}
+              />
             );
           }
 
@@ -364,5 +349,93 @@ export default function DataroomVisitHistory({
         </TableRow>
       ) : null}
     </>
+  );
+}
+
+// Component for individual document view with collapsible page analytics
+function DocumentViewRow({
+  view,
+  timestamp,
+  dataroomId,
+}: {
+  view: {
+    id: string;
+    downloadType?: "SINGLE" | "BULK" | "FOLDER";
+    downloadMetadata?: {
+      folderName?: string;
+      folderPath?: string;
+      dataroomName?: string;
+      documentCount?: number;
+      documents?: { id: string; name: string }[];
+    };
+    document: {
+      id: string;
+      name: string;
+    };
+  };
+  timestamp: Date;
+  dataroomId: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Collapsible asChild open={isOpen} onOpenChange={setIsOpen}>
+      <>
+        <TableRow className="group/view-row">
+          <TableCell>
+            <div className="flex items-center gap-x-4 overflow-visible">
+              <FileCheckIcon className="h-5 w-5 text-[#fb7a00]" />
+              Viewed {view.document.name}
+            </div>
+          </TableCell>
+          <TableCell>
+            <TimestampTooltip
+              timestamp={timestamp}
+              side="right"
+              rows={["local", "utc", "unix"]}
+            >
+              <time
+                className="select-none truncate text-sm text-muted-foreground"
+                dateTime={timestamp.toISOString()}
+              >
+                {timeAgo(timestamp)}
+              </time>
+            </TimestampTooltip>
+          </TableCell>
+          <TableCell className="table-cell">
+            <div className="flex items-center justify-end space-x-2">
+              <CollapsibleTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="gap-1 text-xs"
+                >
+                  <span>Page analytics</span>
+                  <ChevronDownIcon
+                    className={cn(
+                      "h-4 w-4 transition-transform duration-200",
+                      isOpen && "rotate-180",
+                    )}
+                  />
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+          </TableCell>
+        </TableRow>
+        <CollapsibleContent asChild>
+          <TableRow className="bg-muted/30 hover:bg-muted/30">
+            <TableCell colSpan={3} className="p-0">
+              <DataroomDocumentViewChart
+                dataroomId={dataroomId}
+                documentId={view.document.id}
+                viewId={view.id}
+                downloadType={view.downloadType}
+                downloadMetadata={view.downloadMetadata}
+              />
+            </TableCell>
+          </TableRow>
+        </CollapsibleContent>
+      </>
+    </Collapsible>
   );
 }
