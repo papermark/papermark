@@ -170,7 +170,7 @@ export default function ViewerUploadZone({
                 Drop your file(s) here
               </span>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                PDF, Office, images, ZIP, and more
+                PDF, Office, images, TXT, LOG, ZIP, and more
               </p>
             </div>
           </div>
