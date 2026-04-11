@@ -126,7 +126,7 @@ export function UnlimitedPlanModal({
               Unlimited
             </span>
 
-            <div className="mb-4 border-b border-gray-200 pb-2">
+            <div className="mb-4 border-b border-gray-200 pb-2 dark:border-gray-700">
               <h3 className="text-xl font-medium text-gray-900 dark:text-white">
                 Data Rooms Unlimited
               </h3>
@@ -145,7 +145,7 @@ export function UnlimitedPlanModal({
               {planFeatures.featureIntro}
             </p>
 
-            <ul className="mb-6 mt-2 space-y-2 text-sm leading-6 text-gray-600 dark:text-muted-foreground">
+            <ul className="mb-6 mt-2 space-y-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
               {planFeatures.features.map((feature, i) => (
                 <li key={i} className="flex items-center gap-x-3">
                   <CheckIcon className="h-5 w-5 flex-shrink-0 text-[#fb7a00]" />
@@ -156,7 +156,7 @@ export function UnlimitedPlanModal({
 
             <div className="mt-auto">
               <Button
-                className="w-full bg-gray-800 py-2 text-sm text-white hover:bg-gray-900 hover:text-white dark:hover:bg-gray-700/80"
+                className="w-full bg-gray-800 py-2 text-sm text-white hover:bg-gray-900 hover:text-white dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
                 loading={loading}
                 onClick={handleUpgrade}
               >

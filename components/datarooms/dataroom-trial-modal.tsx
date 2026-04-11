@@ -119,7 +119,7 @@ export function DataroomTrialModal({
         industry,
         companySize,
       });
-      toast.success("Dataroom successfully created! 🎉");
+      toast.success("Free trial started! 🎉");
 
       await Promise.all([
         mutate(`/api/teams/${teamInfo?.currentTeam?.id}/datarooms`),
@@ -151,7 +151,7 @@ export function DataroomTrialModal({
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader className="text-start">
-          <DialogTitle>Dataroom Trial for 7 days</DialogTitle>
+          <DialogTitle>Start a 7-day free trial</DialogTitle>
           <DialogDescription>No credit card required.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">

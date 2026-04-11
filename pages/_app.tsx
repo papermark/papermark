@@ -11,7 +11,6 @@ import { NuqsAdapter } from "nuqs/adapters/next/pages";
 import { EXCLUDED_PATHS } from "@/lib/constants";
 
 import { PostHogCustomProvider } from "@/components/providers/posthog-provider";
-import { DealflowPopup } from "@/components/shared/dealflow-popup";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -85,7 +84,6 @@ export default function App({
                     <TeamProvider>
                       <UploadProgressProvider>
                         <Component {...pageProps} />
-                        <DealflowPopup />
                       </UploadProgressProvider>
                     </TeamProvider>
                   )}

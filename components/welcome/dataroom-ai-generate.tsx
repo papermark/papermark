@@ -16,7 +16,11 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 
-export default function DataroomAIGenerate() {
+export default function DataroomAIGenerate({
+  dataroomId,
+}: {
+  dataroomId?: string;
+}) {
   const router = useRouter();
   const teamInfo = useTeam();
   const analytics = useAnalytics();
@@ -240,6 +244,7 @@ export default function DataroomAIGenerate() {
           body: JSON.stringify({
             name: dataroomName.trim(),
             folders: filteredFolders,
+            ...(dataroomId && { dataroomId }),
           }),
         },
       );
@@ -387,15 +392,22 @@ export default function DataroomAIGenerate() {
                 className="resize-none"
               />
             </div>
-            <Button
-              onClick={handleGenerateFolders}
-              loading={aiGenerating}
-              disabled={!aiDescription.trim() || aiGenerating}
-              className="w-full"
-              size="lg"
-            >
-              Generate data room structure
-            </Button>
+            <div className="space-y-2">
+              <Button
+                onClick={handleGenerateFolders}
+                loading={aiGenerating}
+                disabled={!aiDescription.trim() || aiGenerating}
+                className="w-full"
+                size="lg"
+              >
+                Generate data room structure
+              </Button>
+              {aiGenerating && (
+                <p className="text-center text-xs text-muted-foreground">
+                  Generation can take up to 60 seconds
+                </p>
+              )}
+            </div>
           </>
         ) : (
           <>

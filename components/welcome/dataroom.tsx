@@ -53,7 +53,7 @@ export default function Dataroom() {
           controls
         >
           <source
-            src="https://assets.papermark.io/upload/file_A4qNV68jr3MAUayMNi3WmY-Data-Room-demo-2.mp4"
+            src="https://img.papermarkassets.com/upload/file_EwRRKYFSgWcxPjGYF31QWe-Create-data-room-product-video-2.mp4"
             type="video/mp4"
           />
         </video>

@@ -759,15 +759,22 @@ export function AddDataroomModal({
                         className="resize-none"
                       />
                     </div>
-                    <Button
-                      type="button"
-                      className="w-full"
-                      loading={aiGenerating}
-                      onClick={handleGenerateFolders}
-                      disabled={!aiDescription.trim() || aiGenerating}
-                    >
-                      Generate data room structure
-                    </Button>
+                    <div className="space-y-2">
+                      <Button
+                        type="button"
+                        className="w-full"
+                        loading={aiGenerating}
+                        onClick={handleGenerateFolders}
+                        disabled={!aiDescription.trim() || aiGenerating}
+                      >
+                        Generate data room structure
+                      </Button>
+                      {aiGenerating && (
+                        <p className="text-center text-xs text-muted-foreground">
+                          Generation can take up to 60 seconds
+                        </p>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <form

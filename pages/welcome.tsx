@@ -131,7 +131,10 @@ export default function Welcome() {
               />
             )}
           {router.query.type === "dataroom-ai-generate" && (
-            <DataroomAIGenerate key="dataroom-ai-generate" />
+            <DataroomAIGenerate
+              key="dataroom-ai-generate"
+              dataroomId={router.query.dataroomId as string | undefined}
+            />
           )}
         </AnimatePresence>
       </div>

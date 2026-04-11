@@ -147,7 +147,7 @@ export default function DataroomTrial() {
         dealSize,
         dataroomId,
       });
-      toast.success("Dataroom successfully created! 🎉");
+      toast.success("Free trial started! 🎉");
 
       await Promise.all([
         mutate(`/api/teams/${teamInfo?.currentTeam?.id}/datarooms`),

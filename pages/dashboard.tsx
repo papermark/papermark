@@ -1,6 +1,6 @@
 import { useRouter } from "next/router";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
 import { addDays, format } from "date-fns";
@@ -35,6 +35,7 @@ interface OverviewData {
     date: string;
     views: number;
   }[];
+  effectiveInterval?: TimeRange;
 }
 export const defaultRange = {
   start: addDays(new Date(), -7),
@@ -80,6 +81,18 @@ export default function DashboardPage() {
       revalidateOnFocus: false,
     },
   );
+
+  // Sync URL when the server auto-expanded the interval (e.g. 7d had no data → 30d)
+  useEffect(() => {
+    if (overview?.effectiveInterval && overview.effectiveInterval !== interval) {
+      const params = new URLSearchParams(window.location.search);
+      params.set("interval", overview.effectiveInterval);
+      if (type) params.set("type", type);
+      router.replace(`/dashboard?${params.toString()}`, undefined, {
+        shallow: true,
+      });
+    }
+  }, [overview?.effectiveInterval]);
 
   if (error && !slug.current) {
     const errorObj = JSON.parse(error.message);

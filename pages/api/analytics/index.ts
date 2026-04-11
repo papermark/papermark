@@ -159,8 +159,30 @@ export default async function handler(
 
     switch (type) {
       case "overview": {
+        let effectiveInterval = interval;
+
+        // Adaptive interval: if requesting 7d and there's no data, expand to 30d
+        if (interval === "7d") {
+          const recentCount = await prisma.view.count({
+            where: {
+              teamId,
+              viewedAt: intervalFilter,
+              isArchived: false,
+              viewType: "DOCUMENT_VIEW",
+            },
+          });
+
+          if (recentCount === 0) {
+            effectiveInterval = "30d";
+            startDate = new Date(now);
+            startDate.setDate(startDate.getDate() - 29);
+            startDate.setHours(0, 0, 0, 0);
+            intervalFilter.gte = startDate;
+            since = Date.now() - INTERVALS["30d"];
+          }
+        }
+
         const [viewStats, graphData] = await Promise.all([
-          // Get view stats with relational counts
           prisma.view.findMany({
             where: {
               teamId,
@@ -176,10 +198,9 @@ export default async function handler(
               viewerId: true,
             },
           }),
-          // Get views data for graph grouped by day
           // Note: We use timezone-aware date truncation to ensure dates are grouped
           // correctly based on the team's timezone setting, avoiding one-day offset issues
-          interval === "24h"
+          effectiveInterval === "24h"
             ? prisma.$queryRaw`
                 SELECT 
                   DATE_TRUNC('hour', "viewedAt" AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}) as date,
@@ -193,7 +214,7 @@ export default async function handler(
                 GROUP BY 1
                 ORDER BY date ASC
               `
-            : interval === "custom"
+            : effectiveInterval === "custom"
               ? prisma.$queryRaw`
                 SELECT 
                   DATE_TRUNC('day', "viewedAt" AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}) as date,
@@ -223,7 +244,6 @@ export default async function handler(
               `,
         ]);
 
-        // Calculate counts from viewStats
         const uniqueLinks = new Set(viewStats.map((view) => view.linkId));
         const uniqueDocuments = new Set(
           viewStats.map((view) => view.documentId),
@@ -243,7 +263,8 @@ export default async function handler(
               views: Number(point.views),
             }),
           ),
-          timezone, // Include timezone for frontend reference
+          timezone,
+          ...(effectiveInterval !== interval && { effectiveInterval }),
         });
       }
 
