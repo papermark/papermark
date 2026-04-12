@@ -186,16 +186,16 @@ export default function DashboardViewsChart({
   }, [timeRange, formattedData, totalDays]);
 
   const barSize = useMemo(() => {
-    if (timeRange === "24h") return 8;
-    if (timeRange === "7d") return 24;
-    if (timeRange === "30d") return 12;
+    if (timeRange === "24h") return 14;
+    if (timeRange === "7d") return 32;
+    if (timeRange === "30d") return 16;
 
     if (startDate && endDate) {
-      if (totalDays > 365) return 24;
-      if (totalDays > 30) return 16;
+      if (totalDays > 365) return 32;
+      if (totalDays > 30) return 22;
     }
 
-    return 12;
+    return 16;
   }, [timeRange, startDate, endDate, totalDays]);
 
   return (
@@ -265,7 +265,7 @@ export default function DashboardViewsChart({
             fill="rgb(16 185 129)"
             stroke="rgb(16 185 129)"
             strokeWidth={1}
-            radius={[2, 2, 0, 0]}
+            radius={[0, 0, 0, 0]}
           />
         </BarChart>
       </ResponsiveContainer>

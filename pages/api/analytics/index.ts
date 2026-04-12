@@ -159,30 +159,7 @@ export default async function handler(
 
     switch (type) {
       case "overview": {
-        let effectiveInterval = interval;
-
-        // Adaptive interval: if requesting 7d and there's no data, expand to 30d
-        if (interval === "7d") {
-          const recentCount = await prisma.view.count({
-            where: {
-              teamId,
-              viewedAt: intervalFilter,
-              isArchived: false,
-              viewType: "DOCUMENT_VIEW",
-            },
-          });
-
-          if (recentCount === 0) {
-            effectiveInterval = "30d";
-            startDate = new Date(now);
-            startDate.setDate(startDate.getDate() - 29);
-            startDate.setHours(0, 0, 0, 0);
-            intervalFilter.gte = startDate;
-            since = Date.now() - INTERVALS["30d"];
-          }
-        }
-
-        const [viewStats, graphData] = await Promise.all([
+        const [viewStats, graphData, linkCount] = await Promise.all([
           prisma.view.findMany({
             where: {
               teamId,
@@ -200,7 +177,7 @@ export default async function handler(
           }),
           // Note: We use timezone-aware date truncation to ensure dates are grouped
           // correctly based on the team's timezone setting, avoiding one-day offset issues
-          effectiveInterval === "24h"
+          interval === "24h"
             ? prisma.$queryRaw`
                 SELECT 
                   DATE_TRUNC('hour', "viewedAt" AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}) as date,
@@ -214,7 +191,7 @@ export default async function handler(
                 GROUP BY 1
                 ORDER BY date ASC
               `
-            : effectiveInterval === "custom"
+            : interval === "custom"
               ? prisma.$queryRaw`
                 SELECT 
                   DATE_TRUNC('day', "viewedAt" AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}) as date,
@@ -242,6 +219,9 @@ export default async function handler(
                 GROUP BY 1
                 ORDER BY date ASC
               `,
+          prisma.link.count({
+            where: { teamId, deletedAt: null },
+          }),
         ]);
 
         const uniqueLinks = new Set(viewStats.map((view) => view.linkId));
@@ -264,7 +244,7 @@ export default async function handler(
             }),
           ),
           timezone,
-          ...(effectiveInterval !== interval && { effectiveInterval }),
+          hasLinks: linkCount > 0,
         });
       }
 

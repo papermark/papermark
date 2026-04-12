@@ -75,7 +75,7 @@ const TabItem: React.FC<Props["navigation"][0]> = ({
       <Link
         href={href}
         className={cn(
-          "-mx-3 flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted hover:text-primary",
+          "-mx-3 flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted hover:text-primary",
           {
             "font-medium": active,
           },

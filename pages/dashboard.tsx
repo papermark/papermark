@@ -1,10 +1,10 @@
 import { useRouter } from "next/router";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
 import { addDays, format } from "date-fns";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, FileTextIcon, LinkIcon } from "lucide-react";
 import { toast } from "sonner";
 import useSWR from "swr";
 
@@ -35,7 +35,7 @@ interface OverviewData {
     date: string;
     views: number;
   }[];
-  effectiveInterval?: TimeRange;
+  hasLinks?: boolean;
 }
 export const defaultRange = {
   start: addDays(new Date(), -7),
@@ -82,18 +82,6 @@ export default function DashboardPage() {
     },
   );
 
-  // Sync URL when the server auto-expanded the interval (e.g. 7d had no data → 30d)
-  useEffect(() => {
-    if (overview?.effectiveInterval && overview.effectiveInterval !== interval) {
-      const params = new URLSearchParams(window.location.search);
-      params.set("interval", overview.effectiveInterval);
-      if (type) params.set("type", type);
-      router.replace(`/dashboard?${params.toString()}`, undefined, {
-        shallow: true,
-      });
-    }
-  }, [overview?.effectiveInterval, interval]);
-
   if (error && !slug.current) {
     const errorObj = JSON.parse(error.message);
     const errorMessage = errorObj?.error;
@@ -133,6 +121,12 @@ export default function DashboardPage() {
     });
   };
 
+  const hasNoActivity =
+    !isLoading && overview && overview.counts.views === 0;
+  const hasLinks = overview?.hasLinks ?? false;
+  const showEmptyOverlay = hasNoActivity && !hasLinks;
+  const showSharePrompt = hasNoActivity && hasLinks;
+
   return (
     <AppLayout>
       <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
@@ -149,18 +143,36 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="space-y-4">
+        <div className="relative space-y-4">
           <AnalyticsCard
             title="Views Overview"
             icon={<BarChart3 className="h-4 w-4" />}
             contentClassName="space-y-4"
           >
-            <DashboardViewsChart
-              timeRange={interval}
-              data={overview?.graph}
-              startDate={customRange.start}
-              endDate={customRange.end}
-            />
+            <div className="relative">
+              <DashboardViewsChart
+                timeRange={interval}
+                data={overview?.graph}
+                startDate={customRange.start}
+                endDate={customRange.end}
+              />
+              {showSharePrompt && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="rounded-lg border bg-background/95 px-6 py-4 shadow-lg backdrop-blur-sm">
+                    <div className="flex flex-col items-center gap-2 text-center">
+                      <LinkIcon className="h-8 w-8 text-muted-foreground" />
+                      <p className="text-sm font-medium text-foreground">
+                        Share your link to see activity
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        
+                        Share your document or data room link with your audience
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </AnalyticsCard>
 
           <TabMenu
@@ -223,6 +235,32 @@ export default function DashboardPage() {
               />
             )}
           </div>
+
+          {showEmptyOverlay && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-[2px]">
+              <div className="max-w-md rounded-xl border bg-background p-8 shadow-lg">
+                <div className="flex flex-col items-center gap-4 text-center">
+                  <div className="flex gap-3">
+                    <div className="rounded-full border bg-muted p-3">
+                      <FileTextIcon className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="rounded-full border bg-muted p-3">
+                      <LinkIcon className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">
+                      No activity yet
+                    </h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Start sharing documents and data rooms to see visitor
+                      activity and engagement analytics here.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </AppLayout>

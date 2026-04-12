@@ -185,6 +185,11 @@ export default async function handle(
             throw new Error("Dataroom not found");
           }
 
+          // Remove any existing folders so a retry doesn't hit unique-path conflicts
+          await tx.dataroomFolder.deleteMany({
+            where: { dataroomId: existingDataroomId },
+          });
+
           createdDataroom = await tx.dataroom.update({
             where: { id: existingDataroomId },
             data: { name: dataroomName },
