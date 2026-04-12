@@ -469,7 +469,9 @@ export default function ConversationDetailPage() {
                       <div className="flex items-center justify-between border-b p-4">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src="" />
+                            <AvatarImage
+                              src={`/api/og/avatar/${encodeURIComponent(conversation.participants[0].email || "user")}`}
+                            />
                             <AvatarFallback>
                               {conversation.participants[0].email
                                 ? conversation.participants[0].email

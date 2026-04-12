@@ -29,7 +29,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { SearchCommand } from "./search-command";
-import UserRound from "./shared/icons/user-round";
 import { ModeToggle } from "./theme-toggle";
 
 type ProfileMenuProps = {
@@ -102,7 +101,14 @@ const ProfileMenu = ({ className, size }: ProfileMenuProps) => {
                     loading="lazy"
                   />
                 ) : (
-                  <UserRound className="h-7 w-7 rounded-full bg-secondary p-1 ring-1 ring-muted-foreground/50" />
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    className="h-7 w-7 rounded-full"
+                    src={`/api/og/avatar/${encodeURIComponent(session?.user?.email || session?.user?.name || "user")}`}
+                    alt={`Profile picture of ${session?.user?.name || "user"}`}
+                    width={30}
+                    height={30}
+                  />
                 )}
                 {isSize && (
                   <span className="flex w-full items-center justify-between">
