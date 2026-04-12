@@ -1,4 +1,4 @@
-import { getAvatarTheme } from "@/lib/utils";
+import { getAvatarTheme } from "@/lib/avatar-theme";
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
 
