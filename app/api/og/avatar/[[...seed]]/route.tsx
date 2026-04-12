@@ -16,37 +16,39 @@ export async function GET(
   return new ImageResponse(
     (
       <div
+        tw="flex items-center justify-center w-full h-full relative"
         style={{
-          width: "100%",
-          height: "100%",
+          background: theme.bg,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: theme.bg,
+          margin: 0,
+          padding: 0,
         }}
       >
         {/* Head */}
         <div
+          tw="absolute w-[51px] h-[51px] rounded-full"
           style={{
-            position: "absolute",
-            top: "22",
-            width: "44",
-            height: "44",
-            borderRadius: "22",
-            backgroundColor: theme.fg,
-            opacity: 0.85,
+            background: theme.fg,
+            display: "flex",
+            top: "28px",
+            backgroundImage:
+              "linear-gradient(135deg, rgba(255,255,255,0) 0%, rgba(0,0,0,0.2) 100%)",
+            boxShadow:
+              "inset 6px -5px 11px rgba(0,0,0,0.13), inset -18px -12px 19px rgba(255,255,255,0.4)",
           }}
         />
-        {/* Body — wider pill shape */}
+        {/* Shoulders */}
         <div
+          tw="absolute w-[102px] h-[102px] rounded-full"
           style={{
-            position: "absolute",
-            bottom: "-10",
-            width: "80",
-            height: "52",
-            borderRadius: "40px 40px 0 0",
-            backgroundColor: theme.fg,
-            opacity: 0.85,
+            background: theme.fg,
+            display: "flex",
+            top: "90px",
+            clipPath: "inset(0 0 50% 0)",
+            backgroundImage:
+              "linear-gradient(135deg, rgba(255,255,255,0) 0%, rgba(0,0,0,0.2) 100%)",
+            boxShadow:
+              "inset 10px -12px 19px rgba(0,0,0,0.4), inset -18px -12px 19px rgba(255,255,255,0.4), inset 2px -1px 11px rgba(0,0,0,0.1)",
           }}
         />
       </div>
