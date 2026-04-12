@@ -92,7 +92,7 @@ export default function DashboardPage() {
         shallow: true,
       });
     }
-  }, [overview?.effectiveInterval]);
+  }, [overview?.effectiveInterval, interval]);
 
   if (error && !slug.current) {
     const errorObj = JSON.parse(error.message);

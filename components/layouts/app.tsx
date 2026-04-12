@@ -122,9 +122,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange}>
-      <div className="flex flex-1 flex-col gap-x-1 bg-gray-50 dark:bg-black md:flex-row">
+      <div className="flex min-w-0 flex-1 flex-col gap-x-1 bg-gray-50 dark:bg-black md:flex-row">
         <AppSidebar />
-        <SidebarInset className="ring-1 ring-gray-200 dark:ring-gray-800">
+        <SidebarInset className="min-w-0 ring-1 ring-gray-200 dark:ring-gray-800">
           <header className="flex h-10 shrink-0 items-center gap-2">
             <div className="flex items-center gap-2 px-4">
               <SidebarTrigger className="-ml-1" />
@@ -134,7 +134,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </header>
           <TrialBanner />
           <BlockingModal />
-          <main className="flex-1">{children}</main>
+          <main className="min-w-0 flex-1">{children}</main>
         </SidebarInset>
       </div>
       {/* {showYearlyBanner && (

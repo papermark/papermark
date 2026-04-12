@@ -319,10 +319,8 @@ const getAuthOptions = (req: NextApiRequest): NextAuthOptions => {
               throw new Error("require-saml-sso");
             }
           } catch (error) {
-            if (error instanceof Error && error.message === "require-saml-sso") {
-              throw error;
-            }
             console.error("[Auth] SSO enforcement check failed:", error);
+            throw error;
           }
         }
 
