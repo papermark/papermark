@@ -135,12 +135,7 @@ async function processTeamWeeklyStats(
 
   if (!team) return;
 
-  const hasActivity =
-    weekViews.length > 0 ||
-    weekDocuments.length > 0 ||
-    weekDatarooms.length > 0;
-
-  if (!hasActivity) return;
+  if (weekViews.length === 0) return;
 
   const recipients = team.users
     .map((ut) => ({ email: ut.user.email, name: ut.user.name }))
