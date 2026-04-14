@@ -195,6 +195,7 @@ export function AddFolderModal({
               id="folder-name"
               placeholder="Choose a helpful name"
               className="flex-1"
+              autoFocus
               value={folderName}
               onChange={(e) => setFolderName(e.target.value)}
             />

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/router";
 
 import * as React from "react";
@@ -16,9 +15,7 @@ import {
   FolderIcon,
   HouseIcon,
   Loader,
-  PauseCircleIcon,
   ServerIcon,
-  Sparkles as SparklesIcon,
   WorkflowIcon,
 } from "lucide-react";
 
@@ -31,7 +28,6 @@ import { useSlackIntegration } from "@/lib/swr/use-slack-integration";
 import { nFormatter } from "@/lib/utils";
 
 import { NavMain } from "@/components/sidebar/nav-main";
-import { NavUser } from "@/components/sidebar/nav-user";
 import { TeamSwitcher } from "@/components/sidebar/team-switcher";
 import {
   Sidebar,
@@ -44,27 +40,20 @@ import {
 
 import ProBanner from "../billing/pro-banner";
 import { Progress } from "../ui/progress";
-import { BadgeTooltip } from "../ui/tooltip";
 import SlackBanner from "./banners/slack-banner";
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebarContent() {
   const router = useRouter();
   const [showProBanner, setShowProBanner] = useState<boolean | null>(null);
   const [showSlackBanner, setShowSlackBanner] = useState<boolean | null>(null);
   const { currentTeam, teams, setCurrentTeam, isLoading }: TeamContextType =
     useTeam() || initialState;
   const {
-    plan: userPlan,
-    isAnnualPlan,
-    isPro,
     isBusiness,
     isDatarooms,
     isDataroomsPlus,
-    isDataroomsPremium,
-    isDataroomsUnlimited,
     isFree,
     isTrial,
-    isPaused,
   } = usePlan();
 
   const { limits } = useLimits();
@@ -227,18 +216,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             : []),
         ],
       },
-      // {
-      //   title: "2025 Recap",
-      //   url: "/dashboard?openRecap=true",
-      //   icon: SparklesIcon,
-      //   current: false,
-      // },
     ],
   };
 
   // Filter out items that should be hidden based on feature flags
   const filteredNavMain = data.navMain.filter((item) => {
-    // Hide workflows if feature flag is not enabled
     if (item.title === "Workflows" && !features?.workflows) {
       return false;
     }
@@ -246,66 +228,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   });
 
   return (
-    <Sidebar
-      className="bg-gray-50 dark:bg-black"
-      sidebarClassName="bg-gray-50 dark:bg-black"
-      side="left"
-      variant="inset"
-      collapsible="icon"
-      {...props}
-    >
-      <SidebarHeader className="gap-y-8">
-        <p className="hidden w-full justify-center text-2xl font-bold tracking-tighter text-black group-data-[collapsible=icon]:inline-flex dark:text-white">
-          <Link href="/dashboard">P</Link>
-        </p>
-        <p className="ml-2 flex items-center text-2xl font-bold tracking-tighter text-black group-data-[collapsible=icon]:hidden dark:text-white">
-          <Link href="/dashboard">Papermark</Link>
-          {userPlan && !isFree && !isDataroomsPlus && !isDataroomsPremium ? (
-            <span className="relative ml-4 inline-flex items-center rounded-full bg-background px-2.5 py-1 text-xs tracking-normal text-foreground ring-1 ring-gray-800">
-              {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)}
-              {isPaused ? (
-                <BadgeTooltip content="Subscription paused">
-                  <PauseCircleIcon className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full bg-background text-amber-500" />
-                </BadgeTooltip>
-              ) : null}
-            </span>
-          ) : null}
-          {isDataroomsPlus && !isDataroomsPremium ? (
-            <span className="relative ml-4 inline-flex items-center rounded-full bg-background px-2.5 py-1 text-xs tracking-normal text-foreground ring-1 ring-gray-800">
-              Datarooms+
-              {isPaused ? (
-                <BadgeTooltip content="Subscription paused">
-                  <PauseCircleIcon className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full bg-background text-amber-500" />
-                </BadgeTooltip>
-              ) : null}
-            </span>
-          ) : null}
-          {isDataroomsPremium && !isDataroomsUnlimited ? (
-            <span className="relative ml-4 inline-flex items-center rounded-full bg-background px-2.5 py-1 text-xs tracking-normal text-foreground ring-1 ring-gray-800">
-              Premium
-              {isPaused ? (
-                <BadgeTooltip content="Subscription paused">
-                  <PauseCircleIcon className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full bg-background text-amber-500" />
-                </BadgeTooltip>
-              ) : null}
-            </span>
-          ) : null}
-          {isDataroomsUnlimited ? (
-            <span className="relative ml-4 inline-flex items-center rounded-full bg-background px-2.5 py-1 text-xs tracking-normal text-foreground ring-1 ring-gray-800">
-              Unlimited
-              {isPaused ? (
-                <BadgeTooltip content="Subscription paused">
-                  <PauseCircleIcon className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full bg-background text-amber-500" />
-                </BadgeTooltip>
-              ) : null}
-            </span>
-          ) : null}
-          {isTrial ? (
-            <span className="ml-2 rounded-sm bg-foreground px-2 py-0.5 text-xs tracking-normal text-background ring-1 ring-gray-800">
-              Trial
-            </span>
-          ) : null}
-        </p>
+    <>
+      <SidebarHeader className="gap-y-0 pt-0">
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm">
             <Loader className="h-5 w-5 animate-spin" /> Loading teams...
@@ -325,15 +249,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu className="group-data-[collapsible=icon]:hidden">
           <SidebarMenuItem>
             <div>
-              {/*
-               * Show Slack banner to all users if they haven't dismissed it and don't have Slack connected
-               */}
               {!slackIntegration && showSlackBanner ? (
                 <SlackBanner setShowSlackBanner={setShowSlackBanner} />
               ) : null}
-              {/*
-               * if user is free and showProBanner is true show pro banner
-               */}
               {isFree && !isTrial && showProBanner ? (
                 <ProBanner setShowProBanner={setShowProBanner} />
               ) : null}
@@ -364,8 +282,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
-        <NavUser />
       </SidebarFooter>
+    </>
+  );
+}
+
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  return (
+    <Sidebar
+      className="bg-gray-50 dark:bg-black"
+      sidebarClassName="bg-gray-50 dark:bg-black"
+      side="left"
+      variant="inset"
+      collapsible="icon"
+      {...props}
+    >
+      <AppSidebarContent />
     </Sidebar>
   );
 }

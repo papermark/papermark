@@ -2,11 +2,11 @@ import { CircleHelpIcon } from "lucide-react";
 
 import { useDataroom } from "@/lib/swr/use-dataroom";
 
-import PermissionSettings from "@/components/datarooms/settings/permission-settings";
 import AppLayout from "@/components/layouts/app";
 import { BadgeTooltip } from "@/components/ui/tooltip";
+import DataroomVisitorsTable from "@/components/visitors/dataroom-visitors-table";
 
-export default function PermissionsSettings() {
+export default function DataroomAuditLogPage() {
   const { dataroom } = useDataroom();
 
   if (!dataroom) {
@@ -15,28 +15,26 @@ export default function PermissionsSettings() {
 
   return (
     <AppLayout>
-      <main className="relative mx-2 mb-10 mt-4 space-y-8 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
+      <div className="relative mx-2 mb-10 mt-4 space-y-8 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
         <div className="space-y-1">
           <h3 className="text-2xl font-semibold tracking-tight text-foreground">
-            File Permissions
+            Audit Log
           </h3>
           <p className="flex flex-row items-center gap-2 text-sm text-muted-foreground">
-            Set granular file-level access controls.
+            View all data room activity.
             <BadgeTooltip
               linkText="Learn more"
-              content="Control view and download permissions per file."
-              key="file-permissions"
-              link="https://www.papermark.com/help/article/granular-file-permissions"
+              content="Track all document access and activity."
+              key="audit-log"
+              link="https://www.papermark.com/help/article/audit-logs"
             >
               <CircleHelpIcon className="h-4 w-4 shrink-0 text-muted-foreground hover:text-foreground" />
             </BadgeTooltip>
           </p>
         </div>
 
-        <div className="grid gap-6">
-          <PermissionSettings dataroomId={dataroom.id} />
-        </div>
-      </main>
+        <DataroomVisitorsTable dataroomId={dataroom.id} />
+      </div>
     </AppLayout>
   );
 }

@@ -21,8 +21,6 @@ import useLimits from "@/lib/swr/use-limits";
 import { fetcher } from "@/lib/utils";
 import { localStorage as safeLocalStorage } from "@/lib/webstorage";
 
-import { DataroomHeader } from "@/components/datarooms/dataroom-header";
-import { DataroomNavigation } from "@/components/datarooms/dataroom-navigation";
 import AppLayout from "@/components/layouts/app";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -202,11 +200,6 @@ export default function DataroomConversationsPage() {
   return (
     <AppLayout>
       <div className="relative mx-2 my-4 space-y-8 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
-        <header>
-          <DataroomHeader title={dataroom.name} description={dataroom.pId} internalName={dataroom.internalName} />
-          <DataroomNavigation dataroomId={dataroom.id} />
-        </header>
-
         {/* Show banner unless it's been dismissed */}
         {!isBannerDismissed && (
           <ConversationsNotEnabledBanner

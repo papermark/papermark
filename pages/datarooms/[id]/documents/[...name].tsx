@@ -11,9 +11,7 @@ import DownloadDataroomButton from "@/components/datarooms/actions/download-data
 import GenerateIndexButton from "@/components/datarooms/actions/generate-index-button";
 import RebuildIndexButton from "@/components/datarooms/actions/rebuild-index-button";
 import { BreadcrumbComponent } from "@/components/datarooms/dataroom-breadcrumb";
-import { DataroomHeader } from "@/components/datarooms/dataroom-header";
 import { DataroomItemsList } from "@/components/datarooms/dataroom-items-list";
-import { DataroomNavigation } from "@/components/datarooms/dataroom-navigation";
 import { SidebarFolderTree } from "@/components/datarooms/folders";
 import { DataroomSortableList } from "@/components/datarooms/sortable/sortable-list";
 import { AddDocumentModal } from "@/components/documents/add-document-modal";
@@ -39,17 +37,6 @@ export default function Documents() {
   return (
     <AppLayout>
       <div className="relative mx-2 mb-10 mt-4 space-y-4 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
-        <header>
-          <DataroomHeader
-            title={dataroom?.name ?? ""}
-            description={dataroom?.pId ?? ""}
-            internalName={dataroom?.internalName}
-            actions={[]}
-          />
-
-          <DataroomNavigation dataroomId={dataroom?.id} />
-        </header>
-
         <div className="flex items-center justify-between gap-x-2">
           <div className="flex items-center gap-x-2">
             <GenerateIndexButton

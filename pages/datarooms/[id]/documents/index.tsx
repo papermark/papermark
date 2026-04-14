@@ -1,16 +1,19 @@
 import { useState } from "react";
 
 import { useTeam } from "@/context/team-context";
-import { ArrowUpDownIcon, FolderPlusIcon, PlusIcon } from "lucide-react";
+import {
+  ArrowUpDownIcon,
+  CircleHelpIcon,
+  FolderPlusIcon,
+  PlusIcon,
+} from "lucide-react";
 
 import { useDataroom, useDataroomItems } from "@/lib/swr/use-dataroom";
 
 import DownloadDataroomButton from "@/components/datarooms/actions/download-dataroom";
 import GenerateIndexButton from "@/components/datarooms/actions/generate-index-button";
 import RebuildIndexButton from "@/components/datarooms/actions/rebuild-index-button";
-import { DataroomHeader } from "@/components/datarooms/dataroom-header";
 import { DataroomItemsList } from "@/components/datarooms/dataroom-items-list";
-import { DataroomNavigation } from "@/components/datarooms/dataroom-navigation";
 import { SidebarFolderTree } from "@/components/datarooms/folders";
 import { DataroomSortableList } from "@/components/datarooms/sortable/sortable-list";
 import { AddDocumentModal } from "@/components/documents/add-document-modal";
@@ -20,6 +23,7 @@ import AppLayout from "@/components/layouts/app";
 import { Button } from "@/components/ui/button";
 import { ResponsiveButton } from "@/components/ui/responsive-button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { BadgeTooltip } from "@/components/ui/tooltip";
 
 export default function Documents() {
   const { dataroom } = useDataroom();
@@ -33,16 +37,22 @@ export default function Documents() {
   return (
     <AppLayout>
       <div className="relative mx-2 mb-10 mt-4 space-y-4 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
-        <header>
-          <DataroomHeader
-            title={dataroom?.name ?? ""}
-            description={dataroom?.pId ?? ""}
-            internalName={dataroom?.internalName}
-            actions={[]}
-          />
-
-          <DataroomNavigation dataroomId={dataroom?.id} />
-        </header>
+        <div className="space-y-1">
+          <h3 className="text-2xl font-semibold tracking-tight text-foreground">
+            Documents
+          </h3>
+          <p className="flex flex-row items-center gap-2 text-sm text-muted-foreground">
+            Manage files and folders in your data room.
+            <BadgeTooltip
+              linkText="Learn more"
+              content="Learn how to add and organize documents."
+              key="documents"
+              link="https://www.papermark.com/help/article/create-data-room"
+            >
+              <CircleHelpIcon className="h-4 w-4 shrink-0 text-muted-foreground hover:text-foreground" />
+            </BadgeTooltip>
+          </p>
+        </div>
 
         <div className="flex items-center justify-between gap-x-2">
           <div className="flex items-center gap-x-2">

@@ -1,12 +1,9 @@
 import Link from "next/link";
 
-import { useState } from "react";
-
 import { BellRingIcon } from "lucide-react";
 
-import { useDataroom, useDataroomLinks } from "@/lib/swr/use-dataroom";
+import { useDataroom } from "@/lib/swr/use-dataroom";
 
-import { DataroomLinkSheet } from "@/components/links/link-sheet/dataroom-link-sheet";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -26,16 +23,7 @@ export const DataroomHeader = ({
   internalName?: string | null;
   actions?: React.ReactNode[];
 }) => {
-  const [isLinkSheetOpen, setIsLinkSheetOpen] = useState<boolean>(false);
   const { dataroom } = useDataroom();
-  const { links } = useDataroomLinks();
-
-  const actionRows: React.ReactNode[][] = [];
-  if (actions) {
-    for (let i = 0; i < actions.length; i += 3) {
-      actionRows.push(actions.slice(i, i + 3));
-    }
-  }
 
   return (
     <section className="mb-4">
@@ -71,17 +59,13 @@ export const DataroomHeader = ({
             </Tooltip>
           ) : null}
         </div>
-        <div>
-          <Button onClick={() => setIsLinkSheetOpen(true)} key={1}>
-            Share
-          </Button>
-        </div>
-        <DataroomLinkSheet
-          linkType={"DATAROOM_LINK"}
-          isOpen={isLinkSheetOpen}
-          setIsOpen={setIsLinkSheetOpen}
-          existingLinks={links}
-        />
+        {actions && actions.length > 0 ? (
+          <div className="flex items-center gap-2">
+            {actions.map((action, i) => (
+              <div key={i}>{action}</div>
+            ))}
+          </div>
+        ) : null}
       </div>
     </section>
   );
