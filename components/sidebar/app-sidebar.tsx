@@ -161,7 +161,7 @@ export function AppSidebarContent() {
           !router.pathname.includes("datarooms"),
       },
       {
-        title: "Settings",
+        title: "General Settings",
         url: "/settings/general",
         icon: CogIcon,
         isActive:

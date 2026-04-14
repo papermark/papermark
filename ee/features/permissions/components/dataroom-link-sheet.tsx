@@ -18,8 +18,11 @@ import { mutate } from "swr";
 import useSWR from "swr";
 import z from "zod";
 
+import { InviteViewersModal } from "@/ee/features/dataroom-invitations/components/invite-viewers-modal";
+
 import { useAnalytics } from "@/lib/analytics";
 import { usePlan } from "@/lib/swr/use-billing";
+import { useDataroom } from "@/lib/swr/use-dataroom";
 import useDataroomGroups from "@/lib/swr/use-dataroom-groups";
 import { useDomains } from "@/lib/swr/use-domains";
 import useLimits from "@/lib/swr/use-limits";
@@ -122,6 +125,9 @@ export function DataroomLinkSheet({
   const [createdLink, setCreatedLink] = useState<LinkWithViews | null>(null);
   const [hasCustomPermissions, setHasCustomPermissions] =
     useState<boolean>(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState<boolean>(false);
+  const { dataroom } = useDataroom();
+  const canInviteViewers = isDataroomsPlus || isTrial;
 
   const isPresetsAllowed =
     isTrial ||
@@ -795,8 +801,8 @@ export function DataroomLinkSheet({
       setShowPermissionsSheet(true);
       return;
     }
-    // Use the refactored function
-    await createLinkWithPermissions(data, shouldPreview);
+    const showSuccess = !currentLink && !shouldPreview;
+    await createLinkWithPermissions(data, shouldPreview, showSuccess);
   };
 
   const handleCreateAnother = () => {
@@ -1128,7 +1134,7 @@ export function DataroomLinkSheet({
                   loading={isSaving}
                   onClick={(e) => handleSubmit(e, false)}
                 >
-                  {currentLink ? "Update Link" : "Save Link"}
+                  {currentLink ? "Update Link" : "Save & Share"}
                 </Button>
                 <BadgeTooltip
                   content={currentLink ? "Update & Preview" : "Save & Preview"}
@@ -1170,6 +1176,18 @@ export function DataroomLinkSheet({
           link={createdLink}
           hasCustomPermissions={hasCustomPermissions}
           onCreateAnother={handleCreateAnother}
+          onInviteViewers={() => setIsInviteModalOpen(true)}
+        />
+      )}
+
+      {createdLink && (
+        <InviteViewersModal
+          open={isInviteModalOpen}
+          setOpen={setIsInviteModalOpen}
+          dataroomId={targetId}
+          dataroomName={dataroom?.name ?? "this dataroom"}
+          linkId={createdLink.id}
+          canSend={canInviteViewers}
         />
       )}
     </>

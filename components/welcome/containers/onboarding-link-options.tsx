@@ -209,13 +209,13 @@ export const OnboardingLinkOptions = ({
         }
         handleUpgradeStateChange={handleUpgradeStateChange}
       />
-      {linkType === LinkType.DATAROOM_LINK &&
-      limits?.conversationsInDataroom ? (
+      {linkType === LinkType.DATAROOM_LINK ? (
         <ConversationSection
           {...{ data, setData }}
           isAllowed={
+            isTrial ||
             isDataroomsPlus ||
-            ((isBusiness || isDatarooms) && limits?.conversationsInDataroom)
+            ((isBusiness || isDatarooms) && !!limits?.conversationsInDataroom)
           }
           handleUpgradeStateChange={handleUpgradeStateChange}
         />

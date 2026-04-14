@@ -213,7 +213,7 @@ export default function UpgradePage() {
             <div
               key={planOption}
               className={`relative flex flex-col rounded-lg border ${
-                planOption === PlanEnum.Business || planOption === PlanEnum.DataRoomsPlus
+                planOption === PlanEnum.DataRooms || planOption === PlanEnum.DataRoomsPlus
                   ? "border-[#fb7a00]"
                   : planOption === PlanEnum.DataRoomsPremium
                     ? "border-gray-900 dark:border-gray-200"
@@ -229,13 +229,13 @@ export default function UpgradePage() {
                     </span>
                   )}
                 </h3>
-                {(planOption === PlanEnum.Business ||
+                {(planOption === PlanEnum.DataRooms ||
                   planOption === PlanEnum.DataRoomsPlus) && (
                   <span
                     className="absolute -top-3 right-4 rounded bg-[#fb7a00] px-2 py-1 text-xs text-white"
                   >
                     {planOption === PlanEnum.DataRoomsPlus
-                      ? "Best offer"
+                      ? "Best deal"
                       : "Most popular"}
                   </span>
                 )}
@@ -264,11 +264,9 @@ export default function UpgradePage() {
               </ul>
               <div className="mt-auto">
                 <Button
-                  variant={
-                    planOption === PlanEnum.Business ? "default" : "default"
-                  }
+                  variant="default"
                   className={`w-full py-2 text-sm ${
-                    planOption === PlanEnum.Business || planOption === PlanEnum.DataRoomsPlus
+                    planOption === PlanEnum.DataRooms || planOption === PlanEnum.DataRoomsPlus
                       ? "bg-[#fb7a00]/90 text-white hover:bg-[#fb7a00]"
                       : planOption === PlanEnum.DataRoomsPremium
                         ? "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
@@ -368,9 +366,9 @@ export default function UpgradePage() {
               <div
                 key={planOption}
                 className={`relative flex flex-col rounded-lg border ${
-                  planOption === PlanEnum.Business || planOption === PlanEnum.DataRoomsPlus
+                  planOption === PlanEnum.DataRooms
                     ? "border-[#fb7a00]"
-                    : planOption === PlanEnum.DataRoomsPremium
+                    : planOption === PlanEnum.DataRoomsPlus || planOption === PlanEnum.DataRoomsPremium
                       ? "border-gray-900 dark:border-gray-200"
                       : "border-gray-400"
                 } bg-white p-6 shadow-sm dark:bg-gray-900`}
@@ -379,14 +377,18 @@ export default function UpgradePage() {
                   <h3 className="text-balance text-xl font-medium text-foreground text-gray-900 dark:text-white">
                     {planOption}
                   </h3>
-                  {(planOption === PlanEnum.Business ||
-                    planOption === PlanEnum.DataRoomsPlus) && (
+                  {planOption === PlanEnum.DataRooms && (
                     <span
                       className="absolute -top-3 right-4 rounded bg-[#fb7a00] px-2 py-1 text-xs text-white"
                     >
-                      {planOption === PlanEnum.DataRoomsPlus
-                        ? "Best offer"
-                        : "Most popular"}
+                      Most popular
+                    </span>
+                  )}
+                  {planOption === PlanEnum.DataRoomsPremium && (
+                    <span
+                      className="absolute -top-3 right-4 rounded bg-gray-900 px-2 py-1 text-xs text-white dark:bg-white dark:text-gray-900"
+                    >
+                      Best offer
                     </span>
                   )}
                 </div>
@@ -415,13 +417,11 @@ export default function UpgradePage() {
                 </ul>
                 <div className="mt-auto">
                   <Button
-                    variant={
-                      planOption === PlanEnum.Business ? "default" : "default"
-                    }
+                    variant="default"
                     className={`w-full py-2 text-sm ${
-                      planOption === PlanEnum.Business || planOption === PlanEnum.DataRoomsPlus
+                      planOption === PlanEnum.DataRooms
                         ? "bg-[#fb7a00]/90 text-white hover:bg-[#fb7a00]"
-                        : planOption === PlanEnum.DataRoomsPremium
+                        : planOption === PlanEnum.DataRoomsPlus || planOption === PlanEnum.DataRoomsPremium
                           ? "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
                           : "bg-gray-800 text-white hover:bg-gray-900 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
                     }`}
@@ -520,9 +520,9 @@ export default function UpgradePage() {
                 <div
                   key={planOption}
                   className={`relative flex flex-col rounded-lg border ${
-                    planOption === PlanEnum.DataRoomsPlus
+                    planOption === PlanEnum.DataRooms
                       ? "border-[#fb7a00]"
-                      : planOption === PlanEnum.DataRoomsPremium
+                      : planOption === PlanEnum.DataRoomsPlus || planOption === PlanEnum.DataRoomsPremium
                         ? "border-gray-900 dark:border-gray-200"
                         : "border-gray-400"
                   } bg-white p-6 shadow-sm dark:bg-gray-900`}
@@ -531,8 +531,13 @@ export default function UpgradePage() {
                     <h3 className="text-balance text-xl font-medium text-foreground text-gray-900 dark:text-white">
                       {planOption}
                     </h3>
-                    {planOption === PlanEnum.DataRoomsPlus && (
+                    {planOption === PlanEnum.DataRooms && (
                       <span className="absolute -top-3 right-4 rounded bg-[#fb7a00] px-2 py-1 text-xs text-white">
+                        Most popular
+                      </span>
+                    )}
+                    {planOption === PlanEnum.DataRoomsPremium && (
+                      <span className="absolute -top-3 right-4 rounded bg-gray-900 px-2 py-1 text-xs text-white dark:bg-white dark:text-gray-900">
                         Best offer
                       </span>
                     )}
@@ -563,9 +568,9 @@ export default function UpgradePage() {
                   <div className="mt-auto">
                     <Button
                       className={`w-full py-2 text-sm ${
-                        planOption === PlanEnum.DataRoomsPlus
+                        planOption === PlanEnum.DataRooms
                           ? "bg-[#fb7a00]/90 text-white hover:bg-[#fb7a00]"
-                          : planOption === PlanEnum.DataRoomsPremium
+                          : planOption === PlanEnum.DataRoomsPlus || planOption === PlanEnum.DataRoomsPremium
                             ? "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
                             : "bg-gray-800 text-white hover:bg-gray-900 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
                       }`}

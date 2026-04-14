@@ -909,20 +909,21 @@ export default function DocumentHeader({
       {isFree && prismaDocument.hasPageLinks && (
         <AlertBanner
           id="in-document-links-alert"
-          variant="destructive"
+          variant="default"
           title="In-document links detected"
+          iconClassName="h-4 w-4 text-foreground"
           description={
             <>
-              External in-document links are not available on the free plan.{" "}
+              In-document links are disabled for viewers on the free plan.{" "}
               <span
-                className="cursor-pointer underline underline-offset-4 hover:text-destructive/80"
+                className="cursor-pointer font-bold text-[#fb7a00] underline underline-offset-4 hover:text-[#fb7a00]/80"
                 onClick={() =>
                   handleUpgradeClick(PlanEnum.Pro, "in-document-links")
                 }
               >
                 Upgrade
               </span>{" "}
-              to a higher plan to use this feature.
+              to make them clickable.
             </>
           }
           onClose={() => handleCloseAlert("in-document-links-alert")}

@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
-import { invitationEmailSchema } from "@/ee/features/dataroom-invitations/lib/schema/dataroom-invitations";
+import {
+  MAX_INVITATION_EMAILS_PER_DAY,
+  MAX_INVITATION_EMAILS_PER_REQUEST,
+  invitationEmailSchema,
+} from "@/ee/features/dataroom-invitations/lib/schema/dataroom-invitations";
 import { useUninvitedMembers } from "@/ee/features/dataroom-invitations/lib/swr/use-dataroom-invitations";
 import { Link } from "@prisma/client";
 import { useSession } from "next-auth/react";
@@ -10,6 +14,10 @@ import useSWR from "swr";
 
 import { fetcher } from "@/lib/utils";
 
+import { PlanEnum } from "@/ee/stripe/constants";
+import { CrownIcon } from "lucide-react";
+
+import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,6 +45,7 @@ type InviteViewersModalProps = {
   linkId?: string;
   defaultEmails?: string[];
   onSuccess?: () => void;
+  canSend?: boolean;
 };
 
 type LinkOption = Pick<
@@ -64,6 +73,7 @@ export function InviteViewersModal({
   linkId,
   defaultEmails = [],
   onSuccess,
+  canSend = true,
 }: InviteViewersModalProps) {
   const teamInfo = useTeam();
   const teamId = teamInfo?.currentTeam?.id;
@@ -172,6 +182,7 @@ export function InviteViewersModal({
       : defaultRecipients;
 
   const recipientCount = currentRecipients.length;
+  const isOverLimit = recipientCount > MAX_INVITATION_EMAILS_PER_REQUEST;
 
   const displayRecipients = currentRecipients.slice(0, 2);
   const remainingCount = recipientCount - displayRecipients.length;
@@ -197,6 +208,13 @@ export function InviteViewersModal({
     const parsedEmails = hasEditedRecipients
       ? parseRecipientInput(recipientInput)
       : defaultRecipients;
+
+    if (parsedEmails.length > MAX_INVITATION_EMAILS_PER_REQUEST) {
+      toast.error(
+        `Maximum ${MAX_INVITATION_EMAILS_PER_REQUEST} recipients per request. You have ${parsedEmails.length}.`,
+      );
+      return;
+    }
 
     if (parsedEmails.length > 0) {
       const invalidEmails = parsedEmails.filter(
@@ -279,7 +297,11 @@ export function InviteViewersModal({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-5xl">
         <DialogHeader className="text-left">
-          <DialogTitle>Share invitation</DialogTitle>
+          <DialogTitle>Invite via email</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Your custom data room link will be shared via email directly from
+            Papermark
+          </p>
         </DialogHeader>
 
         <div className="grid gap-6 overflow-y-auto md:grid-cols-2">
@@ -346,10 +368,24 @@ export function InviteViewersModal({
                 rows={6}
                 disabled={loading}
               />
-              <p className="text-xs text-muted-foreground">
+              <p
+                className={`text-xs ${isOverLimit ? "text-destructive" : "text-muted-foreground"}`}
+              >
                 {recipientInput.length > 0 || defaultRecipients.length > 0
-                  ? `${recipientCount} recipient${recipientCount !== 1 ? "s" : ""} will receive ${recipientCount !== 1 ? "invitations" : "an invitation"}`
-                  : "Enter email addresses to send invitations"}
+                  ? isOverLimit
+                    ? `${recipientCount} recipients — maximum ${MAX_INVITATION_EMAILS_PER_REQUEST} per request`
+                    : `${recipientCount}/${MAX_INVITATION_EMAILS_PER_REQUEST} recipients`
+                  : `Enter email addresses (max ${MAX_INVITATION_EMAILS_PER_REQUEST} per request, ${MAX_INVITATION_EMAILS_PER_DAY} per day)`}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Contact{" "}
+                <a
+                  href="mailto:support@papermark.com"
+                  className="underline hover:text-foreground"
+                >
+                  support@papermark.com
+                </a>{" "}
+                to increase your sending limits.
               </p>
             </div>
           </div>
@@ -456,19 +492,33 @@ export function InviteViewersModal({
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleSend}
-              loading={loading}
-              disabled={
-                groupId
-                  ? !selectedLinkId || loading || recipientCount === 0
-                  : loading || recipientCount === 0
-              }
-            >
-              {loading
-                ? "Sending invitations..."
-                : `Send ${recipientCount} invitation${recipientCount !== 1 ? "s" : ""}`}
-            </Button>
+            {canSend ? (
+              <Button
+                onClick={handleSend}
+                loading={loading}
+                disabled={
+                  isOverLimit ||
+                  (groupId
+                    ? !selectedLinkId || loading || recipientCount === 0
+                    : loading || recipientCount === 0)
+                }
+              >
+                {loading
+                  ? "Sending invitations..."
+                  : `Send ${recipientCount} invitation${recipientCount !== 1 ? "s" : ""}`}
+              </Button>
+            ) : (
+              <UpgradePlanModal
+                clickedPlan={PlanEnum.DataRoomsPlus}
+                trigger="invite_modal_upgrade"
+                highlightItem={["email-invite"]}
+              >
+                <Button>
+                  <CrownIcon className="h-4 w-4" />
+                  Upgrade to send invites
+                </Button>
+              </UpgradePlanModal>
+            )}
           </div>
         </DialogFooter>
       </DialogContent>

@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { useRouter } from "next/router";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
 import {
@@ -9,11 +8,14 @@ import {
   SAMLConfigModal,
   SSOEnforcementToggle,
 } from "@/ee/features/security/sso";
-import { FolderSync, Info, Shield } from "lucide-react";
+import { PlanEnum } from "@/ee/stripe/constants";
+import { FolderSync, Info, Shield, ShieldCheckIcon } from "lucide-react";
 
 import { useFeatureFlags } from "@/lib/hooks/use-feature-flags";
 import { useIsAdmin } from "@/lib/hooks/use-is-admin";
+import { usePlan } from "@/lib/swr/use-billing";
 
+import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
 import AppLayout from "@/components/layouts/app";
 import { SettingsHeader } from "@/components/settings/settings-header";
 
@@ -26,6 +28,7 @@ export default function SecuritySettings() {
   const teamPlan = teamInfo?.currentTeam?.plan;
   const { isFeatureEnabled } = useFeatureFlags();
   const { isAdmin, loading: isAdminLoading } = useIsAdmin();
+  const { isDataroomsPlus } = usePlan();
 
   // Redirect non-admin users to general settings
   useEffect(() => {
@@ -69,12 +72,15 @@ export default function SecuritySettings() {
                 </p>
                 {!isPlanEligible && (
                   <p className="mt-2 text-sm text-muted-foreground">
-                    <Link
-                      href="/settings/billing"
-                      className="font-medium underline"
+                    <UpgradePlanModal
+                      clickedPlan={PlanEnum.DataRoomsUnlimited}
+                      trigger="security_sso_upgrade"
+                      highlightItem={["sso"]}
                     >
-                      Upgrade to Datarooms Premium or Unlimited
-                    </Link>{" "}
+                      <span className="cursor-pointer font-medium underline">
+                        Upgrade to Datarooms Premium or Unlimited
+                      </span>
+                    </UpgradePlanModal>{" "}
                     to add SSO for your team.
                   </p>
                 )}
@@ -203,6 +209,40 @@ export default function SecuritySettings() {
             </div>
           </>
         )}
+
+        {/* SOC 2 Section */}
+        <div className="rounded-lg border border-muted p-6 sm:p-10">
+          <div className="flex items-start space-x-3">
+            <ShieldCheckIcon className="mt-0.5 h-5 w-5 text-muted-foreground" />
+            <div className="space-y-1">
+              <h2 className="text-xl font-medium">SOC 2 Type II Certification</h2>
+              <p className="text-sm text-muted-foreground">
+                SOC 2 Type II certification ensures that your data is handled
+                with the highest security standards. Available on the Data Rooms
+                Plus plan and above.
+              </p>
+              {isDataroomsPlus ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Your team is SOC 2 Type II certified. Contact support for
+                  certification documents.
+                </p>
+              ) : (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  <UpgradePlanModal
+                    clickedPlan={PlanEnum.DataRoomsPlus}
+                    trigger="soc2_upgrade"
+                    highlightItem={["soc2", "security"]}
+                  >
+                    <span className="cursor-pointer font-medium underline">
+                      Upgrade to Data Rooms Plus
+                    </span>
+                  </UpgradePlanModal>{" "}
+                  to get SOC 2 Type II certification for your team.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
       </main>
     </AppLayout>
   );

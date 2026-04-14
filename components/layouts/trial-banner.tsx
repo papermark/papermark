@@ -28,7 +28,7 @@ export default function TrialBanner() {
     } else {
       setShowTrialBanner(false);
     }
-  }, []);
+  }, [isTrial]);
 
   if (isTrial && showTrialBanner) {
     return <TrialBannerComponent setShowTrialBanner={setShowTrialBanner} />;
@@ -77,8 +77,8 @@ function TrialBannerComponent({
         <CrownIcon className="h-4 w-4" />
         <AlertTitle>
           {isExpired
-            ? "Your Data Room trial has expired"
-            : `Data Room trial: ${trialDaysLeft} days left`}
+            ? "Your Data Room Plus trial has expired"
+            : `Data Room Plus trial: ${trialDaysLeft} days left`}
         </AlertTitle>
         <AlertDescription>
           {isExpired ? (
@@ -96,9 +96,9 @@ function TrialBannerComponent({
             </>
           ) : (
             <>
-              You are on the <span className="font-bold">Data Rooms</span> plan
-              trial, you have access to advanced access controls, granular file
-              permissions, and data room. <br />
+              You are on the <span className="font-bold">Data Rooms Plus</span>{" "}
+              plan trial, you have access to advanced access controls, granular
+              file permissions, and data room. <br />
               <UpgradePlanModal
                 clickedPlan={PlanEnum.DataRooms}
                 trigger={"trial_navbar"}

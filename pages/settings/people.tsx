@@ -264,8 +264,9 @@ export default function Billing() {
               {showUpgradePlanModal ? (
                 <UpgradeButton
                   text="Invite Members"
-                  clickedPlan={isTrial ? PlanEnum.Business : PlanEnum.Pro}
+                  clickedPlan={PlanEnum.Business}
                   trigger="invite_team_members"
+                  highlightItem={["users"]}
                 />
               ) : (
                 <div className="flex items-center gap-2">

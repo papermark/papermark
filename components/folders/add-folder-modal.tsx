@@ -162,7 +162,7 @@ export function AddFolderModal({
         <UpgradePlanModal
           clickedPlan={PlanEnum.Pro}
           trigger={"add_folder_button"}
-          highlightItem={["folder", "multi-file"]}
+          highlightItem={["folder", "folder-sharing", "datarooms"]}
         >
           {children}
         </UpgradePlanModal>

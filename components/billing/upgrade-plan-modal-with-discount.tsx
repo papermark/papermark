@@ -45,7 +45,7 @@ const StartDataRoomTrialButton = ({ teamId }: { teamId?: string }) => {
       onClick={handleStartTrial}
       className="cursor-pointer underline underline-offset-4 hover:text-foreground"
     >
-      Start free data room plan trial
+      Start free data room plus plan trial
     </span>
   );
 };

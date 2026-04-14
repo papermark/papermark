@@ -1,7 +1,9 @@
 import { useState } from "react";
 
-import { CircleHelpIcon, PlusIcon } from "lucide-react";
+import { InviteViewersModal } from "@/ee/features/dataroom-invitations/components/invite-viewers-modal";
+import { CircleHelpIcon, PlusIcon, SendIcon } from "lucide-react";
 
+import { usePlan } from "@/lib/swr/use-billing";
 import { useDataroom, useDataroomLinks } from "@/lib/swr/use-dataroom";
 
 import AppLayout from "@/components/layouts/app";
@@ -13,7 +15,10 @@ import { BadgeTooltip } from "@/components/ui/tooltip";
 export default function DataroomLinksPage() {
   const { dataroom } = useDataroom();
   const { links } = useDataroomLinks();
+  const { isDataroomsPlus, isTrial } = usePlan();
+  const canInviteViewers = isDataroomsPlus || isTrial;
   const [isLinkSheetOpen, setIsLinkSheetOpen] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   if (!dataroom) {
     return <div>Loading...</div>;
@@ -39,10 +44,21 @@ export default function DataroomLinksPage() {
               </BadgeTooltip>
             </p>
           </div>
-          <Button onClick={() => setIsLinkSheetOpen(true)}>
-            <PlusIcon className="h-4 w-4" />
-            Create link
-          </Button>
+          <div className="flex items-center gap-2">
+            {!canInviteViewers && (
+              <Button
+                variant="outline"
+                onClick={() => setIsInviteModalOpen(true)}
+              >
+                <SendIcon className="h-4 w-4" />
+                Invite via email
+              </Button>
+            )}
+            <Button onClick={() => setIsLinkSheetOpen(true)}>
+              <PlusIcon className="h-4 w-4" />
+              Create link
+            </Button>
+          </div>
         </div>
 
         <LinksTable
@@ -58,6 +74,16 @@ export default function DataroomLinksPage() {
         linkType="DATAROOM_LINK"
         existingLinks={links}
       />
+
+      {!canInviteViewers && (
+        <InviteViewersModal
+          open={isInviteModalOpen}
+          setOpen={setIsInviteModalOpen}
+          dataroomId={dataroom.id}
+          dataroomName={dataroom.name}
+          canSend={false}
+        />
+      )}
     </AppLayout>
   );
 }

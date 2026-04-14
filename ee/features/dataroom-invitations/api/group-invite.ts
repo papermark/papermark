@@ -1,11 +1,14 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { SendGroupInvitationSchema } from "@/ee/features/dataroom-invitations/lib/schema/dataroom-invitations";
+import {
+  MAX_INVITATION_EMAILS_PER_DAY,
+  MAX_INVITATION_EMAILS_PER_REQUEST,
+  SendGroupInvitationSchema,
+} from "@/ee/features/dataroom-invitations/lib/schema/dataroom-invitations";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { LinkAudienceType, LinkType } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
-import { getFeatureFlags } from "@/lib/featureFlags";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 import { constructLinkUrl } from "@/lib/utils/link-url";
@@ -61,11 +64,21 @@ export default async function handle(
       return res.status(401).end("Unauthorized");
     }
 
-    // Check if dataroomInvitations feature is enabled for this team
-    const featureFlags = await getFeatureFlags({ teamId });
-    if (!featureFlags.dataroomInvitations) {
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+      select: { plan: true },
+    });
+
+    const plan = team?.plan ?? "";
+    const hasAccess =
+      plan.includes("datarooms-plus") ||
+      plan.includes("datarooms-premium") ||
+      plan.includes("datarooms-unlimited") ||
+      plan.includes("drtrial");
+
+    if (!team || !hasAccess) {
       return res.status(403).json({
-        error: "Dataroom invitations feature is not enabled for this team",
+        error: "Email invitations require a Data Rooms Plus plan or higher",
       });
     }
 
@@ -149,6 +162,27 @@ export default async function handle(
       return res
         .status(400)
         .json({ error: "No valid group member emails provided" });
+    }
+
+    if (targetEmails.length > MAX_INVITATION_EMAILS_PER_REQUEST) {
+      return res.status(400).json({
+        error: `Maximum ${MAX_INVITATION_EMAILS_PER_REQUEST} recipients per request`,
+      });
+    }
+
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const dailySentCount = await prisma.viewerInvitation.count({
+      where: {
+        invitedBy: user.id,
+        createdAt: { gte: oneDayAgo },
+        status: "SENT",
+      },
+    });
+
+    if (dailySentCount + targetEmails.length > MAX_INVITATION_EMAILS_PER_DAY) {
+      return res.status(429).json({
+        error: `Daily limit of ${MAX_INVITATION_EMAILS_PER_DAY} invitations reached. Contact support@papermark.com to increase your limit.`,
+      });
     }
 
     const viewers = await prisma.viewer.findMany({

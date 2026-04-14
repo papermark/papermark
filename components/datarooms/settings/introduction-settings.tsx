@@ -3,14 +3,16 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
-import { EyeIcon } from "lucide-react";
+import { CrownIcon, EyeIcon } from "lucide-react";
 import { toast } from "sonner";
 import { mutate } from "swr";
 
 import { usePlan } from "@/lib/swr/use-billing";
 import { uploadImage } from "@/lib/utils";
 
-import PlanBadge from "@/components/billing/plan-badge";
+import { PlanEnum } from "@/ee/stripe/constants";
+
+import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -659,15 +661,26 @@ export default function IntroductionSettings({
           <EyeIcon className="mr-1.5 h-4 w-4" />
           Preview
         </Button>
-        <Button
-          variant={introductionEnabled ? "default" : "outline"}
-          size="sm"
-          onClick={() => handleToggle(!introductionEnabled)}
-          disabled={!isFeatureAvailable}
-        >
-          {introductionEnabled ? "Enabled" : "Disabled"}
-        </Button>
-        {!isFeatureAvailable && <PlanBadge plan="data rooms plus" />}
+        {isFeatureAvailable ? (
+          <Button
+            variant={introductionEnabled ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleToggle(!introductionEnabled)}
+          >
+            {introductionEnabled ? "Enabled" : "Disabled"}
+          </Button>
+        ) : (
+          <UpgradePlanModal
+            clickedPlan={PlanEnum.DataRoomsPlus}
+            trigger="dataroom_introduction_settings"
+            highlightItem={["introduction"]}
+          >
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <CrownIcon className="h-4 w-4" />
+              Upgrade to Enable
+            </Button>
+          </UpgradePlanModal>
+        )}
         {isSaving && (
           <span className="text-xs text-muted-foreground">Saving...</span>
         )}

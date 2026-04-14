@@ -13,6 +13,8 @@ interface AlertProps {
   title: string;
   description: React.ReactNode;
   onClose?: () => void;
+  className?: string;
+  iconClassName?: string;
 }
 
 const AlertBanner: React.FC<AlertProps> = ({
@@ -21,10 +23,12 @@ const AlertBanner: React.FC<AlertProps> = ({
   title,
   description,
   onClose,
+  className,
+  iconClassName,
 }) => {
   return (
-    <Alert id={id} variant={variant}>
-      <AlertCircleIcon className="h-4 w-4" />
+    <Alert id={id} variant={variant} className={className}>
+      <AlertCircleIcon className={iconClassName || "h-4 w-4"} />
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription>{description}</AlertDescription>
       <AlertClose onClick={onClose} />

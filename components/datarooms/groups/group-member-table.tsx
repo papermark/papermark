@@ -13,7 +13,7 @@ import {
 import { toast } from "sonner";
 import { mutate } from "swr";
 
-import { useFeatureFlags } from "@/lib/hooks/use-feature-flags";
+import { usePlan } from "@/lib/swr/use-billing";
 import { useDataroom } from "@/lib/swr/use-dataroom";
 import { useDataroomGroup } from "@/lib/swr/use-dataroom-groups";
 
@@ -60,7 +60,8 @@ export default function GroupMemberTable({
     uninvitedEmails,
     mutate: mutateUninvited,
   } = useUninvitedMembers(dataroomId, groupId);
-  const { isFeatureEnabled } = useFeatureFlags();
+  const { isDataroomsPlus, isTrial } = usePlan();
+  const canInviteViewers = isDataroomsPlus || isTrial;
 
   const [addMembersOpen, setAddMembersOpen] = useState<boolean>(false);
   const [inviteOpen, setInviteOpen] = useState<boolean>(false);
@@ -186,25 +187,23 @@ export default function GroupMemberTable({
                 <PlusCircleIcon className="h-4 w-4" />
                 Add members
               </Button>
-              {isFeatureEnabled("dataroomInvitations") && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setInviteOpen(true)}
-                  className="relative h-8 gap-1"
-                >
-                  <SendIcon className="h-4 w-4" />
-                  Share invite
-                  {uninvitedCount > 0 ? (
-                    <Badge
-                      variant="secondary"
-                      className="ml-2 h-5 rounded-full px-2 text-xs font-medium"
-                    >
-                      {uninvitedCount}
-                    </Badge>
-                  ) : null}
-                </Button>
-              )}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setInviteOpen(true)}
+                className="relative h-8 gap-1"
+              >
+                <SendIcon className="h-4 w-4" />
+                Invite via email
+                {canInviteViewers && uninvitedCount > 0 ? (
+                  <Badge
+                    variant="notification"
+                    className="ml-1"
+                  >
+                    {uninvitedCount}
+                  </Badge>
+                ) : null}
+              </Button>
             </div>
           </div>
         </div>
@@ -372,27 +371,26 @@ export default function GroupMemberTable({
         open={addMembersOpen}
         setOpen={setAddMembersOpen}
       />
-      {isFeatureEnabled("dataroomInvitations") && (
-        <InviteViewersModal
-          open={inviteOpen}
-          setOpen={(next) => {
-            setInviteOpen(next);
-            if (!next) {
-              mutateUninvited();
-            }
-          }}
-          dataroomId={dataroomId}
-          dataroomName={dataroom?.name ?? "this dataroom"}
-          groupId={groupId}
-          defaultEmails={uninvitedEmails}
-          onSuccess={() => {
-            if (groupKey) {
-              mutate(groupKey);
+      <InviteViewersModal
+        open={inviteOpen}
+        setOpen={(next) => {
+          setInviteOpen(next);
+          if (!next) {
+            mutateUninvited();
+          }
+        }}
+        dataroomId={dataroomId}
+        dataroomName={dataroom?.name ?? "this dataroom"}
+        groupId={groupId}
+        defaultEmails={uninvitedEmails}
+        canSend={canInviteViewers}
+        onSuccess={() => {
+          if (groupKey) {
+            mutate(groupKey);
             }
             mutateUninvited();
           }}
         />
-      )}
     </>
   );
 }
