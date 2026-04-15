@@ -440,6 +440,13 @@ export default async function handle(
         },
       });
 
+      if (linkData.enableConversation && dataroomLink) {
+        await tx.dataroom.update({
+          where: { id: targetId },
+          data: { conversationsEnabled: true },
+        });
+      }
+
       // Update visitor groups (replace all)
       if (linkData.visitorGroupIds !== undefined) {
         // Delete existing visitor group associations

@@ -279,6 +279,13 @@ export default async function handler(
           },
         });
 
+        if (linkData.enableConversation && dataroomLink) {
+          await tx.dataroom.update({
+            where: { id: targetId },
+            data: { conversationsEnabled: true },
+          });
+        }
+
         let tags: Partial<Tag>[] = [];
         if (linkData.tags?.length) {
           // create tag items

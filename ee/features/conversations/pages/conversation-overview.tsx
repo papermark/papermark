@@ -63,9 +63,11 @@ export interface ConversationSummary {
 
 export default function DataroomConversationsPage() {
   const router = useRouter();
-  const { limits } = useLimits();
+  const { limits, error: limitsError, loading: limitsLoading } = useLimits();
   const { dataroom } = useDataroom();
   const { currentTeamId: teamId } = useTeam();
+
+  const hasConversationsAccess = limits?.conversationsInDataroom === true;
   const [searchQuery, setSearchQuery] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -97,7 +99,7 @@ export default function DataroomConversationsPage() {
   // SWR hook for fetching conversation summaries
   const { data: conversations = [], isLoading: isLoadingConversations } =
     useSWR<ConversationSummary[]>(
-      dataroom && teamId
+      dataroom && teamId && hasConversationsAccess
         ? `/api/teams/${teamId}/datarooms/${dataroom.id}/conversations`
         : null,
       fetcher,
@@ -114,7 +116,7 @@ export default function DataroomConversationsPage() {
 
   // Fetch published FAQs
   const { data: faqs = [] } = useSWR<PublishedFAQ[]>(
-    dataroom && teamId
+    dataroom && teamId && hasConversationsAccess
       ? `/api/teams/${teamId}/datarooms/${dataroom.id}/faqs`
       : null,
     fetcher,
@@ -189,12 +191,20 @@ export default function DataroomConversationsPage() {
     return <div>Loading...</div>;
   }
 
-  const hasConversationsAccess = !!limits?.conversationsInDataroom;
-
   const isConversationsEnabled =
     localConversationsEnabled !== undefined
       ? localConversationsEnabled
       : dataroom.conversationsEnabled;
+
+  if (limitsLoading) {
+    return (
+      <AppLayout>
+        <div className="relative mx-2 my-4 flex items-center justify-center px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!hasConversationsAccess) {
     return (
