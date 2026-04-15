@@ -85,18 +85,22 @@ export function DataroomLinkSheet({
   linkType,
   currentLink,
   existingLinks,
+  linkTargetId,
 }: {
   isOpen: boolean;
   setIsOpen: Dispatch<SetStateAction<boolean>>;
   linkType: LinkType;
   currentLink?: DEFAULT_LINK_TYPE;
   existingLinks?: LinkWithViews[];
+  /** When set (e.g. mobile share from global nav), used instead of `router.query.id` */
+  linkTargetId?: string | null;
 }) {
   const router = useRouter();
-  const { id: targetId, groupId } = router.query as {
-    id: string;
+  const { id: routeId, groupId } = router.query as {
+    id?: string;
     groupId?: string;
   };
+  const targetId = linkTargetId ?? routeId;
 
   const { domains } = useDomains({ enabled: isOpen });
 
@@ -104,7 +108,7 @@ export function DataroomLinkSheet({
     viewerGroups,
     loading: isLoadingGroups,
     mutate: mutateGroups,
-  } = useDataroomGroups();
+  } = useDataroomGroups({ dataroomId: linkTargetId ?? undefined });
   const { currentTeamId: teamId } = useTeam();
   const { isFree, isPro, isBusiness, isDatarooms, isDataroomsPlus, isTrial } =
     usePlan();
@@ -528,6 +532,11 @@ export function DataroomLinkSheet({
     shouldPreview: boolean,
     permissions: ItemPermission | null,
   ) => {
+    if (!targetId || !teamId) {
+      setIsSaving(false);
+      return;
+    }
+
     const endpointTargetType = `${linkType.replace("_LINK", "").toLowerCase()}s`; // "documents" or "datarooms"
 
     if (isUpdating) {
@@ -776,6 +785,10 @@ export function DataroomLinkSheet({
     shouldPreview: boolean = false,
     showSuccess: boolean = false,
   ) => {
+    if (!targetId) {
+      toast.error("Missing dataroom");
+      return;
+    }
     // For backward compatibility, extract permissions from linkData
     setIsSaving(true);
     const permissions = linkData.permissions || null;
@@ -794,6 +807,11 @@ export function DataroomLinkSheet({
     shouldManagePermissions: boolean = false,
   ) => {
     event.preventDefault();
+
+    if (!targetId) {
+      toast.error("Missing dataroom");
+      return;
+    }
 
     if (shouldManagePermissions && linkType === LinkType.DATAROOM_LINK) {
       // Store the link data and show permissions sheet
@@ -1156,13 +1174,13 @@ export function DataroomLinkSheet({
 
         <PermissionsSheet
           isOpen={showPermissionsSheet}
-          setIsOpen={(open) => {
+          setIsOpen={(open: boolean) => {
             setShowPermissionsSheet(open);
             if (!open) {
               setShowSuccessSheet(true);
             }
           }}
-          dataroomId={targetId}
+          dataroomId={targetId!}
           linkId={currentLink?.id ?? undefined}
           permissionGroupId={currentLink?.permissionGroupId ?? undefined}
           onSave={handlePermissionsSave}

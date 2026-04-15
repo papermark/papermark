@@ -15,14 +15,19 @@ import { fetcher } from "@/lib/utils";
 
 import { LinkWithViews } from "../types";
 
-export default function useDataroomGroups({ documentId }: { documentId?: string } = {}) {
+export default function useDataroomGroups({
+  documentId,
+  dataroomId: dataroomIdOverride,
+}: { documentId?: string; dataroomId?: string } = {}) {
   const teamInfo = useTeam();
   const router = useRouter();
 
-  const isDataroom = router.pathname.includes("datarooms");
-  const { id } = router.query as {
-    id: string;
+  const { id: queryDataroomId } = router.query as {
+    id?: string;
   };
+  const id = dataroomIdOverride ?? queryDataroomId;
+  const isDataroom =
+    router.pathname.includes("datarooms") || !!dataroomIdOverride;
 
   type ViewerGroupWithCount = ViewerGroup & {
     accessControls: ViewerGroupAccessControls[];
@@ -40,8 +45,9 @@ export default function useDataroomGroups({ documentId }: { documentId?: string 
     teamInfo?.currentTeam?.id &&
       id &&
       isDataroom &&
-    `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${id}/groups${documentId ? `?documentId=${documentId}` : ""
-    }`,
+      `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${id}/groups${
+        documentId ? `?documentId=${documentId}` : ""
+      }`,
     fetcher,
     { dedupingInterval: 30000 },
   );

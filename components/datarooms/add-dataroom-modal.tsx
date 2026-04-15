@@ -588,17 +588,19 @@ export function AddDataroomModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="border-none bg-transparent text-foreground shadow-none sm:max-w-[575px] [&>button]:hidden">
+      <DialogContent className="border-none bg-background text-foreground shadow-none sm:bg-transparent sm:max-w-[575px] [&>button]:hidden"
+        mobileFullScreen
+      >
         <DialogTitle className="sr-only">Create Dataroom</DialogTitle>
         <DialogDescription className="sr-only">
           Create a new dataroom or generate one with pre-configured folders
         </DialogDescription>
 
+        <div className="pt-10 sm:pt-0">
         <Tabs
           value={activeTab}
           onValueChange={(value) => {
             setActiveTab(value);
-            // Reset AI-related state when switching tabs
             if (value !== "ai") {
               setAiDescription("");
               setGeneratedFolders(null);
@@ -607,22 +609,22 @@ export function AddDataroomModal({
           }}
         >
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="create">Create from scratch</TabsTrigger>
-            <TabsTrigger value="generate">Create from template</TabsTrigger>
+            <TabsTrigger value="create" className="text-xs sm:text-sm">Scratch</TabsTrigger>
+            <TabsTrigger value="generate" className="text-xs sm:text-sm">Template</TabsTrigger>
             <TabsTrigger
               value="ai"
-              className={`flex items-center gap-2 ${
+              className={`flex items-center gap-1 text-xs sm:gap-2 sm:text-sm ${
                 activeTab === "ai"
                   ? "text-orange-500 data-[state=active]:text-orange-500"
                   : ""
               }`}
             >
               <Sparkles
-                className={`h-4 w-4 ${
+                className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${
                   activeTab === "ai" ? "text-orange-500" : "text-current"
                 }`}
               />
-              Generate with AI
+              AI
             </TabsTrigger>
           </TabsList>
 
@@ -691,7 +693,7 @@ export function AddDataroomModal({
                       Select Template{" "}
                       <span className="text-black dark:text-white">*</span>
                     </Label>
-                    <div className="grid grid-cols-3 divide-x divide-y divide-border overflow-hidden rounded-md border ">
+                    <div className="grid grid-cols-2 divide-x divide-y divide-border overflow-hidden rounded-md border sm:grid-cols-3">
                       {TEMPLATES.map((template) => {
                         const Icon = template.icon;
                         const isSelected = dataroomType === template.id;
@@ -701,14 +703,14 @@ export function AddDataroomModal({
                             key={template.id}
                             type="button"
                             onClick={() => setDataroomType(template.id)}
-                            className={`relative flex min-h-[120px] flex-col items-center justify-center space-y-3 overflow-hidden p-4 transition-colors ${
+                            className={`relative flex min-h-[80px] flex-col items-center justify-center space-y-2 overflow-hidden p-3 transition-colors sm:min-h-[120px] sm:space-y-3 sm:p-4 ${
                               isSelected
                                 ? "bg-gray-200 dark:bg-gray-800"
                                 : "hover:bg-gray-100 hover:dark:bg-gray-800"
                             }`}
                           >
-                            <Icon className="pointer-events-none h-auto w-10 text-foreground" />
-                            <p className="text-sm">{template.name}</p>
+                            <Icon className="pointer-events-none h-auto w-7 text-foreground sm:w-10" />
+                            <p className="text-xs sm:text-sm">{template.name}</p>
                           </button>
                         );
                       })}
@@ -861,6 +863,7 @@ export function AddDataroomModal({
             </Card>
           </TabsContent>
         </Tabs>
+        </div>
       </DialogContent>
     </Dialog>
   );

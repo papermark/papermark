@@ -90,8 +90,8 @@ export default function DataroomVisitorsTable({
           Export visits
         </Button>
       </div>
-      <div className="rounded-md border">
-        <Table className="table-fixed">
+      <div className="overflow-x-auto rounded-md border">
+        <Table className="min-w-[600px] table-fixed">
           <TableHeader>
             <TableRow className="*:whitespace-nowrap *:font-medium hover:bg-transparent">
               <TableHead>Name</TableHead>

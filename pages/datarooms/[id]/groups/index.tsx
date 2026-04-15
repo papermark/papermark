@@ -10,6 +10,7 @@ import { AddGroupModal } from "@/components/datarooms/groups/add-group-modal";
 import GroupCard from "@/components/datarooms/groups/group-card";
 import { GroupCardPlaceholder } from "@/components/datarooms/groups/group-card-placeholder";
 import AppLayout from "@/components/layouts/app";
+import { TabMenu } from "@/components/tab-menu";
 import { Button } from "@/components/ui/button";
 import { BadgeTooltip } from "@/components/ui/tooltip";
 
@@ -65,6 +66,24 @@ export default function DataroomGroupPage() {
           </div>
           <ButtonComponent />
         </div>
+
+        <TabMenu
+          navigation={[
+            {
+              label: "Links",
+              href: `/datarooms/${dataroom.id}/permissions`,
+              value: "links",
+              currentValue: "groups",
+            },
+            {
+              label: "Groups",
+              href: `/datarooms/${dataroom.id}/groups`,
+              value: "groups",
+              currentValue: "groups",
+            },
+          ]}
+          className="md:hidden"
+        />
 
         <div className="space-y-4">
           <div className="grid gap-5">

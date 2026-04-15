@@ -2,6 +2,8 @@ import { useState } from "react";
 
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 
+import { cn } from "@/lib/utils";
+
 import { Button } from "@/components/ui/button";
 import { ButtonTooltip } from "@/components/ui/tooltip";
 
@@ -76,12 +78,18 @@ export function DocumentPreviewButton({
       size={size}
       onClick={handlePreviewClick}
       disabled={isProcessing}
-      className={className}
+      className={cn(
+        size !== "icon" &&
+          "max-md:h-8 max-md:w-8 max-md:min-w-8 max-md:shrink-0 max-md:gap-0 max-md:px-0 max-md:[&_svg]:size-4",
+        className,
+      )}
     >
       {children || (
         <>
           <EyeIcon className="h-4 w-4" />
-          {size !== "icon" && <span className="ml-1">Preview</span>}
+          {size !== "icon" && (
+            <span className="ml-1 hidden md:inline">Preview</span>
+          )}
         </>
       )}
     </Button>

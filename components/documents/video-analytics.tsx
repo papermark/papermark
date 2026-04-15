@@ -63,17 +63,20 @@ export default function VideoAnalytics({
     const emptyStats = [
       {
         name: "Total views",
+        shortName: "Views",
         value: "0",
         active: false,
       },
       {
         name: "Watch time",
+        shortName: "Watch time",
         value: "0:00",
         unit: "minutes",
         active: false,
       },
       {
         name: "Average view duration",
+        shortName: "Avg. duration",
         value: "0:00",
         unit: "minutes",
         active: false,
@@ -83,7 +86,7 @@ export default function VideoAnalytics({
     return (
       <div className="space-y-4">
         <VideoChartPlaceholder length={primaryVersion.length} />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-4 lg:gap-4">
           {emptyStats.map((stat, index) => (
             <StatsElement key={stat.name} stat={stat} statIdx={index} />
           ))}
@@ -133,17 +136,20 @@ export default function VideoAnalytics({
   const stats = [
     {
       name: "Total views",
+      shortName: "Views",
       value: data.overall.unique_views.toString(),
       active: true,
     },
     {
       name: "View time",
+      shortName: "View time",
       value: formatTime(data.overall.total_watch_time),
       unit: "minutes",
       active: true,
     },
     {
       name: "Average view duration",
+      shortName: "Avg. duration",
       value: formatTime(data.overall.avg_view_duration),
       unit: "minutes",
       active: true,
@@ -221,7 +227,7 @@ export default function VideoAnalytics({
         </ResponsiveContainer>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-4 lg:gap-4">
         {stats.map((stat, index) => (
           <StatsElement key={stat.name} stat={stat} statIdx={index} />
         ))}

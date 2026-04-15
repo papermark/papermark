@@ -54,68 +54,83 @@ export default function Documents() {
           </p>
         </div>
 
-        <div className="flex items-center justify-between gap-x-2">
-          <div className="flex items-center gap-x-2">
-            <GenerateIndexButton
-              teamId={teamInfo?.currentTeam?.id!}
-              dataroomId={dataroom?.id!}
-            />
-            <RebuildIndexButton
-              teamId={teamInfo?.currentTeam?.id!}
-              dataroomId={dataroom?.id!}
-            />
-            <DownloadDataroomButton
-              teamId={teamInfo?.currentTeam?.id!}
-              dataroomId={dataroom?.id!}
-              dataroomName={dataroom?.name}
-            />
-          </div>
-          <div className="flex items-center justify-end gap-x-2">
-            <AddDocumentModal
-              isDataroom={true}
-              dataroomId={dataroom?.id}
-              key={1}
-            >
-              <Button
-                size="sm"
-                className="group flex items-center justify-start gap-x-3 px-3 text-left"
-                title="Add Document"
-              >
-                <PlusIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                <span>Add Document</span>
-              </Button>
-            </AddDocumentModal>
-
-            <AddFolderModal isDataroom={true} dataroomId={dataroom?.id} key={2}>
-              <ResponsiveButton
-                icon={<FolderPlusIcon className="h-5 w-5 shrink-0" />}
-                text="Add Folder"
-                size="sm"
-                variant="outline"
-              />
-            </AddFolderModal>
-            <div id="dataroom-reordering-action">
-              {!isReordering ? (
-                <ResponsiveButton
-                  icon={<ArrowUpDownIcon className="h-4 w-4" />}
-                  text="Reorder"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setIsReordering(!isReordering)}
+        <div className="min-w-0 max-md:-mx-1 max-md:px-1">
+          <div
+            className="max-md:overflow-x-auto max-md:pb-1 max-md:[-webkit-overflow-scrolling:touch] max-md:[scrollbar-width:thin] md:overflow-visible md:pb-0"
+            role="toolbar"
+            aria-label="Data room documents actions"
+          >
+            <div className="flex w-max items-center gap-x-2 md:w-full md:justify-between">
+              <div className="flex shrink-0 items-center gap-x-2">
+                <GenerateIndexButton
+                  teamId={teamInfo?.currentTeam?.id!}
+                  dataroomId={dataroom?.id!}
                 />
-              ) : null}
+                <RebuildIndexButton
+                  teamId={teamInfo?.currentTeam?.id!}
+                  dataroomId={dataroom?.id!}
+                />
+                <DownloadDataroomButton
+                  teamId={teamInfo?.currentTeam?.id!}
+                  dataroomId={dataroom?.id!}
+                  dataroomName={dataroom?.name}
+                />
+              </div>
+              <div className="flex shrink-0 items-center gap-x-2">
+                <AddDocumentModal
+                  isDataroom={true}
+                  dataroomId={dataroom?.id}
+                  key={1}
+                >
+                  <Button
+                    size="sm"
+                    className="group flex items-center justify-start gap-x-1 whitespace-nowrap px-2 text-left sm:gap-x-3 sm:px-3"
+                    title="Add Document"
+                  >
+                    <PlusIcon
+                      className="h-4 w-4 shrink-0 sm:h-5 sm:w-5"
+                      aria-hidden="true"
+                    />
+                    <span className="text-xs sm:text-sm">Add Document</span>
+                  </Button>
+                </AddDocumentModal>
+
+                <AddFolderModal
+                  isDataroom={true}
+                  dataroomId={dataroom?.id}
+                  key={2}
+                >
+                  <ResponsiveButton
+                    icon={<FolderPlusIcon className="h-5 w-5 shrink-0" />}
+                    text="Add Folder"
+                    size="sm"
+                    variant="outline"
+                  />
+                </AddFolderModal>
+                <div id="dataroom-reordering-action" className="shrink-0">
+                  {!isReordering ? (
+                    <ResponsiveButton
+                      icon={<ArrowUpDownIcon className="h-4 w-4" />}
+                      text="Reorder"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsReordering(!isReordering)}
+                    />
+                  ) : null}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="grid h-full gap-4 pb-2 md:grid-cols-4">
-          <div className="h-full truncate md:col-span-1">
+          <div className="hidden h-full min-h-0 truncate md:col-span-1 md:block">
             <ScrollArea showScrollbar>
               <SidebarFolderTree dataroomId={dataroom?.id!} />
               <ScrollBar orientation="horizontal" />
             </ScrollArea>
           </div>
-          <div className="space-y-4 md:col-span-3">
+          <div className="min-w-0 space-y-4 md:col-span-3">
             <section id="documents-header-count" className="min-h-8" />
 
             {isLoading ? <LoadingDocuments count={3} /> : null}

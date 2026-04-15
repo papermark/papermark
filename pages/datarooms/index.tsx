@@ -106,10 +106,10 @@ export default function DataroomsPage() {
                 trigger="datarooms"
               >
                 <Button
-                  className="group flex flex-1 items-center justify-start gap-x-3 px-3 text-left"
+                  className="group flex flex-1 items-center justify-start gap-x-1 whitespace-nowrap px-2 text-left sm:gap-x-3 sm:px-3"
                   title="Upgrade to Add Data Room"
                 >
-                  <span>Upgrade to Add Data Room</span>
+                  <span className="text-xs sm:text-sm">Upgrade to Add Data Room</span>
                 </Button>
               </UpgradePlanModal>
             ) : isTrial &&
@@ -117,9 +117,9 @@ export default function DataroomsPage() {
               !isBusiness &&
               !isDatarooms &&
               !isDataroomsPlus ? (
-              <div className="flex items-center gap-x-4">
-                <div className="text-sm text-destructive">
-                  <span>Dataroom Trial: </span>
+              <div className="flex items-center gap-x-2 sm:gap-x-4">
+                <div className="text-xs text-destructive sm:text-sm">
+                  <span>Trial: </span>
                   <span className="font-medium">
                     {(() => {
                       const startDate =
@@ -138,11 +138,11 @@ export default function DataroomsPage() {
                 {totalDatarooms < limitDatarooms ? (
                   <AddDataroomModal>
                     <Button
-                      className="group flex flex-1 items-center justify-start gap-x-3 px-3 text-left"
+                      className="group flex flex-1 items-center justify-start gap-x-1 whitespace-nowrap px-2 text-left sm:gap-x-3 sm:px-3"
                       title="Create New Dataroom"
                     >
                       <PlusIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                      <span>Create New Dataroom</span>
+                      <span className="text-xs sm:text-sm">New Dataroom</span>
                     </Button>
                   </AddDataroomModal>
                 ) : (
@@ -151,10 +151,10 @@ export default function DataroomsPage() {
                     trigger="datarooms"
                   >
                     <Button
-                      className="group flex flex-1 items-center justify-start gap-x-3 px-3 text-left"
+                      className="group flex flex-1 items-center justify-start gap-x-1 whitespace-nowrap px-2 text-left sm:gap-x-3 sm:px-3"
                       title="Upgrade to Add Data Room"
                     >
-                      <span>Upgrade to Add Data Room</span>
+                      <span className="text-xs sm:text-sm">Upgrade</span>
                     </Button>
                   </UpgradePlanModal>
                 )}
@@ -162,31 +162,31 @@ export default function DataroomsPage() {
             ) : isBusiness || isDatarooms || isDataroomsPlus ? (
               <AddDataroomModal>
                 <Button
-                  className="group flex flex-1 items-center justify-start gap-x-3 px-3 text-left"
-                  title="Create New Document"
+                  className="group flex flex-1 items-center justify-start gap-x-1 whitespace-nowrap px-2 text-left sm:gap-x-3 sm:px-3"
+                  title="Create New Dataroom"
                 >
                   <PlusIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                  <span>Create New Dataroom</span>
+                  <span className="text-xs sm:text-sm">New Dataroom</span>
                 </Button>
               </AddDataroomModal>
             ) : (
               <DataroomTrialModal>
                 <Button
-                  className="group flex flex-1 items-center justify-start gap-x-3 px-3 text-left"
-                  title="Start Data Room Plus Trial"
+                  className="group flex flex-1 items-center justify-start gap-x-1 whitespace-nowrap px-2 text-left sm:gap-x-3 sm:px-3"
+                  title="Start Data Room Trial"
                 >
-                  <span>Start Data Room Plus Trial</span>
+                  <span className="text-xs sm:text-sm">Start Trial</span>
                 </Button>
               </DataroomTrialModal>
             )}
           </div>
         </section>
         {/* Search and Filters */}
-        <div className="mb-4 flex justify-end gap-3">
+        <div className="mb-4 flex justify-end gap-2 sm:gap-3">
           <div className="w-full sm:w-[280px]">
             <SearchBoxPersisted
               placeholder="Search datarooms..."
-              inputClassName="h-10"
+              inputClassName="h-9 text-sm sm:h-10"
             />
           </div>
 

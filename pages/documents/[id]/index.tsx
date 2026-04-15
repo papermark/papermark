@@ -170,7 +170,7 @@ export default function DocumentPage() {
               advancedExcelEnabled={prismaDocument.advancedExcelEnabled}
               variant="outline"
               size="default"
-              showTooltip={false}
+              showTooltip
               className="h-8 whitespace-nowrap text-xs lg:h-9 lg:text-sm"
             />,
             <AddLinkButton key={"create-link"} />,

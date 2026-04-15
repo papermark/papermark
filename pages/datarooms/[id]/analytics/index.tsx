@@ -11,6 +11,7 @@ import DocumentAnalyticsTree from "@/components/datarooms/analytics/document-ana
 import MockAnalyticsTable from "@/components/datarooms/analytics/mock-analytics-table";
 import StatsCard from "@/components/datarooms/stats-card";
 import AppLayout from "@/components/layouts/app";
+import { TabMenu } from "@/components/tab-menu";
 import { FeaturePreview } from "@/components/ui/feature-preview";
 import { BadgeTooltip } from "@/components/ui/tooltip";
 
@@ -48,6 +49,24 @@ export default function DataroomAnalyticsPage() {
             </BadgeTooltip>
           </p>
         </div>
+
+        <TabMenu
+          navigation={[
+            {
+              label: "Analytics",
+              href: `/datarooms/${dataroom.id}/analytics`,
+              value: "analytics",
+              currentValue: "analytics",
+            },
+            {
+              label: "Audit Log",
+              href: `/datarooms/${dataroom.id}/analytics/audit-log`,
+              value: "audit-log",
+              currentValue: "analytics",
+            },
+          ]}
+          className="md:hidden"
+        />
 
         <StatsCard />
 

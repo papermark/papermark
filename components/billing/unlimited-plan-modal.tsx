@@ -99,9 +99,11 @@ export function UnlimitedPlanModal({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent
+        mobileFullScreen
         className="max-h-[90vh] min-h-fit overflow-y-auto bg-gray-50 text-foreground dark:bg-gray-900"
         style={{ width: "90vw", maxWidth: "520px" }}
       >
+        <div className="flex flex-col gap-4 p-4 pt-12 sm:p-0">
         <DialogTitle className="sr-only">Data Rooms Unlimited</DialogTitle>
 
         <div className="flex items-center justify-center">
@@ -177,6 +179,7 @@ export function UnlimitedPlanModal({
           >
             Book a demo to learn more
           </Link>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

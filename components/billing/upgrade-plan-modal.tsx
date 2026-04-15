@@ -53,7 +53,7 @@ const FeatureItem = ({
   feature: Feature;
   onUnlimitedClick?: () => void;
 }) => {
-  const baseClasses = `flex items-center ${feature.isHighlighted ? "bg-orange-50 -mx-6 px-6 py-2 -my-1 font-bold rounded-md dark:bg-orange-900/20" : ""}`;
+  const baseClasses = `flex items-center ${feature.isHighlighted ? "bg-orange-50 -mx-3 px-3 py-2 -my-1 font-bold rounded-md dark:bg-orange-900/20" : ""}`;
 
   if (feature.isUsers) {
     return (
@@ -237,12 +237,14 @@ export function UpgradePlanModal({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{buttonChild}</DialogTrigger>
       <DialogContent
+        mobileFullScreen
         className="max-h-[90vh] min-h-fit overflow-y-auto bg-gray-50 text-foreground dark:bg-gray-900"
         style={{
           width: "90vw",
           maxWidth: "900px",
         }}
       >
+        <div className="flex flex-col gap-4 p-4 pt-12 sm:p-0">
         {trigger === "invite_team_members" && (
           <p
             className="cursor-pointer text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -613,6 +615,7 @@ export function UpgradePlanModal({
           open={unlimitedModalOpen}
           setOpen={setUnlimitedModalOpen}
         />
+        </div>
       </DialogContent>
     </Dialog>
   );

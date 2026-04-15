@@ -52,7 +52,7 @@ const StartDataRoomTrialButton = ({ teamId }: { teamId?: string }) => {
 
 // Feature rendering component
 const FeatureItem = ({ feature }: { feature: Feature }) => {
-  const baseClasses = `flex items-center ${feature.isHighlighted ? "bg-orange-50 -mx-6 px-6 py-2 -my-1 font-bold rounded-md dark:bg-orange-900/20" : ""}`;
+  const baseClasses = `flex items-center ${feature.isHighlighted ? "bg-orange-50 -mx-3 px-3 py-2 -my-1 font-bold rounded-md dark:bg-orange-900/20" : ""}`;
 
   if (feature.isUsers) {
     return (
@@ -183,7 +183,7 @@ export function UpgradePlanModalWithDiscount({
 
   // Get next higher plan for current user
   const getNextHigherPlan = () => {
-    if (isFree) return PlanEnum.Pro; // Free users see Pro as next
+    if (isFree) return PlanEnum.Pro;
     if (teamPlan === "pro") return PlanEnum.Business;
     if (teamPlan === "business") return PlanEnum.DataRooms;
     if (teamPlan === "datarooms") return PlanEnum.DataRoomsPlus;
@@ -245,12 +245,14 @@ export function UpgradePlanModalWithDiscount({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{buttonChild}</DialogTrigger>
       <DialogContent
+        mobileFullScreen
         className="max-h-[90vh] min-h-fit overflow-y-auto bg-white p-0 text-foreground dark:bg-gray-900"
         style={{
           width: "95vw",
           maxWidth: "1200px",
         }}
       >
+        <div className="pt-10 sm:pt-0">
         <div className="flex flex-col lg:flex-row">
           {/* Left Sidebar - Discount Information */}
           <div className="flex h-full w-full flex-col border-b border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900 lg:w-64 lg:border-b-0 lg:border-r">
@@ -556,6 +558,7 @@ export function UpgradePlanModalWithDiscount({
               </div>
             </div>
           </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

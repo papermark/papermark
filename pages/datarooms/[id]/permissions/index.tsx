@@ -9,6 +9,7 @@ import { useDataroom, useDataroomLinks } from "@/lib/swr/use-dataroom";
 import AppLayout from "@/components/layouts/app";
 import { DataroomLinkSheet } from "@/components/links/link-sheet/dataroom-link-sheet";
 import LinksTable from "@/components/links/links-table";
+import { TabMenu } from "@/components/tab-menu";
 import { Button } from "@/components/ui/button";
 import { BadgeTooltip } from "@/components/ui/tooltip";
 
@@ -60,6 +61,24 @@ export default function DataroomLinksPage() {
             </Button>
           </div>
         </div>
+
+        <TabMenu
+          navigation={[
+            {
+              label: "Links",
+              href: `/datarooms/${dataroom.id}/permissions`,
+              value: "links",
+              currentValue: "links",
+            },
+            {
+              label: "Groups",
+              href: `/datarooms/${dataroom.id}/groups`,
+              value: "groups",
+              currentValue: "links",
+            },
+          ]}
+          className="md:hidden"
+        />
 
         <LinksTable
           links={links}

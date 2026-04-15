@@ -183,7 +183,7 @@ export function UploadContainer({
 
   return (
     <motion.div
-      className="z-10 flex flex-col space-y-10 text-center"
+      className="z-10 flex flex-col space-y-10 px-5 text-center sm:px-0"
       variants={{
         hidden: { opacity: 0, scale: 0.95 },
         show: {

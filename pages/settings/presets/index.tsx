@@ -44,12 +44,12 @@ export default function Presets() {
       <main className="relative mx-2 mb-10 mt-4 space-y-8 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
         <SettingsHeader />
         <div>
-          <div className="mb-4 flex items-center justify-between md:mb-8 lg:mb-12">
-            <div className="space-y-1">
-              <h3 className="text-2xl font-semibold tracking-tight text-foreground">
+          <div className="mb-4 flex items-center justify-between gap-x-2 md:mb-8 lg:mb-12">
+            <div className="min-w-0 space-y-1">
+              <h3 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
                 Link Presets
               </h3>
-              <p className="flex flex-row items-center gap-2 text-sm text-muted-foreground">
+              <p className="flex flex-row items-center gap-2 text-xs text-muted-foreground sm:text-sm">
                 Configure and save presets for your links
                 <BadgeTooltip content="Create reusable link configurations that can be applied to new links">
                   <CircleHelpIcon className="h-4 w-4 shrink-0 text-muted-foreground hover:text-foreground" />
@@ -57,14 +57,14 @@ export default function Presets() {
               </p>
             </div>
             {isTrial || isBusiness || isDatarooms || isDataroomsPlus ? (
-              <Button onClick={() => router.push("/settings/presets/new")}>
+              <Button onClick={() => router.push("/settings/presets/new")} className="shrink-0 whitespace-nowrap">
                 <PlusIcon className="mr-1.5 h-4 w-4" />
                 Create Preset
               </Button>
             ) : (
-              <Button onClick={() => setShowUpgradeModal(true)}>
+              <Button onClick={() => setShowUpgradeModal(true)} className="shrink-0 whitespace-nowrap text-xs sm:text-sm">
                 <CrownIcon className="mr-1.5 h-4 w-4" />
-                Upgrade to create presets
+                Upgrade
               </Button>
             )}
           </div>
