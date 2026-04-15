@@ -226,7 +226,7 @@ export default function GenerateIndexDialog({
             </Button>
           ) : (
             <UpgradePlanModal
-              clickedPlan={PlanEnum.DataRoomsPlus}
+              clickedPlan={PlanEnum.DataRooms}
               trigger="datarooms_generate_index_button"
               highlightItem={["indexing"]}
             >
