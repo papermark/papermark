@@ -147,7 +147,7 @@ export default function DataroomTrial() {
         dealSize,
         dataroomId,
       });
-      toast.success("Dataroom successfully created! 🎉");
+      toast.success("Free trial started! 🎉");
 
       await Promise.all([
         mutate(`/api/teams/${teamInfo?.currentTeam?.id}/datarooms`),
@@ -404,7 +404,7 @@ export default function DataroomTrial() {
               >
                 <button className="underline">Papermark Data Rooms</button>
               </UpgradePlanModal>{" "}
-              to continue using data rooms.
+              to continue using Data Room plan features.
             </div>
           </div>
         </form>

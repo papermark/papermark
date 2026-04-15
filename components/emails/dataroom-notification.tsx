@@ -16,13 +16,13 @@ import {
 export default function DataroomNotification({
   dataroomName = "Example Data Room",
   documentName = "Example Document",
-  senderEmail = "example@example.com",
+  senderEmail,
   url = "https://app.papermark.com/datarooms/123",
   unsubscribeUrl = "https://app.papermark.com/datarooms/123/unsubscribe",
 }: {
   dataroomName: string;
   documentName: string | undefined;
-  senderEmail: string;
+  senderEmail: string | null;
   url: string;
   unsubscribeUrl: string;
 }) {
@@ -67,9 +67,14 @@ export default function DataroomNotification({
                 reserved.
               </Text>
               <Text className="text-xs">
-                You received this email from{" "}
-                <span className="font-semibold">{senderEmail}</span> because you
-                viewed the dataroom{" "}
+                You received this email{" "}
+                {senderEmail ? (
+                  <>
+                    from{" "}
+                    <span className="font-semibold">{senderEmail}</span>{" "}
+                  </>
+                ) : null}
+                because you viewed the dataroom{" "}
                 <span className="font-semibold">{dataroomName}</span> on
                 Papermark. If you have any feedback or questions about this
                 email, simply reply to it.{" "}

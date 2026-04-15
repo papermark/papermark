@@ -7,6 +7,7 @@ const PLANS_WITH_REDIRECTS = new Set([
   "datarooms",
   "datarooms-plus",
   "datarooms-premium",
+  "datarooms-unlimited",
 ]);
 
 export function planSupportsRedirects(plan: string): boolean {

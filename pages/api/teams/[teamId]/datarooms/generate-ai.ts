@@ -25,9 +25,10 @@ export default async function handle(
 
     const userId = (session.user as CustomUser).id;
     const { teamId } = req.query as { teamId: string };
-    const { name, folders } = req.body as {
+    const { name, folders, dataroomId: existingDataroomId } = req.body as {
       name: string;
       folders: FolderTemplate[];
+      dataroomId?: string;
     };
 
     // Validate input
@@ -105,14 +106,17 @@ export default async function handle(
         "datarooms",
         "datarooms-plus",
         "datarooms-premium",
+        "datarooms-unlimited",
         "business+old",
         "datarooms+old",
         "datarooms-plus+old",
         "datarooms-premium+old",
+        "datarooms-unlimited+old",
         "datarooms+drtrial",
         "business+drtrial",
         "datarooms-plus+drtrial",
         "datarooms-premium+drtrial",
+        "datarooms-unlimited+drtrial",
         "free+drtrial",
       ];
 
@@ -138,42 +142,68 @@ export default async function handle(
         });
       }
 
-      // Limits: Check if the user has reached the limit of datarooms in the team
-      const dataroomCount = await prisma.dataroom.count({
-        where: {
-          teamId: teamId,
-        },
-      });
+      // Skip limit check when populating an existing dataroom
+      if (!existingDataroomId) {
+        // Limits: Check if the user has reached the limit of datarooms in the team
+        const dataroomCount = await prisma.dataroom.count({
+          where: {
+            teamId: teamId,
+          },
+        });
 
-      const limits = await getLimits({ teamId, userId });
+        const limits = await getLimits({ teamId, userId });
 
-      // Allow first dataroom creation on free plan during onboarding
-      const isFreePlan = team.plan === "free" || team.plan === "free+drtrial";
-      const isFirstDataroom = dataroomCount === 0;
+        // Allow first dataroom creation on free plan during onboarding
+        const isFreePlan = team.plan === "free" || team.plan === "free+drtrial";
+        const isFirstDataroom = dataroomCount === 0;
 
-      if (
-        limits &&
-        !(isFreePlan && isFirstDataroom) &&
-        dataroomCount >= limits.datarooms
-      ) {
-        return res
-          .status(403)
-          .json({ message: "You have reached the limit of datarooms" });
+        if (
+          limits &&
+          limits.datarooms !== null &&
+          !(isFreePlan && isFirstDataroom) &&
+          dataroomCount >= limits.datarooms
+        ) {
+          return res
+            .status(403)
+            .json({ message: "You have reached the limit of datarooms" });
+        }
       }
 
-      const pId = newId("dataroom");
       const dataroomName = name.trim();
 
       // Create the dataroom and folders in a transaction to prevent hanging results
       const dataroom = await prisma.$transaction(async (tx) => {
-        // Create the dataroom
-        const createdDataroom = await tx.dataroom.create({
-          data: {
-            name: dataroomName,
-            teamId: teamId,
-            pId: pId,
-          },
-        });
+        let createdDataroom;
+
+        if (existingDataroomId) {
+          // Use existing dataroom (e.g. created during trial onboarding)
+          const existing = await tx.dataroom.findUnique({
+            where: { id: existingDataroomId, teamId },
+          });
+
+          if (!existing) {
+            throw new Error("Dataroom not found");
+          }
+
+          // Remove any existing folders so a retry doesn't hit unique-path conflicts
+          await tx.dataroomFolder.deleteMany({
+            where: { dataroomId: existingDataroomId },
+          });
+
+          createdDataroom = await tx.dataroom.update({
+            where: { id: existingDataroomId },
+            data: { name: dataroomName },
+          });
+        } else {
+          const pId = newId("dataroom");
+          createdDataroom = await tx.dataroom.create({
+            data: {
+              name: dataroomName,
+              teamId: teamId,
+              pId: pId,
+            },
+          });
+        }
 
         // Helper function to create folders recursively
         const createFolders = async (

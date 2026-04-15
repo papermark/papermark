@@ -20,38 +20,38 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(400).json({ error: "Invalid teamId" });
   }
 
-  const team = await prisma.team.findFirst({
+  const userId = (session.user as CustomUser).id;
+
+  const teamAccess = await prisma.userTeam.findUnique({
     where: {
-      id: teamId,
-      users: {
-        some: {
-          userId: (session.user as CustomUser).id,
-        },
+      userId_teamId: {
+        userId,
+        teamId,
       },
     },
-    include: {
-      users: true,
-    },
+    select: { role: true },
   });
 
-  if (!team) {
+  if (!teamAccess) {
     return res.status(404).json({ error: "Team not found" });
   }
 
-  const isUserAdminOrManager = team.users.some(
-    (user) =>
-      (user.role === "ADMIN" || user.role === "MANAGER") && user.userId === (session.user as CustomUser).id,
-  );
-
-  if (!isUserAdminOrManager) {
-    return res.status(403).json({ error: "Forbidden" });
-  }
-
   if (req.method === "GET") {
-    return res.status(200).json(team.ignoredDomains || []);
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+      select: { ignoredDomains: true },
+    });
+
+    return res.status(200).json(team?.ignoredDomains || []);
   }
 
   if (req.method === "PUT") {
+    if (teamAccess.role !== "ADMIN" && teamAccess.role !== "MANAGER") {
+      return res.status(403).json({
+        error: "Only admins and managers can manage ignored domains.",
+      });
+    }
+
     try {
       const { domains } = req.body;
 
@@ -62,12 +62,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const uniqueDomains = sanitizeList(domains.join("\n"), "domain");
 
       await prisma.team.update({
-        where: {
-          id: teamId,
-        },
-        data: {
-          ignoredDomains: uniqueDomains,
-        },
+        where: { id: teamId },
+        data: { ignoredDomains: uniqueDomains },
       });
 
       return res.status(200).json({ message: "Ignored domains updated" });

@@ -46,27 +46,76 @@ interface FileWithPaths extends File {
   path?: string;
   whereToUploadPath?: string;
   dataroomUploadPath?: string;
-}
-
-export interface UploadState {
-  fileName: string;
-  progress: number;
-  documentId?: string;
-  uploadId: string;
+  /** Name of the top-level drag item this file belongs to */
+  topLevelItemName?: string;
+  topLevelItemIsFolder?: boolean;
+  /** Number of folders created during traversal for this top-level item */
+  topLevelItemFolderCount?: number;
+  /** Server-generated slug path for the top-level folder (e.g. "folder-with-100-subfolders") */
+  topLevelItemFolderPath?: string;
 }
 
 export interface RejectedFile {
   fileName: string;
   message: string;
+  reason?: "error" | "plan-limit" | "max-files";
+  /** Individual file paths skipped due to limits — used for downloadable list */
+  skippedFileNames?: string[];
+}
+
+export interface UploadItemState {
+  itemId: string;
+  name: string;
+  type: "folder" | "file";
+  /** Total entries: all nested folders + all files for folders; 1 for loose files */
+  totalEntries: number;
+  completedEntries: number;
+  failedEntries: number;
+  cancelled?: boolean;
+  /** Pre-computed link for completed folder items */
+  folderHref?: string;
+  /** Byte-level upload progress for granular tracking (especially single large files) */
+  bytesUploaded?: number;
+  bytesTotal?: number;
+}
+
+export interface UploadBatchState {
+  batchId: string;
+  items: UploadItemState[];
+  startedAt: number;
+  /** Total entries across all items (folders + files) */
+  totalEntries: number;
+  completedEntries: number;
+  failedEntries: number;
+  cancelled?: boolean;
+  /** Aggregate byte-level progress across all items */
+  bytesUploaded?: number;
+  bytesTotal?: number;
+}
+
+const UPLOAD_CONCURRENCY = 5;
+
+async function processWithConcurrency<T>(
+  tasks: (() => Promise<T>)[],
+  concurrency: number,
+): Promise<T[]> {
+  const results: T[] = new Array(tasks.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < tasks.length) {
+      const i = nextIndex++;
+      results[i] = await tasks[i]();
+    }
+  }
+
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
+  return results;
 }
 
 interface UploadZoneProps extends React.PropsWithChildren {
-  onUploadStart: (uploads: UploadState[]) => void;
-  onUploadProgress: (
-    index: number,
-    progress: number,
-    documentId?: string,
-  ) => void;
+  onUploadBatchStart: (batch: UploadBatchState, cancelFn: () => void) => void;
+  onUploadBatchUpdate: (batchId: string, update: Partial<UploadBatchState>) => void;
   onUploadRejected: (rejected: RejectedFile[]) => void;
   onUploadSuccess?: (
     files: {
@@ -75,8 +124,12 @@ interface UploadZoneProps extends React.PropsWithChildren {
       dataroomDocumentId: string;
     }[],
   ) => void;
-  setUploads: React.Dispatch<React.SetStateAction<UploadState[]>>;
+  onTraversalStart?: (
+    preliminaryItems?: { name: string; isFolder: boolean }[],
+  ) => void;
+  onUploadAborted?: () => void;
   setRejectedFiles: React.Dispatch<React.SetStateAction<RejectedFile[]>>;
+  cancelledItemIdsRef?: React.RefObject<Set<string>>;
   folderPathName?: string;
   dataroomId?: string;
   dataroomName?: string;
@@ -84,13 +137,15 @@ interface UploadZoneProps extends React.PropsWithChildren {
 
 export default function UploadZone({
   children,
-  onUploadStart,
-  onUploadProgress,
+  onUploadBatchStart,
+  onUploadBatchUpdate,
   onUploadRejected,
   onUploadSuccess,
+  onTraversalStart,
+  onUploadAborted,
   folderPathName,
-  setUploads,
   setRejectedFiles,
+  cancelledItemIdsRef,
   dataroomId,
   dataroomName,
 }: UploadZoneProps) {
@@ -238,6 +293,7 @@ export default function UploadZone({
           {
             fileName: `${rejectedFiles.length} files selected`,
             message: `Maximum ${maxFiles} files per upload`,
+            reason: "max-files",
           },
         ]);
         return;
@@ -263,7 +319,6 @@ export default function UploadZone({
 
   const onDrop = useCallback(
     async (acceptedFiles: FileWithPaths[]) => {
-      // Check if team is paused
       if (isPaused) {
         toast.error(
           "Your subscription is paused. Resume your subscription to upload documents.",
@@ -274,6 +329,7 @@ export default function UploadZone({
             },
           },
         );
+        onUploadAborted?.();
         return;
       }
 
@@ -288,14 +344,13 @@ export default function UploadZone({
             duration: 8000,
           },
         );
+        onUploadAborted?.();
         return;
       }
 
       let filesToUpload = acceptedFiles;
 
       if (fileLimitTruncatedRef.current) {
-        // Folder traversal was already capped at remainingDocuments –
-        // no extra folders were created, just show the warning.
         fileLimitTruncatedRef.current = false;
         toast.warning(
           `Your upload was limited to ${acceptedFiles.length} file${acceptedFiles.length === 1 ? "" : "s"} because your plan only allows ${remainingDocuments} more document${remainingDocuments === 1 ? "" : "s"} (${limits?.usage?.documents}/${limits?.documents} used).`,
@@ -308,8 +363,6 @@ export default function UploadZone({
           },
         );
       } else if (hasDocumentLimit && acceptedFiles.length > remainingDocuments) {
-        // Safety net for the file-picker path (no folder traversal) or
-        // race conditions where the cap was slightly exceeded.
         const skippedCount = acceptedFiles.length - remainingDocuments;
         toast.warning(
           `You're trying to upload ${acceptedFiles.length} files, but your plan only allows ${remainingDocuments} more document${remainingDocuments === 1 ? "" : "s"} (${limits?.usage?.documents}/${limits?.documents} used). ${skippedCount} file${skippedCount === 1 ? "" : "s"} will be skipped.`,
@@ -322,16 +375,24 @@ export default function UploadZone({
           },
         );
         filesToUpload = acceptedFiles.slice(0, remainingDocuments);
+        const skippedFiles = acceptedFiles.slice(remainingDocuments);
+        setRejectedFiles((prev) => [
+          ...skippedFiles.map((f) => ({
+            fileName: f.name,
+            message: "Document limit reached",
+            reason: "plan-limit" as const,
+          })),
+          ...prev,
+        ]);
       }
 
-      // Validate files and separate into valid and invalid
       const validatedFiles = filesToUpload.reduce<{
         valid: FileWithPaths[];
         invalid: { fileName: string; message: string }[];
       }>(
         (acc, file) => {
           const fileSizeLimitMB = getFileSizeLimit(file.type, fileSizeLimits);
-          const fileSizeLimit = fileSizeLimitMB * 1024 * 1024; // Convert to bytes
+          const fileSizeLimit = fileSizeLimitMB * 1024 * 1024;
 
           if (file.size > fileSizeLimit) {
             acc.invalid.push({
@@ -350,223 +411,321 @@ export default function UploadZone({
         { valid: [], invalid: [] },
       );
 
-      // Handle rejected files first
       if (validatedFiles.invalid.length > 0) {
         setRejectedFiles((prev) => [...validatedFiles.invalid, ...prev]);
 
-        // If all files were rejected, show a summary toast
         if (validatedFiles.valid.length === 0) {
           toast.error(
             `${validatedFiles.invalid.length} file(s) exceeded size limits`,
           );
+          onUploadAborted?.();
           return;
         }
       }
 
-      // Continue with valid files
-      const newUploads = validatedFiles.valid.map((file) => ({
-        fileName: file.name,
-        progress: 0,
-        uploadId: crypto.randomUUID(),
-      }));
+      // Group files by their top-level drag item
+      const itemGroups = new Map<
+        string,
+        {
+          name: string;
+          isFolder: boolean;
+          folderCount: number;
+          folderSlugPath?: string;
+          files: FileWithPaths[];
+        }
+      >();
+      for (const file of validatedFiles.valid) {
+        const key = file.topLevelItemName ?? file.name;
+        const existing = itemGroups.get(key);
+        if (existing) {
+          existing.files.push(file);
+        } else {
+          itemGroups.set(key, {
+            name: key,
+            isFolder: file.topLevelItemIsFolder ?? false,
+            folderCount: file.topLevelItemFolderCount ?? 0,
+            folderSlugPath: file.topLevelItemFolderPath,
+            files: [file],
+          });
+        }
+      }
 
-      onUploadStart(newUploads);
+      const batchId = crypto.randomUUID();
+      let totalEntriesAcrossAll = 0;
 
-      const uploadPromises = validatedFiles.valid.map(async (file, index) => {
-        // Due to `getFilesFromEvent` file.path will always hold a valid value and represents the value of webkitRelativePath.
-        // We no longer need to use webkitRelativePath because everything is been handled in `getFilesFromEvent`
-        const path = file.path || file.name;
+      const items: UploadItemState[] = Array.from(itemGroups.values()).map(
+        (group) => {
+          const folderCount = group.isFolder ? group.folderCount : 0;
+          const total = folderCount + group.files.length;
+          totalEntriesAcrossAll += total;
 
-        // count the number of pages in the file
-        let numPages = 1;
-        if (file.type === "application/pdf") {
-          const buffer = await file.arrayBuffer();
-          numPages = await getPagesCount(buffer);
-
-          if (numPages > fileSizeLimits.maxPages) {
-            setUploads((prev) =>
-              prev.filter((upload) => upload.fileName !== file.name),
-            );
-
-            return setRejectedFiles((prev) => [
-              {
-                fileName: file.name,
-                message: `File has too many pages (max. ${fileSizeLimits.maxPages})`,
-              },
-              ...prev,
-            ]);
+          let folderHref: string | undefined;
+          if (group.isFolder && group.folderSlugPath) {
+            folderHref = dataroomId
+              ? `/datarooms/${dataroomId}/documents/${group.folderSlugPath}`
+              : `/documents/tree/${group.folderSlugPath}`;
           }
-        }
 
-        const { complete } = await resumableUpload({
-          file, // File
-          onProgress: (bytesUploaded, bytesTotal) => {
-            const progress = Math.min(
-              Math.round((bytesUploaded / bytesTotal) * 100),
-              99,
-            );
-            setUploads((prevUploads) => {
-              const updatedUploads = prevUploads.map((upload) =>
-                upload.uploadId === newUploads[index].uploadId
-                  ? { ...upload, progress }
-                  : upload,
-              );
-              const currentUpload = updatedUploads.find(
-                (upload) => upload.uploadId === newUploads[index].uploadId,
-              );
+          const groupBytesTotal = group.files.reduce((sum, f) => sum + f.size, 0);
 
-              onUploadProgress(index, progress, currentUpload?.documentId);
-              return updatedUploads;
-            });
-          },
-          onError: (error) => {
-            setUploads((prev) =>
-              prev.filter(
-                (upload) => upload.uploadId !== newUploads[index].uploadId,
-              ),
-            );
+          return {
+            itemId: crypto.randomUUID(),
+            name: group.name,
+            type: group.isFolder ? ("folder" as const) : ("file" as const),
+            totalEntries: total,
+            completedEntries: folderCount,
+            failedEntries: 0,
+            folderHref,
+            bytesUploaded: 0,
+            bytesTotal: groupBytesTotal,
+          };
+        },
+      );
 
-            setRejectedFiles((prev) => [
-              { fileName: file.name, message: "Error uploading file" },
-              ...prev,
-            ]);
-          },
-          ownerId: (session?.user as CustomUser).id,
-          teamId: teamInfo?.currentTeam?.id as string,
-          numPages,
-          relativePath: path.substring(0, path.lastIndexOf("/")),
-        });
+      const batch: UploadBatchState = {
+        batchId,
+        items,
+        startedAt: Date.now(),
+        totalEntries: totalEntriesAcrossAll,
+        // Folders created during traversal count as completed entries
+        completedEntries: items.reduce((s, it) => s + it.completedEntries, 0),
+        failedEntries: 0,
+        bytesUploaded: 0,
+        bytesTotal: items.reduce((s, it) => s + (it.bytesTotal ?? 0), 0),
+      };
 
-        const uploadResult = await complete;
-
-        let contentType = uploadResult.fileType;
-        let supportedFileType = getSupportedContentType(contentType) ?? "";
-
-        if (
-          uploadResult.fileName.endsWith(".dwg") ||
-          uploadResult.fileName.endsWith(".dxf")
-        ) {
-          supportedFileType = "cad";
-          contentType = `image/vnd.${uploadResult.fileName.split(".").pop()}`;
-        }
-
-        if (uploadResult.fileName.endsWith(".xlsm")) {
-          supportedFileType = "sheet";
-          contentType = "application/vnd.ms-excel.sheet.macroEnabled.12";
-        }
-
-        if (
-          uploadResult.fileName.endsWith(".kml") ||
-          uploadResult.fileName.endsWith(".kmz")
-        ) {
-          supportedFileType = "map";
-          contentType = `application/vnd.google-earth.${uploadResult.fileName.endsWith(".kml") ? "kml+xml" : "kmz"}`;
-        }
-
-        const documentData: DocumentData = {
-          key: uploadResult.id,
-          supportedFileType: supportedFileType,
-          name: file.name,
-          storageType: DocumentStorageType.S3_PATH,
-          contentType: contentType,
-          fileSize: file.size,
-        };
-
-        const fileUploadPathName = file?.whereToUploadPath;
-        const dataroomUploadPathName = file?.dataroomUploadPath;
-
-        const response = await createDocument({
-          documentData,
-          teamId: teamInfo?.currentTeam?.id as string,
-          numPages: uploadResult.numPages,
-          folderPathName: fileUploadPathName,
-        });
-
-        // add the new document to the list
-        mutate(`/api/teams/${teamInfo?.currentTeam?.id}/documents`);
-
-        fileUploadPathName &&
-          mutate(
-            `/api/teams/${teamInfo?.currentTeam?.id}/folders/documents/${fileUploadPathName}`,
-          );
-
-        const document = await response.json();
-        let dataroomResponse;
-        if (dataroomId) {
-          try {
-            dataroomResponse = await fetch(
-              `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/documents`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  documentId: document.id,
-                  folderPathName: dataroomUploadPathName || fileUploadPathName,
-                }),
-              },
-            );
-
-            if (!dataroomResponse?.ok) {
-              const { message } = await dataroomResponse.json();
-              console.error(
-                "An error occurred while adding document to the dataroom: ",
-                message,
-              );
-              return;
-            }
-
-            mutate(
-              `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/documents`,
-            );
-            (dataroomUploadPathName || fileUploadPathName) &&
-              mutate(
-                `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/folders/documents/${dataroomUploadPathName || fileUploadPathName}`,
-              );
-          } catch (error) {
-            console.error(
-              "An error occurred while adding document to the dataroom: ",
-              error,
-            );
-          }
-        }
-
-        // update progress to 100%
-        setUploads((prevUploads) =>
-          prevUploads.map((upload) =>
-            upload.uploadId === newUploads[index].uploadId
-              ? { ...upload, progress: 100, documentId: document.id }
-              : upload,
-          ),
-        );
-
-        analytics.capture("Document Added", {
-          documentId: document.id,
-          name: document.name,
-          numPages: document.numPages,
-          path: router.asPath,
-          type: document.type,
-          contentType: document.contentType,
-          teamId: teamInfo?.currentTeam?.id,
-          bulkupload: true,
-          dataroomId: dataroomId,
-          $set: {
-            teamId: teamInfo?.currentTeam?.id,
-            teamPlan: plan,
-          },
-        });
-        const dataroomDocumentId = dataroomResponse?.ok
-          ? (await dataroomResponse.json()).id
-          : null;
-
-        return { ...document, dataroomDocumentId: dataroomDocumentId };
+      const dropCancelled = { current: false };
+      onUploadBatchStart(batch, () => {
+        dropCancelled.current = true;
       });
 
-      const documents = Promise.all(uploadPromises).finally(() => {
-        /* If it a parentFolder was created prior to the upload, we would need to update that
-           how many documents and folders does this folder contain rather than displaying 0
-            */
+      // Build a lookup: file -> which UploadItemState it belongs to
+      const fileToItem = new Map<FileWithPaths, UploadItemState>();
+      let itemIdx = 0;
+      for (const group of itemGroups.values()) {
+        const item = items[itemIdx++];
+        for (const file of group.files) {
+          fileToItem.set(file, item);
+        }
+      }
+
+      let completedCount = batch.completedEntries;
+      let failedCount = 0;
+
+      // Per-file byte tracking for granular progress
+      const fileBytesUploaded = new Map<FileWithPaths, number>();
+      const itemFilesMap = new Map<UploadItemState, FileWithPaths[]>();
+      for (const [file, item] of fileToItem) {
+        fileBytesUploaded.set(file, 0);
+        const files = itemFilesMap.get(item) ?? [];
+        files.push(file);
+        itemFilesMap.set(item, files);
+      }
+
+      const emitUpdate = () => {
+        onUploadBatchUpdate(batchId, {
+          items: items.map((it) => {
+            const filesInItem = itemFilesMap.get(it) ?? [];
+            let uploaded = 0;
+            for (const f of filesInItem) {
+              uploaded += fileBytesUploaded.get(f) ?? 0;
+            }
+            return { ...it, bytesUploaded: uploaded };
+          }),
+          completedEntries: completedCount,
+          failedEntries: failedCount,
+        });
+      };
+
+      const uploadTasks = validatedFiles.valid.map((file) => async () => {
+        if (dropCancelled.current) return undefined;
+
+        const path = file.path || file.name;
+        const parentItem = fileToItem.get(file)!;
+
+        // Skip files for cancelled items
+        if (cancelledItemIdsRef?.current?.has(parentItem.itemId)) {
+          return undefined;
+        }
+
+        try {
+          let numPages = 1;
+          if (file.type === "application/pdf") {
+            const buffer = await file.arrayBuffer();
+            numPages = await getPagesCount(buffer);
+
+            if (numPages > fileSizeLimits.maxPages) {
+              failedCount++;
+              parentItem.failedEntries++;
+              setRejectedFiles((prev) => [
+                {
+                  fileName: file.name,
+                  message: `File has too many pages (max. ${fileSizeLimits.maxPages})`,
+                },
+                ...prev,
+              ]);
+              emitUpdate();
+              return undefined;
+            }
+          }
+
+          const { complete } = await resumableUpload({
+            file,
+            onProgress: (bytesUploaded, _bytesTotal) => {
+              fileBytesUploaded.set(file, bytesUploaded);
+              emitUpdate();
+            },
+            onError: () => {
+              failedCount++;
+              parentItem.failedEntries++;
+              setRejectedFiles((prev) => [
+                { fileName: file.name, message: "Error uploading file" },
+                ...prev,
+              ]);
+              emitUpdate();
+            },
+            ownerId: (session?.user as CustomUser).id,
+            teamId: teamInfo?.currentTeam?.id as string,
+            numPages,
+            relativePath: path.substring(0, path.lastIndexOf("/")),
+          });
+
+          const uploadResult = await complete;
+
+          let contentType = uploadResult.fileType;
+          let supportedFileType = getSupportedContentType(contentType) ?? "";
+
+          if (
+            uploadResult.fileName.endsWith(".dwg") ||
+            uploadResult.fileName.endsWith(".dxf")
+          ) {
+            supportedFileType = "cad";
+            contentType = `image/vnd.${uploadResult.fileName.split(".").pop()}`;
+          }
+
+          if (uploadResult.fileName.endsWith(".xlsm")) {
+            supportedFileType = "sheet";
+            contentType = "application/vnd.ms-excel.sheet.macroEnabled.12";
+          }
+
+          if (
+            uploadResult.fileName.endsWith(".kml") ||
+            uploadResult.fileName.endsWith(".kmz")
+          ) {
+            supportedFileType = "map";
+            contentType = `application/vnd.google-earth.${uploadResult.fileName.endsWith(".kml") ? "kml+xml" : "kmz"}`;
+          }
+
+          const documentData: DocumentData = {
+            key: uploadResult.id,
+            supportedFileType: supportedFileType,
+            name: file.name,
+            storageType: DocumentStorageType.S3_PATH,
+            contentType: contentType,
+            fileSize: file.size,
+          };
+
+          const fileUploadPathName = file?.whereToUploadPath;
+          const dataroomUploadPathName = file?.dataroomUploadPath;
+
+          const response = await createDocument({
+            documentData,
+            teamId: teamInfo?.currentTeam?.id as string,
+            numPages: uploadResult.numPages,
+            folderPathName: fileUploadPathName,
+          });
+
+          mutate(`/api/teams/${teamInfo?.currentTeam?.id}/documents`);
+
+          fileUploadPathName &&
+            mutate(
+              `/api/teams/${teamInfo?.currentTeam?.id}/folders/documents/${fileUploadPathName}`,
+            );
+
+          const document = await response.json();
+          let dataroomResponse;
+          if (dataroomId) {
+            try {
+              dataroomResponse = await fetch(
+                `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/documents`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    documentId: document.id,
+                    folderPathName: dataroomUploadPathName || fileUploadPathName,
+                  }),
+                },
+              );
+
+              if (!dataroomResponse?.ok) {
+                const { message } = await dataroomResponse.json();
+                console.error(
+                  "An error occurred while adding document to the dataroom: ",
+                  message,
+                );
+                return undefined;
+              }
+
+              mutate(
+                `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/documents`,
+              );
+              (dataroomUploadPathName || fileUploadPathName) &&
+                mutate(
+                  `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/folders/documents/${dataroomUploadPathName || fileUploadPathName}`,
+                );
+            } catch (error) {
+              console.error(
+                "An error occurred while adding document to the dataroom: ",
+                error,
+              );
+            }
+          }
+
+          completedCount++;
+          parentItem.completedEntries++;
+          fileBytesUploaded.set(file, file.size);
+          if (!parentItem.folderHref && document.id) {
+            parentItem.folderHref = `/documents/${document.id}`;
+          }
+          emitUpdate();
+
+          analytics.capture("Document Added", {
+            documentId: document.id,
+            name: document.name,
+            numPages: document.numPages,
+            path: router.asPath,
+            type: document.type,
+            contentType: document.contentType,
+            teamId: teamInfo?.currentTeam?.id,
+            bulkupload: true,
+            dataroomId: dataroomId,
+            $set: {
+              teamId: teamInfo?.currentTeam?.id,
+              teamPlan: plan,
+            },
+          });
+          const dataroomDocumentId = dataroomResponse?.ok
+            ? (await dataroomResponse.json()).id
+            : null;
+
+          return { ...document, dataroomDocumentId: dataroomDocumentId };
+        } catch (error) {
+          failedCount++;
+          parentItem.failedEntries++;
+          setRejectedFiles((prev) => [
+            { fileName: file.name, message: "Error uploading file" },
+            ...prev,
+          ]);
+          emitUpdate();
+          return undefined;
+        }
+      });
+
+      try {
+        const results = await processWithConcurrency(uploadTasks, UPLOAD_CONCURRENCY);
 
         mutate(
           `/api/teams/${teamInfo?.currentTeam?.id}/${endpointTargetType}?root=true`,
@@ -576,18 +735,22 @@ export default function UploadZone({
           mutate(
             `/api/teams/${teamInfo?.currentTeam?.id}/${endpointTargetType}/${folderPathName}`,
           );
-      });
-      const uploadedDocuments = await documents;
-      const dataroomDocuments = uploadedDocuments.map((document) => ({
-        documentId: document.id,
-        dataroomDocumentId: document.dataroomDocumentId,
-        fileName: document.name,
-      }));
-      onUploadSuccess?.(dataroomDocuments);
+
+        const uploadedDocuments = results.filter(Boolean);
+        const dataroomDocuments = uploadedDocuments.map((document: any) => ({
+          documentId: document.id,
+          dataroomDocumentId: document.dataroomDocumentId,
+          fileName: document.name,
+        }));
+        onUploadSuccess?.(dataroomDocuments);
+      } catch (error) {
+        console.error("Upload batch failed:", error);
+      }
     },
     [
-      onUploadStart,
-      onUploadProgress,
+      onUploadBatchStart,
+      onUploadBatchUpdate,
+      onUploadAborted,
       endpointTargetType,
       fileSizeLimits,
       isFree,
@@ -605,12 +768,45 @@ export default function UploadZone({
         return [];
       }
 
+      // Extract top-level item names from the drop so the drawer can show them immediately
+      let preliminaryItems: { name: string; isFolder: boolean }[] | undefined;
+      if ("dataTransfer" in event && event.dataTransfer) {
+        preliminaryItems = Array.from(
+          event.dataTransfer.items,
+          (item) => {
+            const entry =
+              (typeof item?.webkitGetAsEntry === "function" &&
+                item.webkitGetAsEntry()) ??
+              (typeof (item as any)?.getAsEntry === "function" &&
+                (item as any).getAsEntry()) ??
+              null;
+            return {
+              name: entry?.name ?? (item.type || "Unknown"),
+              isFolder: entry?.isDirectory ?? false,
+            };
+          },
+        ).filter((e) => e.name !== "Unknown");
+      } else if (
+        "target" in event &&
+        event.target instanceof HTMLInputElement &&
+        event.target.files
+      ) {
+        preliminaryItems = Array.from(event.target.files, (f) => ({
+          name: f.name,
+          isFolder: false,
+        }));
+      }
+      onTraversalStart?.(preliminaryItems);
+
       fileLimitTruncatedRef.current = false;
-      const fileLimit =
+      const maxFilesPerUpload = fileSizeLimits.maxFiles ?? 150;
+      const planDocumentLimit =
         hasDocumentLimit && isFinite(remainingDocuments)
           ? Math.max(0, remainingDocuments)
           : Infinity;
+      const fileLimit = Math.min(maxFilesPerUpload, planDocumentLimit);
       let collectedFileCount = 0;
+      const skippedPerTopLevel = new Map<string, string[]>();
 
       // Early check: skip folder traversal (and folder creation) if document limit is already reached
       if (fileLimit <= 0) {
@@ -619,11 +815,39 @@ export default function UploadZone({
 
       let filesToBePassedToOnDrop: FileWithPaths[] = [];
 
+      /**
+       * Reads all entries from a FileSystemDirectoryReader.
+       * Per spec, readEntries() returns at most ~100 entries per call in
+       * Chromium browsers. It must be called repeatedly until it returns
+       * an empty array.
+       */
+      const readAllDirectoryEntries = async (
+        dirReader: FileSystemDirectoryReader,
+      ): Promise<FileSystemEntry[]> => {
+        const allEntries: FileSystemEntry[] = [];
+
+        let batch: FileSystemEntry[] = await new Promise<FileSystemEntry[]>(
+          (resolve, reject) => dirReader.readEntries(resolve, reject),
+        );
+
+        while (batch.length > 0) {
+          allEntries.push(...batch);
+          batch = await new Promise<FileSystemEntry[]>((resolve, reject) =>
+            dirReader.readEntries(resolve, reject),
+          );
+        }
+
+        return allEntries;
+      };
+
       /** *********** START OF `traverseFolder` *********** */
       const traverseFolder = async (
         entry: FileSystemEntry,
         parentPathOfThisEntry?: string,
         dataroomParentPath?: string,
+        folderCounter?: { count: number },
+        folderPathCapture?: { value?: string },
+        topLevelName?: string,
       ): Promise<FileWithPaths[]> => {
         /**
          * Summary of this function:
@@ -638,17 +862,8 @@ export default function UploadZone({
           return files;
         }
 
-        if (collectedFileCount >= fileLimit) {
-          return files;
-        }
-
         if (entry.isDirectory) {
-          /**
-           * Let's create the folder.
-           * Fact that reader can skip: For Consistency, child files will only be pushed if folder successfully gets created.
-           */
           try {
-            // An empty folder name can cause the unexpected url problems.
             if (entry.name.trim() === "") {
               setRejectedFiles((prev) => [
                 {
@@ -681,14 +896,31 @@ export default function UploadZone({
                 path: parentPathOfThisEntry ?? folderPathName,
               });
 
+              // Revalidate SWR so the folder appears in the UI immediately
+              mutate(`/api/teams/${teamInfo.currentTeam.id}/folders?root=true`);
+              const parentPath = parentPathOfThisEntry ?? folderPathName;
+              if (parentPath) {
+                mutate(
+                  `/api/teams/${teamInfo.currentTeam.id}/folders/${parentPath}`,
+                );
+                mutate(
+                  `/api/teams/${teamInfo.currentTeam.id}/folders/documents/${parentPath}`,
+                );
+              }
+
+              if (folderCounter) folderCounter.count++;
+              if (folderPathCapture && folderPathCapture.value === undefined) {
+                folderPathCapture.value = folderPath.startsWith("/")
+                  ? folderPath.slice(1)
+                  : folderPath;
+              }
               analytics.capture("Folder Added", { folderName: entry.name });
 
               const dirReader = (
                 entry as FileSystemDirectoryEntry
               ).createReader();
-              const subEntries = await new Promise<FileSystemEntry[]>(
-                (resolve) => dirReader.readEntries(resolve),
-              );
+              const subEntries =
+                await readAllDirectoryEntries(dirReader);
 
               const filteredSubEntries = subEntries.filter(
                 (subEntry) => !isSystemFile(subEntry.name),
@@ -704,6 +936,9 @@ export default function UploadZone({
                     subEntry,
                     resolvedFolderPath,
                     undefined,
+                    folderCounter,
+                    folderPathCapture,
+                    topLevelName,
                   )),
                 );
               }
@@ -737,12 +972,18 @@ export default function UploadZone({
                 replicateDataroomFolders,
               });
 
+              if (folderCounter) folderCounter.count++;
+              if (folderPathCapture && folderPathCapture.value === undefined) {
+                folderPathCapture.value = dataroomPath.startsWith("/")
+                  ? dataroomPath.slice(1)
+                  : dataroomPath;
+              }
+
               const dirReader = (
                 entry as FileSystemDirectoryEntry
               ).createReader();
-              const subEntries = await new Promise<FileSystemEntry[]>(
-                (resolve) => dirReader.readEntries(resolve),
-              );
+              const subEntries =
+                await readAllDirectoryEntries(dirReader);
 
               const filteredSubEntries = subEntries.filter(
                 (subEntry) => !isSystemFile(subEntry.name),
@@ -765,6 +1006,9 @@ export default function UploadZone({
                     subEntry,
                     resolvedMainDocsPath,
                     resolvedDataroomPath,
+                    folderCounter,
+                    folderPathCapture,
+                    topLevelName,
                   )),
                 );
               }
@@ -788,6 +1032,11 @@ export default function UploadZone({
           }
 
           if (collectedFileCount >= fileLimit) {
+            if (topLevelName) {
+              const list = skippedPerTopLevel.get(topLevelName) ?? [];
+              list.push(entry.fullPath.startsWith("/") ? entry.fullPath.substring(1) : entry.fullPath);
+              skippedPerTopLevel.set(topLevelName, list);
+            }
             return files;
           }
 
@@ -857,20 +1106,31 @@ export default function UploadZone({
 
         const fileResults = await Promise.all(
           Array.from(items, (item) => {
-            // MDN Note: This function is implemented as webkitGetAsEntry() in non-WebKit browsers including Firefox at this time; it may be renamed to getAsEntry() in the future, so you should code defensively, looking for both.
             const entry =
               (typeof item?.webkitGetAsEntry === "function" &&
                 item.webkitGetAsEntry()) ??
               (typeof (item as any)?.getAsEntry === "function" &&
                 (item as any).getAsEntry()) ??
               null;
-            return entry
-              ? traverseFolder(
-                  entry,
-                  folderPathName,
-                  dataroomId ? folderPathName : undefined,
-                )
-              : [];
+            if (!entry) return [];
+            const counter = { count: 0 };
+            const pathCapture: { value?: string } = {};
+            return traverseFolder(
+              entry,
+              folderPathName,
+              dataroomId ? folderPathName : undefined,
+              counter,
+              pathCapture,
+              entry.name,
+            ).then((files) => {
+              for (const f of files) {
+                f.topLevelItemName = entry.name;
+                f.topLevelItemIsFolder = entry.isDirectory;
+                f.topLevelItemFolderCount = counter.count;
+                f.topLevelItemFolderPath = pathCapture.value;
+              }
+              return files;
+            });
           }),
         );
         fileResults.forEach((fileResult) =>
@@ -887,12 +1147,27 @@ export default function UploadZone({
           file.path = file.name;
           file.whereToUploadPath = folderPathName;
           file.dataroomUploadPath = folderPathName;
+          file.topLevelItemName = file.name;
+          file.topLevelItemIsFolder = false;
           filesToBePassedToOnDrop.push(event.target.files[i]);
         }
       }
 
       if (isFinite(fileLimit) && collectedFileCount >= fileLimit) {
         fileLimitTruncatedRef.current = true;
+      }
+
+      if (skippedPerTopLevel.size > 0) {
+        const skippedEntries: RejectedFile[] = [];
+        for (const [name, paths] of skippedPerTopLevel) {
+          skippedEntries.push({
+            fileName: `${name}: ${paths.length} file${paths.length !== 1 ? "s" : ""} not uploaded`,
+            message: "Document limit reached",
+            reason: "plan-limit",
+            skippedFileNames: paths,
+          });
+        }
+        setRejectedFiles((prev) => [...skippedEntries, ...prev]);
       }
 
       return filesToBePassedToOnDrop;
@@ -909,6 +1184,9 @@ export default function UploadZone({
       getOrCreateDataroomFolder,
       hasDocumentLimit,
       remainingDocuments,
+      fileSizeLimits,
+      replicateDataroomFolders,
+      onTraversalStart,
     ],
   );
 
@@ -955,7 +1233,7 @@ export default function UploadZone({
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
                   {isFree && !isTrial
                     ? `Only *.pdf, *.xls, *.xlsx, *.csv, *.tsv, *.ods, *.png, *.jpeg, *.jpg`
-                    : `Only *.pdf, *.pptx, *.docx, *.xlsx, *.xls, *.csv, *.tsv, *.ods, *.ppt, *.odp, *.doc, *.odt, *.dwg, *.dxf, *.png, *.jpg, *.jpeg, *.mp4, *.mov, *.avi, *.webm, *.ogg`}
+                    : `Only *.pdf, *.pptx, *.docx, *.xlsx, *.xls, *.csv, *.tsv, *.ods, *.ppt, *.odp, *.doc, *.odt, *.dwg, *.dxf, *.png, *.jpg, *.jpeg, *.mp4, *.mov, *.avi, *.webm, *.ogg, *.log`}
                 </p>
               </div>
             </div>

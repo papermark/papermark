@@ -6,12 +6,15 @@ export type GetFileOptions = {
   type: DocumentStorageType;
   data: string;
   isDownload?: boolean;
+  /** Signed URL lifetime in milliseconds (server-side S3 only, capped at 1 hour) */
+  expiresIn?: number;
 };
 
 export const getFile = async ({
   type,
   data,
   isDownload = false,
+  expiresIn,
 }: GetFileOptions): Promise<string> => {
   const url = await match(type)
     .with(DocumentStorageType.VERCEL_BLOB, () => {
@@ -21,7 +24,9 @@ export const getFile = async ({
         return data;
       }
     })
-    .with(DocumentStorageType.S3_PATH, async () => getFileFromS3(data))
+    .with(DocumentStorageType.S3_PATH, async () =>
+      getFileFromS3(data, expiresIn),
+    )
     .exhaustive();
 
   return url;
@@ -31,11 +36,12 @@ const fetchPresignedUrl = async (
   endpoint: string,
   headers: Record<string, string>,
   key: string,
+  expiresIn?: number,
 ): Promise<string> => {
   const response = await fetch(endpoint, {
     method: "POST",
     headers,
-    body: JSON.stringify({ key }),
+    body: JSON.stringify({ key, ...(expiresIn && { expiresIn }) }),
   });
 
   if (!response.ok) {
@@ -65,7 +71,7 @@ const fetchPresignedUrl = async (
   return url;
 };
 
-const getFileFromS3 = async (key: string) => {
+const getFileFromS3 = async (key: string, expiresIn?: number) => {
   const isServer =
     typeof window === "undefined" && !!process.env.INTERNAL_API_KEY;
 
@@ -77,6 +83,7 @@ const getFileFromS3 = async (key: string) => {
         Authorization: `Bearer ${process.env.INTERNAL_API_KEY}`,
       },
       key,
+      expiresIn,
     );
   } else {
     return fetchPresignedUrl(

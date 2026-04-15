@@ -1,18 +1,18 @@
 model DocumentAnnotation {
-  id           String   @id @default(cuid())
-  title        String
-  content      Json     // Rich text content stored as JSON (Tiptap/ProseMirror format)
-  pages        Int[]    // Array of page numbers this annotation applies to
-  documentId   String
-  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  teamId       String
-  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  createdById  String
-  createdBy    User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  isVisible    Boolean  @default(true) // Allow admin to hide/show annotations
-  images       AnnotationImage[] // Images attached to this annotation
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String            @id @default(cuid())
+  title       String
+  content     Json // Rich text content stored as JSON (Tiptap/ProseMirror format)
+  pages       Int[] // Array of page numbers this annotation applies to
+  documentId  String
+  document    Document          @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  teamId      String
+  team        Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User              @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  isVisible   Boolean           @default(true) // Allow admin to hide/show annotations
+  images      AnnotationImage[] // Images attached to this annotation
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   @@index([documentId])
   @@index([teamId])

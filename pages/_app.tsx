@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import Head from "next/head";
 
 import { TeamProvider } from "@/context/team-context";
+import { UploadProgressProvider } from "@/context/upload-progress-context";
 import type { Session } from "next-auth";
 import { SessionProvider } from "next-auth/react";
 import { NuqsAdapter } from "nuqs/adapters/next/pages";
@@ -10,7 +11,6 @@ import { NuqsAdapter } from "nuqs/adapters/next/pages";
 import { EXCLUDED_PATHS } from "@/lib/constants";
 
 import { PostHogCustomProvider } from "@/components/providers/posthog-provider";
-import { DealflowPopup } from "@/components/shared/dealflow-popup";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -82,8 +82,9 @@ export default function App({
                     <Component {...pageProps} />
                   ) : (
                     <TeamProvider>
-                      <Component {...pageProps} />
-                      <DealflowPopup />
+                      <UploadProgressProvider>
+                        <Component {...pageProps} />
+                      </UploadProgressProvider>
                     </TeamProvider>
                   )}
                 </TooltipProvider>

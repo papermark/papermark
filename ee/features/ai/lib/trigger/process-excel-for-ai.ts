@@ -1,11 +1,12 @@
 import { openai } from "@/ee/features/ai/lib/models/openai";
-import { logger, metadata, task } from "@trigger.dev/sdk/v3";
+import { logger, metadata, task } from "@trigger.dev/sdk";
 import path from "path";
 import * as XLSX from "xlsx";
 
 import { getFile } from "@/lib/files/get-file";
 import { putFileServer } from "@/lib/files/put-file-server";
 import prisma from "@/lib/prisma";
+import { processExcelForAIQueue } from "@/lib/trigger/queues";
 
 import type { ProcessFilePayload } from "./types";
 
@@ -72,9 +73,7 @@ function excelToMarkdown(workbook: XLSX.WorkBook): string {
 export const processExcelForAITask = task({
   id: "process-excel-for-ai",
   retry: { maxAttempts: 3 },
-  queue: {
-    concurrencyLimit: 5,
-  },
+  queue: processExcelForAIQueue,
   run: async (
     payload: ProcessFilePayload,
   ): Promise<{ fileId: string; markdownPath?: string }> => {

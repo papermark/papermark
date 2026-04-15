@@ -26,8 +26,6 @@ import { CustomUser } from "@/lib/types";
 import { fetcher } from "@/lib/utils";
 import { MAX_MESSAGE_LENGTH } from "@/lib/utils/sanitize-html";
 
-import { DataroomHeader } from "@/components/datarooms/dataroom-header";
-import { DataroomNavigation } from "@/components/datarooms/dataroom-navigation";
 import AppLayout from "@/components/layouts/app";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -369,11 +367,6 @@ export default function ConversationDetailPage() {
   return (
     <AppLayout>
       <div className="relative mx-2 my-4 space-y-8 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
-        <header>
-          <DataroomHeader title={dataroom.name} description={dataroom.pId} internalName={dataroom.internalName} />
-          <DataroomNavigation dataroomId={dataroom.id} />
-        </header>
-
         <Tabs value="conversations" className="space-y-6">
           <TabsList>
             <TabsTrigger

@@ -116,7 +116,7 @@ async function processBatch(batch: DigestBatch, frequency: "daily" | "weekly") {
     await sendDataroomDigestNotification({
       dataroomName: dataroom?.name ?? "Unknown Dataroom",
       documents,
-      senderEmail: senderUser?.email ?? "noreply@papermark.com",
+      senderEmail: senderUser?.email ?? null,
       to: viewer.email,
       url: linkUrl,
       preferencesUrl,

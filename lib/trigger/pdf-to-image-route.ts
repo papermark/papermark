@@ -1,9 +1,18 @@
-import { AbortTaskRunError, logger, task } from "@trigger.dev/sdk/v3";
+import { AbortTaskRunError, logger, task } from "@trigger.dev/sdk";
 
+import { ONE_HOUR } from "@/lib/constants";
 import { isTrustedTeam } from "@/lib/edge-config/trusted-teams";
 import { getFile } from "@/lib/files/get-file";
 import prisma from "@/lib/prisma";
+import { convertPdfDirectTask } from "@/lib/trigger/convert-pdf-direct";
 import { updateStatus } from "@/lib/utils/generate-trigger-status";
+
+const LARGE_FILE_THRESHOLD_BYTES = 150 * 1024 * 1024; // 150 MB
+
+const DIRECT_CONVERSION_TEAM_IDS = new Set([
+  "cmmmppgdd0000l8044b0g5kcc",
+  "clwc059tk00047xqu0zfhcy7n",
+]);
 
 type ConvertPdfToImagePayload = {
   documentId: string;
@@ -41,10 +50,11 @@ export const convertPdfToImageRoute = task({
     logger.info("Document version", { documentVersion });
     updateStatus({ progress: 10, text: "Retrieving file..." });
 
-    // 2. get signed url from file
+    // 2. get signed url from file with 1-hour expiration for long-running conversions
     const signedUrl = await getFile({
       type: documentVersion.storageType,
       data: documentVersion.file,
+      expiresIn: ONE_HOUR,
     });
 
     logger.info("Retrieved signed url", { signedUrl });
@@ -55,6 +65,53 @@ export const convertPdfToImageRoute = task({
       throw new AbortTaskRunError("Failed to get signed URL for document");
     }
 
+    // Large PDFs are processed directly in a Trigger.dev task with more memory
+    // to avoid Vercel Function OOM errors and redundant re-downloads.
+    // Only check file size for eligible teams to avoid a wasted HEAD request.
+    if (DIRECT_CONVERSION_TEAM_IDS.has(teamId)) {
+      let fileSizeBytes = 0;
+      try {
+        const headResponse = await fetch(signedUrl, { method: "HEAD" });
+        const contentLength = headResponse.headers.get("content-length");
+        fileSizeBytes = contentLength ? parseInt(contentLength, 10) : 0;
+        logger.info("File size check", {
+          bytes: fileSizeBytes,
+          mb: (fileSizeBytes / (1024 * 1024)).toFixed(1),
+        });
+      } catch (error) {
+        logger.warn("HEAD request failed, falling back to standard path", {
+          error,
+        });
+      }
+
+      if (fileSizeBytes > LARGE_FILE_THRESHOLD_BYTES) {
+        logger.info(
+          "Large PDF detected, delegating to direct conversion task",
+          { fileSizeMB: (fileSizeBytes / (1024 * 1024)).toFixed(1) },
+        );
+
+        const trustedTeam = await isTrustedTeam(teamId);
+
+        const result = await convertPdfDirectTask.triggerAndWait({
+          documentVersionId,
+          teamId,
+          documentId,
+          signedUrl,
+          trustedTeam,
+          versionNumber,
+        });
+
+        if (result.ok) {
+          return result.output;
+        }
+
+        throw new AbortTaskRunError(
+          "Direct PDF conversion failed for large document",
+        );
+      }
+    }
+
+    // Standard path for smaller PDFs — uses Vercel Function API routes
     let numPages = documentVersion.numPages;
 
     // skip if the numPages are already defined
@@ -135,7 +192,7 @@ export const convertPdfToImageRoute = task({
     // 4. iterate through pages and upload to blob in a task
     let currentPage = 0;
     let conversionWithoutError = true;
-    for (var i = 0; i < numPages; ++i) {
+    for (let i = 0; i < numPages; ++i) {
       if (!conversionWithoutError) {
         break;
       }

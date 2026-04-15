@@ -519,17 +519,17 @@ export default function DocumentHeader({
 
   return (
     <header className="flex flex-col gap-y-4">
-      <div className="flex items-center justify-between gap-x-8">
-        <div className="flex items-center space-x-2">
+      <div className="flex items-center justify-between gap-x-2 sm:gap-x-8">
+        <div className="flex min-w-0 items-center space-x-2">
           {fileIcon({
             fileType: prismaDocument.type ?? "",
-            className: "size-7 sm:size-8",
+            className: "size-7 shrink-0 sm:size-8",
             isLight,
           })}
 
-          <div className="mt-1 flex flex-col lg:mt-0">
+          <div className="mt-1 flex min-w-0 flex-col lg:mt-0">
             <h2
-              className="rounded-md border border-transparent px-1 py-0.5 text-lg font-semibold tracking-tight text-foreground duration-200 hover:cursor-text hover:border hover:border-border focus-visible:text-lg lg:px-3 lg:py-1 lg:text-xl lg:focus-visible:text-xl xl:text-2xl"
+              className="truncate rounded-md border border-transparent px-1 py-0.5 text-base font-semibold tracking-tight text-foreground duration-200 hover:cursor-text hover:border hover:border-border focus-visible:text-base sm:text-lg sm:focus-visible:text-lg lg:px-3 lg:py-1 lg:text-xl lg:focus-visible:text-xl xl:text-2xl"
               ref={nameRef}
               contentEditable={true}
               onFocus={() => setIsEditingName(true)}
@@ -564,7 +564,7 @@ export default function DocumentHeader({
           )}
         </div>
 
-        <div className="flex items-center gap-x-4 md:gap-x-2">
+        <div className="flex shrink-0 items-center gap-x-1 sm:gap-x-4 md:gap-x-2">
           {primaryVersion.type !== "notion" &&
             primaryVersion.type !== "link" &&
             primaryVersion.type !== "sheet" &&

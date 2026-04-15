@@ -199,7 +199,7 @@ export default async function handle(
 
       // Check if the team has reached the limit of datarooms
       const limits = await getLimits({ teamId, userId });
-      if (limits && team._count.datarooms >= limits.datarooms) {
+      if (limits && limits.datarooms !== null && team._count.datarooms >= limits.datarooms) {
         console.log(
           "Dataroom limit reached",
           limits.datarooms,

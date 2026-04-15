@@ -58,6 +58,11 @@ export function SettingsHeader() {
             segment: "webhooks",
           },
           {
+            label: "Notifications",
+            href: `/settings/notifications`,
+            segment: "notifications",
+          },
+          {
             label: "Slack",
             href: `/settings/slack`,
             segment: "slack",

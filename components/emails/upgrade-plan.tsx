@@ -33,6 +33,7 @@ const UpgradePlanEmail = ({
     datarooms: "Data Rooms",
     "datarooms-plus": "Data Rooms Plus",
     "datarooms-premium": "Data Rooms Premium",
+    "datarooms-unlimited": "Data Rooms Unlimited",
   };
 
   const planTypeText = PLAN_TYPE_MAP[planType as keyof typeof PLAN_TYPE_MAP];
@@ -66,6 +67,12 @@ const UpgradePlanEmail = ({
       "Unlimited encrypted storage",
       "No file size limit",
       "10 team members",
+    ],
+    "datarooms-unlimited": [
+      "Unlimited team members",
+      "Unlimited encrypted storage",
+      "Unlimited data rooms",
+      "Custom SLA & dedicated success team",
     ],
   };
 

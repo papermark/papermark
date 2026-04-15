@@ -43,6 +43,7 @@ export const REACTIONS = [
 // time in milliseconds
 export const ONE_SECOND = 1000;
 export const ONE_MINUTE = ONE_SECOND * 60;
+export const TWO_MINUTES = ONE_MINUTE * 2;
 export const ONE_HOUR = ONE_MINUTE * 60;
 export const ONE_DAY = ONE_HOUR * 24;
 export const ONE_WEEK = ONE_DAY * 7;
@@ -136,7 +137,7 @@ export const FULL_PLAN_ACCEPTED_FILE_TYPES = {
   "application/vnd.oasis.opendocument.text": [], // ".odt"
   "application/rtf": [], // ".rtf"
   "text/rtf": [], // ".rtf"
-  "text/plain": [], // ".txt"
+  "text/plain": [".txt", ".log"], // ".txt", ".log"
   "image/vnd.dwg": [".dwg"], // ".dwg"
   "image/vnd.dxf": [".dxf"], // ".dxf"
   "image/png": [], // ".png"
@@ -177,12 +178,12 @@ export const VIEWER_ACCEPTED_FILE_TYPES = {
   "application/vnd.oasis.opendocument.text": [], // ".odt"
   "application/rtf": [], // ".rtf"
   "text/rtf": [], // ".rtf"
-  "text/plain": [], // ".txt"
+  "text/plain": [".txt", ".log"], // ".txt", ".log"
   "image/png": [], // ".png"
   "image/jpeg": [], // ".jpeg"
   "image/jpg": [], // ".jpg"
-  "application/zip": [], // ".zip"
-  "application/x-zip-compressed": [], // ".zip"
+  "application/zip": [".zip"], // ".zip"
+  "application/x-zip-compressed": [".zip"], // ".zip"
   "application/vnd.ms-outlook": [".msg"], // ".msg"
 };
 

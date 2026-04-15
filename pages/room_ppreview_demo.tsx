@@ -131,6 +131,7 @@ export default function ViewPage() {
                   name: "Q4 Report.pdf",
                   dataroomDocumentId: "1",
                   folderId: null,
+                  orderIndex: null,
                   hierarchicalIndex: null,
                   versions: [
                     {

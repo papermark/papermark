@@ -182,11 +182,11 @@ export function ViewerUploadComponent({
       teamId={teamId}
     >
       {isUploading ? (
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           {uploads.map((upload) => (
             <div
               key={upload.uploadId}
-              className="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800"
+              className="flex min-w-0 items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800"
             >
               <FileUp className="h-5 w-5 shrink-0 text-muted-foreground" />
               <div className="min-w-0 flex-1">

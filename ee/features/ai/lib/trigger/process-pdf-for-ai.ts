@@ -1,9 +1,10 @@
-import { logger, metadata, task } from "@trigger.dev/sdk/v3";
+import { logger, metadata, task } from "@trigger.dev/sdk";
 import path from "path";
 
 import { openai } from "@/ee/features/ai/lib/models/openai";
 import { getFile } from "@/lib/files/get-file";
 import prisma from "@/lib/prisma";
+import { processPdfForAIQueue } from "@/lib/trigger/queues";
 
 import type { ProcessFilePayload } from "./types";
 
@@ -14,9 +15,7 @@ import type { ProcessFilePayload } from "./types";
 export const processPdfForAITask = task({
   id: "process-pdf-for-ai",
   retry: { maxAttempts: 3 },
-  queue: {
-    concurrencyLimit: 5,
-  },
+  queue: processPdfForAIQueue,
   run: async (payload: ProcessFilePayload): Promise<{ fileId: string }> => {
     const { documentId, documentVersionId, teamId, documentName, filePath, storageType } =
       payload;

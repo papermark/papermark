@@ -231,7 +231,7 @@ export default function AccessForm({
           >
             See how we protect your data in our{" "}
             <a
-              href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/privacy`}
+              href="https://www.papermark.com/privacy"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-0.5"

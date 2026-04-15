@@ -3,17 +3,15 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { PlanEnum } from "@/ee/stripe/constants";
-import { CircleHelpIcon, InfoIcon, UsersIcon } from "lucide-react";
+import { CircleHelpIcon, UsersIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
-import { DataroomHeader } from "@/components/datarooms/dataroom-header";
-import { DataroomNavigation } from "@/components/datarooms/dataroom-navigation";
 import { AddGroupModal } from "@/components/datarooms/groups/add-group-modal";
 import GroupCard from "@/components/datarooms/groups/group-card";
 import { GroupCardPlaceholder } from "@/components/datarooms/groups/group-card-placeholder";
 import AppLayout from "@/components/layouts/app";
+import { TabMenu } from "@/components/tab-menu";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BadgeTooltip } from "@/components/ui/tooltip";
 
 import { usePlan } from "@/lib/swr/use-billing";
@@ -49,53 +47,46 @@ export default function DataroomGroupPage() {
   return (
     <AppLayout>
       <div className="relative mx-2 mb-10 mt-4 space-y-8 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
-        <header>
-          <DataroomHeader
-            title={dataroom.name}
-            description={dataroom.pId}
-            internalName={dataroom.internalName}
-            actions={[]}
-          />
+        <div className="flex flex-wrap items-start justify-between gap-6">
+          <div className="space-y-1">
+            <h3 className="text-2xl font-semibold tracking-tight text-foreground">
+              Groups
+            </h3>
+            <p className="flex flex-row items-center gap-2 text-sm text-muted-foreground">
+              Control access with granular permissions.
+              <BadgeTooltip
+                linkText="Learn more"
+                content="Manage Access with Granular Permissions for Data Room Groups"
+                key="groups"
+                link="https://www.papermark.com/help/article/granular-permissions"
+              >
+                <CircleHelpIcon className="h-4 w-4 shrink-0 text-muted-foreground hover:text-foreground" />
+              </BadgeTooltip>
+            </p>
+          </div>
+          <ButtonComponent />
+        </div>
 
-          <DataroomNavigation dataroomId={dataroom.id} />
-        </header>
-
-        <Tabs defaultValue="groups" className="!mt-4 space-y-4">
-          <TabsList>
-            <TabsTrigger value="links" asChild>
-              <Link href={`/datarooms/${dataroom.id}/permissions`}>Links</Link>
-            </TabsTrigger>
-            <TabsTrigger value="groups">Groups</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <TabMenu
+          navigation={[
+            {
+              label: "Links",
+              href: `/datarooms/${dataroom.id}/permissions`,
+              value: "links",
+              currentValue: "groups",
+            },
+            {
+              label: "Groups",
+              href: `/datarooms/${dataroom.id}/groups`,
+              value: "groups",
+              currentValue: "groups",
+            },
+          ]}
+          className="md:hidden"
+        />
 
         <div className="space-y-4">
-          {/* Groups */}
           <div className="grid gap-5">
-            <div className="flex flex-wrap justify-between gap-6">
-              <div className="flex items-center gap-x-2">
-                <div className="space-y-1">
-                  <h3 className="text-lg font-semibold tracking-tight text-foreground">
-                    Groups
-                  </h3>
-                  <p className="flex flex-row items-center gap-2 text-sm text-muted-foreground">
-                    Control document access with granular permissions through
-                    groups.{" "}
-                    <BadgeTooltip
-                      linkText="Learn more"
-                      content="Manage Access with Granular Permissions for Data Room Groups"
-                      key="groups"
-                      link="https://www.papermark.com/help/article/granular-permissions"
-                    >
-                      <CircleHelpIcon className="h-4 w-4 shrink-0 text-muted-foreground hover:text-foreground" />
-                    </BadgeTooltip>
-                  </p>
-                </div>
-              </div>
-              <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-                <ButtonComponent />
-              </div>
-            </div>
             <div className="animate-fade-in">
               {!loading ? (
                 viewerGroups && viewerGroups.length > 0 ? (

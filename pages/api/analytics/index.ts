@@ -159,8 +159,7 @@ export default async function handler(
 
     switch (type) {
       case "overview": {
-        const [viewStats, graphData] = await Promise.all([
-          // Get view stats with relational counts
+        const [viewStats, graphData, linkCount] = await Promise.all([
           prisma.view.findMany({
             where: {
               teamId,
@@ -176,7 +175,6 @@ export default async function handler(
               viewerId: true,
             },
           }),
-          // Get views data for graph grouped by day
           // Note: We use timezone-aware date truncation to ensure dates are grouped
           // correctly based on the team's timezone setting, avoiding one-day offset issues
           interval === "24h"
@@ -221,9 +219,11 @@ export default async function handler(
                 GROUP BY 1
                 ORDER BY date ASC
               `,
+          prisma.link.count({
+            where: { teamId, deletedAt: null },
+          }),
         ]);
 
-        // Calculate counts from viewStats
         const uniqueLinks = new Set(viewStats.map((view) => view.linkId));
         const uniqueDocuments = new Set(
           viewStats.map((view) => view.documentId),
@@ -243,7 +243,8 @@ export default async function handler(
               views: Number(point.views),
             }),
           ),
-          timezone, // Include timezone for frontend reference
+          timezone,
+          hasLinks: linkCount > 0,
         });
       }
 

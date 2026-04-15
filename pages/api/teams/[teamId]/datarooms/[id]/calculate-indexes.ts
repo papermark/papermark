@@ -74,7 +74,9 @@ export default async function handler(
       dataroom.team.plan === "datarooms-plus" ||
       dataroom.team.plan === "datarooms-plus+old" ||
       dataroom.team.plan === "datarooms-premium" ||
-      dataroom.team.plan === "datarooms-premium+old";
+      dataroom.team.plan === "datarooms-premium+old" ||
+      dataroom.team.plan === "datarooms-unlimited" ||
+      dataroom.team.plan === "datarooms-unlimited+old";
 
     if (!featureFlags.dataroomIndex && !hasDataroomsPlusPlan) {
       return res.status(403).json({

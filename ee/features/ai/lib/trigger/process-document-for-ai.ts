@@ -1,6 +1,7 @@
-import { logger, metadata, task } from "@trigger.dev/sdk/v3";
+import { logger, metadata, task } from "@trigger.dev/sdk";
 
 import prisma from "@/lib/prisma";
+import { processDocumentForAIQueue } from "@/lib/trigger/queues";
 
 import { addFileToVectorStoreTask } from "./add-file-to-vector-store";
 import { processExcelForAITask } from "./process-excel-for-ai";
@@ -21,9 +22,7 @@ import {
 export const processDocumentForAITask = task({
   id: "process-document-for-ai",
   retry: { maxAttempts: 3 },
-  queue: {
-    concurrencyLimit: 10,
-  },
+  queue: processDocumentForAIQueue,
   run: async (
     payload: ProcessDocumentPayload,
   ): Promise<{ vectorStoreFileId: string; fileId: string }> => {

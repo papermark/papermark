@@ -248,7 +248,7 @@ export default async function handler(
           folderStructure: folderStructure,
           fileKeys: fileKeys,
           sourceBucket: storageConfig.bucket,
-          watermarkConfig: { enabled: false }, // No watermark for team member downloads
+          watermarkConfig: { enabled: false },
           userId: userId,
           emailNotification: !!user?.email,
           emailAddress: user?.email ?? undefined,

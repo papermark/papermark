@@ -4,6 +4,7 @@ export enum PlanEnum {
   DataRooms = "Data Rooms",
   DataRoomsPlus = "Data Rooms Plus",
   DataRoomsPremium = "Data Rooms Premium",
+  DataRoomsUnlimited = "Data Rooms Unlimited",
 }
 
 export const PLAN_NAME_MAP: Record<string, string> = {
@@ -14,6 +15,7 @@ export const PLAN_NAME_MAP: Record<string, string> = {
   datarooms: "Data Rooms",
   "datarooms-plus": "Data Rooms Plus",
   "datarooms-premium": "Data Rooms Premium",
+  "datarooms-unlimited": "Data Rooms Unlimited",
 };
 
 export type PeriodType = "monthly" | "yearly";
@@ -64,6 +66,12 @@ export const PLAN_PRICING = {
     extraUserPrice: {
       monthly: "€70/month per additional team member",
       yearly: "€55/month per additional team member",
+    },
+  },
+  "Data Rooms Unlimited": {
+    extraUserPrice: {
+      monthly: "Unlimited team members included",
+      yearly: "Unlimited team members included",
     },
   },
 } as const;
@@ -194,11 +202,34 @@ export const BASE_FEATURES: Record<PlanEnum, PlanFeatures> = {
       { id: "workflows", text: "Workflows" },
       { id: "assign", text: "Assign team members" },
       { id: "sso", text: "SSO (Single Sign-On) on request" },
-      { id: "whitelabel", text: "Whitelabeling" },
+      { id: "whitelabel", text: "White labeling" },
       { id: "api", text: "Full API access" },
       { id: "security", text: "Advanced security and certification" },
       { id: "onboarding", text: "Priority onboarding & training" },
       { id: "support", text: "Dedicated support team" },
+    ],
+  },
+  [PlanEnum.DataRoomsUnlimited]: {
+    featureIntro: "Everything in Data Rooms Premium, plus:",
+    features: [
+      {
+        id: "teams",
+        text: "Unlimited teams",
+      },
+      {
+        id: "users",
+        text: "Unlimited members (team & visitors)",
+        isUsers: true,
+        usersIncluded: 999,
+      },
+      { id: "storage", text: "Unlimited encrypted storage", highlight: true },
+      { id: "file-size", text: "No file size limit" },
+      { id: "datarooms", text: "Unlimited data rooms" },
+      { id: "documents", text: "Unlimited documents" },
+      { id: "domains", text: "Unlimited custom domains" },
+      { id: "sso", text: "SSO (Single Sign-On)" },
+      { id: "whitelabel", text: "Full white labeling" },
+      { id: "onboarding", text: "Custom onboarding & Dedicated support team" },
     ],
   },
 };

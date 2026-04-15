@@ -1,5 +1,5 @@
 import { NotionAPI } from "notion-client";
-import { ExtendedRecordMap } from "notion-types";
+import { Block, ExtendedRecordMap } from "notion-types";
 import { getPageContentBlockIds, parsePageId } from "notion-utils";
 
 import notion from "./index";
@@ -96,38 +96,50 @@ export function normalizeRecordMap(recordMap: ExtendedRecordMap): void {
 }
 
 /**
- * Fetches missing page blocks that are referenced in rich text but not in the recordMap.
- * This fixes the issue where tables with multiple page links only show the first one.
+ * Fetches missing page blocks that are referenced in rich text or as alias
+ * targets but not present in the recordMap.
  */
 export async function fetchMissingPageReferences(
   recordMap: ExtendedRecordMap,
 ): Promise<void> {
-  // Normalize first so we can safely access block.value.properties
   normalizeRecordMap(recordMap);
 
   const allPageReferenceIds = new Set<string>();
 
-  // Iterate through all blocks to find page references in their properties
   for (const blockId of Object.keys(recordMap.block)) {
-    const block = recordMap.block[blockId]?.value;
-    if (!block?.properties) continue;
+    const block = recordMap.block[blockId]?.value as any;
+    if (!block) continue;
 
-    // Check all properties for page references
-    for (const propKey of Object.keys(block.properties)) {
-      const propValue = block.properties[propKey];
-      const pageIds = extractPageReferencesFromRichText(propValue);
-      pageIds.forEach((id) => allPageReferenceIds.add(id));
+    // Collect page references from rich text properties
+    if (block.properties) {
+      for (const propKey of Object.keys(block.properties)) {
+        const propValue = block.properties[propKey];
+        const pageIds = extractPageReferencesFromRichText(propValue);
+        pageIds.forEach((id) => allPageReferenceIds.add(id));
+      }
+    }
+
+    // Collect alias (link-to-page) targets
+    if (block.type === "alias" && block.format?.alias_pointer?.id) {
+      allPageReferenceIds.add(block.format.alias_pointer.id);
+    }
+
+    // Collect child page references from content array
+    if (block.content && Array.isArray(block.content)) {
+      for (const childId of block.content) {
+        if (typeof childId === "string" && !recordMap.block[childId]) {
+          allPageReferenceIds.add(childId);
+        }
+      }
     }
   }
 
-  // Filter out page IDs that are already in the recordMap
   const missingPageIds = Array.from(allPageReferenceIds).filter(
     (id) => !recordMap.block[id],
   );
 
   if (missingPageIds.length === 0) return;
 
-  // Fetch missing blocks in batches
   try {
     const newBlocks = await notion.getBlocks(missingPageIds);
     if (newBlocks?.recordMap?.block) {
@@ -136,7 +148,6 @@ export async function fetchMissingPageReferences(
         ...newBlocks.recordMap.block,
       };
     }
-    // Normalize again after merging new blocks (getBlocks may return double-nested format)
     normalizeRecordMap(recordMap);
   } catch (err) {
     console.warn("Failed to fetch missing page references:", err);
@@ -154,7 +165,7 @@ export const addSignedUrls: NotionAPI["addSignedUrls"] = async ({
   }
 
   const allFileInstances = contentBlockIds.flatMap((blockId) => {
-    const block = recordMap.block[blockId]?.value;
+    const block = recordMap.block[blockId]?.value as Block | undefined;
 
     if (
       block &&

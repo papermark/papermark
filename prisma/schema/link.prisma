@@ -93,7 +93,7 @@ model Link {
 
   customFields CustomField[]
 
-  tags TagItem[]
+  tags              TagItem[]
   viewerInvitations ViewerInvitation[]
 
   // visitor groups for allow-list
@@ -175,7 +175,7 @@ model VisitorGroup {
   emails String[] // List of emails and domains (e.g., "user@example.com", "@example.org")
 
   teamId String
-  team   Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   links LinkVisitorGroup[]
 

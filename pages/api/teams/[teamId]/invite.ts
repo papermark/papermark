@@ -89,7 +89,7 @@ export default async function handle(
         userId,
       });
 
-      if (limits && teamUsers.length >= limits.users) {
+      if (limits && limits.users !== null && teamUsers.length >= limits.users) {
         res
           .status(403)
           .json("You have reached the limit of users in your team");

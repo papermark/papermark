@@ -1,4 +1,4 @@
-import { logger, task } from "@trigger.dev/sdk/v3";
+import { logger, task } from "@trigger.dev/sdk";
 import { put } from "@vercel/blob";
 import Bottleneck from "bottleneck";
 

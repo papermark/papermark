@@ -98,6 +98,8 @@ export default async function handle(
       );
 
       const minQuantity = getQuantityFromPriceId(priceId);
+      const plan = getPlanFromPriceId(priceId, isOldAccount(team.plan));
+      const isUnlimitedPlan = plan?.slug === "datarooms-unlimited";
 
       const stripe = stripeInstance(isOldAccount(team.plan));
       
@@ -146,9 +148,11 @@ export default async function handle(
                 items: [
                   {
                     id: subscriptionItemId,
-                    quantity: isOldAccount(team.plan)
+                    quantity: isUnlimitedPlan
                       ? 1
-                      : (quantity ?? minQuantity),
+                      : isOldAccount(team.plan)
+                        ? 1
+                        : (quantity ?? minQuantity),
                     price: priceId,
                   },
                 ],

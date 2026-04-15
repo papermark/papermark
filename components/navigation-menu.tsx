@@ -32,9 +32,9 @@ export const NavMenu: React.FC<React.PropsWithChildren<Props>> = ({
 }) => {
   return (
     <nav
-      className={cn("sticky top-0 bg-background dark:bg-gray-900", className)}
+      className={cn("sticky top-0 z-10 bg-background dark:bg-gray-900 md:top-0", className)}
     >
-      <div className="flex w-full items-center overflow-x-auto px-4 pl-1">
+      <div className="flex w-full items-center overflow-x-auto px-1 sm:px-4 sm:pl-1">
         <ul className="flex flex-row gap-4">
           {navigation.map(
             ({ label, href, segment, tag, disabled, limited }) => (

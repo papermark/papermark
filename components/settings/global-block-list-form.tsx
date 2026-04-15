@@ -68,7 +68,7 @@ export default function GlobalBlockListForm() {
     }).then(async (res) => {
       if (!res.ok) {
         const { error } = await res.json();
-        throw new Error(error?.message || "Failed to update block list.");
+        throw new Error(error || "Failed to update block list.");
       }
       await mutate();
       return res.json();

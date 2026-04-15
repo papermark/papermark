@@ -118,6 +118,7 @@ export default async function handle(
         name,
         internalName,
         enableChangeNotifications,
+        enableVisitorUploadChangeNotifications,
         defaultPermissionStrategy,
         allowBulkDownload,
         showLastUpdated,
@@ -129,6 +130,7 @@ export default async function handle(
         name?: string;
         internalName?: string | null;
         enableChangeNotifications?: boolean;
+        enableVisitorUploadChangeNotifications?: boolean;
         defaultPermissionStrategy?: DefaultPermissionStrategy;
         allowBulkDownload?: boolean;
         showLastUpdated?: boolean;
@@ -139,11 +141,12 @@ export default async function handle(
       };
 
       const featureFlags = await getFeatureFlags({ teamId: team.id });
-      const isDataroomsPlus = team.plan.includes("datarooms-plus") || team.plan.includes("datarooms-premium");
+      const isDataroomsPlus = team.plan.includes("datarooms-plus") || team.plan.includes("datarooms-premium") || team.plan.includes("datarooms-unlimited");
       const isTrial = team.plan.includes("drtrial");
 
       if (
-        enableChangeNotifications !== undefined &&
+        (enableChangeNotifications !== undefined ||
+          enableVisitorUploadChangeNotifications !== undefined) &&
         !isDataroomsPlus &&
         !isTrial &&
         !featureFlags.roomChangeNotifications
@@ -171,6 +174,9 @@ export default async function handle(
             }),
             ...(typeof enableChangeNotifications === "boolean" && {
               enableChangeNotifications,
+            }),
+            ...(typeof enableVisitorUploadChangeNotifications === "boolean" && {
+              enableVisitorUploadChangeNotifications,
             }),
             ...(defaultPermissionStrategy && { defaultPermissionStrategy }),
             ...(typeof allowBulkDownload === "boolean" && {

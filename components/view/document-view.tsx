@@ -32,7 +32,7 @@ export type DEFAULT_DOCUMENT_VIEW_TYPE = {
   file?: string | null;
   pages?:
     | {
-        file: string;
+        file: string | null;
         pageNumber: string;
         embeddedLinks: string[];
         pageLinks: {
@@ -142,6 +142,7 @@ export default function DocumentView({
         userId: userId ?? null,
         documentVersionId: document.versions[0].id,
         hasPages: document.versions[0].hasPages,
+        startPage: router.query.p ? Number(router.query.p) : undefined,
         useAdvancedExcelViewer,
         previewToken,
         code: code ?? undefined,
@@ -325,6 +326,7 @@ export default function DocumentView({
           viewerEmail={data.email ?? verifiedEmail ?? userEmail ?? undefined}
           annotationsEnabled={annotationsEnabled}
           textSelectionEnabled={textSelectionEnabled}
+          previewToken={previewToken}
         />
       ) : (
         <div className="flex h-screen items-center justify-center">

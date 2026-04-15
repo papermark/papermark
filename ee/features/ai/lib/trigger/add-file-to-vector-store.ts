@@ -1,6 +1,7 @@
-import { logger, metadata, task } from "@trigger.dev/sdk/v3";
+import { logger, metadata, task } from "@trigger.dev/sdk";
 
 import { openai } from "@/ee/features/ai/lib/models/openai";
+import { addFileToVectorStoreQueue } from "@/lib/trigger/queues";
 
 import type { AddToVectorStorePayload } from "./types";
 
@@ -12,9 +13,7 @@ import type { AddToVectorStorePayload } from "./types";
 export const addFileToVectorStoreTask = task({
   id: "add-file-to-vector-store",
   retry: { maxAttempts: 3 },
-  queue: {
-    concurrencyLimit: 10,
-  },
+  queue: addFileToVectorStoreQueue,
   run: async (
     payload: AddToVectorStorePayload,
   ): Promise<{ vectorStoreFileId: string }> => {

@@ -7,7 +7,7 @@ import {
 } from "@/ee/features/ai/lib/trigger";
 import { isTeamPausedById } from "@/ee/features/billing/cancellation/lib/is-team-paused";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { runs } from "@trigger.dev/sdk/v3";
+import { runs } from "@trigger.dev/sdk";
 import { waitUntil } from "@vercel/functions";
 import { getServerSession } from "next-auth/next";
 
@@ -284,21 +284,38 @@ export default async function handle(
       // Check if the team has the dataroom change notification enabled
       if (dataroomDocument.dataroom.enableChangeNotifications) {
         // Get all delayed and queued runs for this dataroom
-        const allRuns = await runs.list({
+        const existingChangeRuns = await runs.list({
           taskIdentifier: ["send-dataroom-change-notification"],
-          tag: [`dataroom_${dataroomId}`],
+          tag: [`dataroom_${dataroomId}`, `user_upload_${userId}`],
           status: ["DELAYED", "QUEUED"],
-          period: "10m",
+          period: "15m",
         });
 
-        // Cancel any existing unsent notification runs for this dataroom
-        await Promise.all(allRuns.data.map((run) => runs.cancel(run.id)));
+        const matchingChangeRuns = existingChangeRuns.data.filter(
+          (run) =>
+            run.tags?.includes(`dataroom_${dataroomId}`) &&
+            run.tags?.includes(`user_upload_${userId}`),
+        );
+
+        let accumulatedDocIds: string[] = [dataroomDocument.id];
+        for (const run of matchingChangeRuns) {
+          const fullRun = await runs.retrieve(run.id);
+          const existingIds = (
+            fullRun.payload as { dataroomDocumentIds?: string[] } | undefined
+          )?.dataroomDocumentIds;
+          if (Array.isArray(existingIds)) {
+            accumulatedDocIds.push(...existingIds);
+          }
+        }
+        accumulatedDocIds = [...new Set(accumulatedDocIds)];
+
+        await Promise.all(matchingChangeRuns.map((run) => runs.cancel(run.id)));
 
         waitUntil(
           sendDataroomChangeNotificationTask.trigger(
             {
               dataroomId,
-              dataroomDocumentId: dataroomDocument.id,
+              dataroomDocumentIds: accumulatedDocIds,
               senderUserId: userId,
               teamId,
             },
@@ -308,6 +325,7 @@ export default async function handle(
                 `team_${teamId}`,
                 `dataroom_${dataroomId}`,
                 `document_${dataroomDocument.id}`,
+                `user_upload_${userId}`,
               ],
               delay: new Date(Date.now() + 10 * 60 * 1000), // 10 minute delay
             },

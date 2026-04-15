@@ -147,7 +147,7 @@ export default function ViewerUploadZone({
   });
 
   return (
-    <div {...getRootProps()} className="relative min-h-[200px]">
+    <div {...getRootProps()} className="relative min-w-0 min-h-[200px]">
       <div
         className={cn(
           "absolute inset-0 z-40 -m-1 rounded-lg border-2 border-dashed",

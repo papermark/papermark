@@ -24,7 +24,7 @@ const DataroomTrialEnd = ({ name }: DataroomTrialEnd) => {
   return (
     <Html>
       <Head />
-      <Preview>Upgrade to continue using data rooms</Preview>
+      <Preview>Upgrade to continue using Data Room plan features</Preview>
       <Tailwind>
         <Body className="mx-auto my-auto bg-white font-sans">
           <Container className="mx-auto my-10 w-[465px] p-5">

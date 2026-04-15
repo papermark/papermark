@@ -1,0 +1,17 @@
+model NotificationPreference {
+  id        String @id @default(cuid())
+  userId    String
+  teamId    String
+  type      String // "DOCUMENT_VIEW" | "DATAROOM_VIEW" | "BLOCKED_ACCESS" | "DATAROOM_UPLOAD" | "CONVERSATION_MESSAGE"
+  frequency String @default("IMMEDIATE") // "IMMEDIATE" | "NEVER"
+  scope     String @default("ALL") // "ALL" | "MINE_ONLY" — admins/managers choose; members always MINE_ONLY
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, teamId, type])
+  @@index([userId, teamId])
+}

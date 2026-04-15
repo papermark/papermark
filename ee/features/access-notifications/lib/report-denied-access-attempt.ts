@@ -1,5 +1,6 @@
 import { Link } from "@prisma/client";
 
+import { dispatchNotification } from "@/lib/notifications/dispatch";
 import prisma from "@/lib/prisma";
 
 import { sendBlockedEmailAttemptNotification } from "./send-blocked-email-attempt";
@@ -11,26 +12,9 @@ export async function reportDeniedAccessAttempt(
 ) {
   if (!link || !link.teamId) return;
 
-  // Get all admin and manager emails
-  const users = await prisma.userTeam.findMany({
-    where: {
-      role: { in: ["ADMIN", "MANAGER"] },
-      status: "ACTIVE",
-      teamId: link.teamId,
-    },
-    select: {
-      user: { select: { email: true } },
-    },
-  });
-
-  const adminManagerEmails = users
-    .map((u) => u.user?.email)
-    .filter((e): e is string => !!e);
-
-  // Get resource info and owner email
   let resourceType: "dataroom" | "document" = "dataroom";
   let resourceName = "Dataroom";
-  let ownerEmail: string | undefined;
+  let documentOwnerId: string | null = null;
 
   if (link.documentId) {
     resourceType = "document";
@@ -39,20 +23,7 @@ export async function reportDeniedAccessAttempt(
       select: { name: true, ownerId: true },
     });
     resourceName = document?.name || "Document";
-
-    if (document?.ownerId) {
-      const owner = await prisma.userTeam.findUnique({
-        where: {
-          userId_teamId: {
-            userId: document.ownerId,
-            teamId: link.teamId,
-          },
-          status: "ACTIVE",
-        },
-        select: { user: { select: { email: true } } },
-      });
-      ownerEmail = owner?.user?.email || undefined;
-    }
+    documentOwnerId = document?.ownerId || null;
   } else if (link.dataroomId) {
     const dataroom = await prisma.dataroom.findUnique({
       where: { id: link.dataroomId },
@@ -61,23 +32,26 @@ export async function reportDeniedAccessAttempt(
     resourceName = dataroom?.name || "Dataroom";
   }
 
-  // Combine all recipients and remove duplicates
-  const allRecipients = [...adminManagerEmails];
-  if (ownerEmail && !allRecipients.includes(ownerEmail)) {
-    allRecipients.push(ownerEmail);
-  }
+  const linkName = link.name || `Link #${link.id?.slice(-5)}`;
+  const timestamp = new Date().toLocaleString();
 
-  // Send email to all recipients
-  if (allRecipients.length > 0) {
-    const [to, ...cc] = allRecipients;
+  const recipients = await dispatchNotification({
+    teamId: link.teamId,
+    notificationType: "BLOCKED_ACCESS",
+    linkOwnerId: link.ownerId,
+    documentOwnerId,
+  });
+
+  if (recipients.length > 0) {
+    const [to, ...cc] = recipients.map((r) => r.email);
     await sendBlockedEmailAttemptNotification({
       to,
       cc: cc.length > 0 ? cc : undefined,
       blockedEmail: email,
-      linkName: link.name || `Link #${link.id?.slice(-5)}`,
+      linkName,
       resourceName,
       resourceType,
-      timestamp: new Date().toLocaleString(),
+      timestamp,
       accessType,
     });
   }

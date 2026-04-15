@@ -99,7 +99,7 @@ async function handleSCIMEvents(event: DirectorySyncEvent) {
   }
 
   // Plan gate: only datarooms-premium or higher
-  const allowedPlans = ["datarooms-premium", "datarooms-premium+old"];
+  const allowedPlans = ["datarooms-premium", "datarooms-premium+old", "datarooms-unlimited", "datarooms-unlimited+old"];
   if (!allowedPlans.includes(team.plan)) {
     console.warn(
       `[SCIM] Ignoring event for tenant ${tenant} — plan ${team.plan} not eligible`,

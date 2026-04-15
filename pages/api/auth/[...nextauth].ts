@@ -313,9 +313,14 @@ const getAuthOptions = (req: NextApiRequest): NextAuthOptions => {
           account?.provider !== "saml" &&
           account?.provider !== "saml-idp"
         ) {
-          const ssoEnforced = await isSamlEnforcedForEmailDomain(user.email);
-          if (ssoEnforced) {
-            throw new Error("require-saml-sso");
+          try {
+            const ssoEnforced = await isSamlEnforcedForEmailDomain(user.email);
+            if (ssoEnforced) {
+              throw new Error("require-saml-sso");
+            }
+          } catch (error) {
+            console.error("[Auth] SSO enforcement check failed:", error);
+            throw error;
           }
         }
 

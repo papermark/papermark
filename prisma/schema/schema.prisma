@@ -64,7 +64,7 @@ model User {
   messages                  Message[]
 
   // FAQ system
-  publishedFaqItems DataroomFaqItem[]
+  publishedFaqItems  DataroomFaqItem[]
   createdAnnotations DocumentAnnotation[] // Annotations created by this user
 
   installedIntegrations InstalledIntegration[]
@@ -72,18 +72,20 @@ model User {
   links Link[] @relation("LinkOwner")
 
   frozenDatarooms Dataroom[] @relation("frozenDatarooms")
+
+  notificationPreferences NotificationPreference[]
 }
 
 model Brand {
-  id             String  @id @default(cuid())
-  logo           String? // This should be a reference to where the file is stored (S3, Google Cloud Storage, etc.)
-  banner         String? // Banner image for dataroom view (fallback)
-  brandColor     String? // This should be a reference to the brand color
-  accentColor    String? // This should be a reference to the accent color
+  id                             String  @id @default(cuid())
+  logo                           String? // This should be a reference to where the file is stored (S3, Google Cloud Storage, etc.)
+  banner                         String? // Banner image for dataroom view (fallback)
+  brandColor                     String? // This should be a reference to the brand color
+  accentColor                    String? // This should be a reference to the accent color
   applyAccentColorToDataroomView Boolean @default(false) // Global default for whether accentColor applies to dataroom list/tree viewer background
-  welcomeMessage String? // This should be a reference to the welcome message
-  teamId         String  @unique
-  team           Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  welcomeMessage                 String? // This should be a reference to the welcome message
+  teamId                         String  @unique
+  team                           Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -106,7 +108,7 @@ model Domain {
   Team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   verified    Boolean  @default(false) // Whether the domain has been verified
   isDefault   Boolean  @default(false) // Whether the domain is the primary domain
-  redirectUrl String?  // URL to redirect to when visiting the root of this domain
+  redirectUrl String? // URL to redirect to when visiting the root of this domain
   lastChecked DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -177,9 +179,9 @@ enum ViewType {
 }
 
 enum DownloadType {
-  SINGLE  // Individual document download
-  BULK    // Full dataroom bulk download
-  FOLDER  // Folder download
+  SINGLE // Individual document download
+  BULK // Full dataroom bulk download
+  FOLDER // Folder download
 }
 
 model Viewer {
@@ -258,8 +260,8 @@ model SentEmail {
 }
 
 model Chat {
-  id        String   @id @default(cuid())
-  title     String? // Generated title from first message
+  id    String  @id @default(cuid())
+  title String? // Generated title from first message
 
   // Context associations
   teamId String
@@ -513,17 +515,17 @@ model TagItem {
 }
 
 model ViewerInvitation {
-  id            String             @id @default(cuid())
+  id            String           @id @default(cuid())
   viewerId      String
-  viewer        Viewer             @relation(fields: [viewerId], references: [id], onDelete: Cascade)
+  viewer        Viewer           @relation(fields: [viewerId], references: [id], onDelete: Cascade)
   linkId        String
-  link          Link               @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  link          Link             @relation(fields: [linkId], references: [id], onDelete: Cascade)
   groupId       String?
-  group         ViewerGroup?       @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  group         ViewerGroup?     @relation(fields: [groupId], references: [id], onDelete: SetNull)
   invitedBy     String
   customMessage String?
-  sentAt        DateTime           @default(now())
-  status        InvitationStatus   @default(SENT)
+  sentAt        DateTime         @default(now())
+  status        InvitationStatus @default(SENT)
 
   createdAt DateTime @default(now())
 

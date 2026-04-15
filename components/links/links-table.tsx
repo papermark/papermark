@@ -803,8 +803,8 @@ export default function LinksTable({
   const isDataroom = targetType === "DATAROOM";
 
   const linksTableContent = (
-    <div className="rounded-md border">
-      <Table>
+    <div className="overflow-x-auto rounded-md border">
+      <Table className="min-w-[800px]">
         <TableHeader>
           <TableRow className="*:whitespace-nowrap *:font-medium hover:bg-transparent">
             <TableHead>Name</TableHead>
@@ -1224,7 +1224,7 @@ export default function LinksTable({
                 )}
               </button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+            <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
               {linksTableContent}
             </CollapsibleContent>
           </Collapsible>

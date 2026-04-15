@@ -98,6 +98,7 @@ export default async function handle(
                         originalFile: true,
                         contentType: true,
                         numPages: true,
+                        fileSize: true,
                       },
                       take: 1,
                     },
@@ -286,6 +287,7 @@ export default async function handle(
           type?: string;
           numPages?: number;
           needsWatermark?: boolean;
+          size?: number; // File size in bytes
         }[];
       };
     } = {};
@@ -297,6 +299,7 @@ export default async function handle(
       fileKey: string,
       fileType?: string,
       numPages?: number,
+      fileSize?: number,
     ) => {
       const pathParts = path.split("/").filter(Boolean);
       let currentPath = "";
@@ -334,6 +337,7 @@ export default async function handle(
         type: fileType,
         numPages: numPages,
         needsWatermark: needsWatermark ?? undefined,
+        size: fileSize,
       });
       fileKeys.push(fileKey);
     };
@@ -356,6 +360,9 @@ export default async function handle(
           fileKey,
           doc.document.versions[0].type ?? undefined,
           doc.document.versions[0].numPages ?? undefined,
+          doc.document.versions[0].fileSize
+            ? Number(doc.document.versions[0].fileSize)
+            : undefined,
         );
       });
 
@@ -394,6 +401,9 @@ export default async function handle(
             fileKey,
             doc.document.versions[0].type ?? undefined,
             doc.document.versions[0].numPages ?? undefined,
+            doc.document.versions[0].fileSize
+              ? Number(doc.document.versions[0].fileSize)
+              : undefined,
           );
         });
 

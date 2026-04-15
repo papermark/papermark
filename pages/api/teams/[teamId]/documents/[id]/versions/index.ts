@@ -12,7 +12,7 @@ import { processVideo } from "@/lib/trigger/optimize-video-files";
 import { convertPdfToImageRoute } from "@/lib/trigger/pdf-to-image-route";
 import { CustomUser } from "@/lib/types";
 import { log } from "@/lib/utils";
-import { conversionQueue } from "@/lib/utils/trigger-utils";
+import { conversionQueueName } from "@/lib/utils/trigger-utils";
 import { documentUploadSchema } from "@/lib/zod/url-validation";
 
 export default async function handle(
@@ -154,7 +154,9 @@ export default async function handle(
         },
       });
 
-      if (type === "docs" || type === "slides") {
+      const isLogFile = url.toLowerCase().endsWith(".log");
+
+      if ((type === "docs" || type === "slides") && !isLogFile) {
         await convertFilesToPdfTask.trigger(
           {
             documentVersionId: version.id,
@@ -168,7 +170,7 @@ export default async function handle(
               `document_${documentId}`,
               `version:${version.id}`,
             ],
-            queue: conversionQueue(team.plan),
+            queue: conversionQueueName(team.plan),
             concurrencyKey: teamId,
           },
         );
@@ -194,7 +196,7 @@ export default async function handle(
               `document_${documentId}`,
               `version:${version.id}`,
             ],
-            queue: conversionQueue(team.plan),
+            queue: conversionQueueName(team.plan),
             concurrencyKey: teamId,
           },
         );
@@ -217,7 +219,7 @@ export default async function handle(
               `document_${documentId}`,
               `version:${version.id}`,
             ],
-            queue: conversionQueue(team.plan),
+            queue: conversionQueueName(team.plan),
             concurrencyKey: teamId,
           },
         );
