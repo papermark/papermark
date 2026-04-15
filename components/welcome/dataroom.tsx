@@ -40,12 +40,12 @@ export default function Dataroom() {
       <motion.div
         variants={STAGGER_CHILD_VARIANTS}
         className="mx-auto mt-24 w-full overflow-hidden rounded-md bg-white [&>video]:[mask-image:radial-gradient(white,black)]"
-        style={{ WebkitMaskImage: "radial-gradient(white, black)" }}
       >
         <video
           width="100%"
           id="video1"
           className="block"
+          style={{ WebkitMaskImage: "radial-gradient(white, black)" }}
           aria-hidden="true"
           playsInline
           autoPlay
@@ -74,10 +74,10 @@ export default function Dataroom() {
             })
           }
         >
-          Get a data room plus trial
+          Get a Data Rooms Plus trial
         </Button>
         <span className="text-xs text-muted-foreground">
-          Data rooms are available on our `Data Rooms Plus` plan and higher.{" "}
+          Data rooms are available on our Data Rooms Plus plan and higher.{" "}
           <br />
           You receive a 7-day trial.
         </span>
