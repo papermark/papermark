@@ -144,7 +144,7 @@ export const authOptions: NextAuthOptions = {
           const { access_token } = await oauthController.token({
             code: credentials.code,
             grant_type: "authorization_code",
-            redirect_uri: process.env.NEXTAUTH_URL!,
+            redirect_uri: getMainDomainUrl(),
             client_id: "dummy",
             client_secret: process.env.NEXTAUTH_SECRET!,
           });
@@ -247,7 +247,7 @@ export const authOptions: NextAuthOptions = {
       });
 
       await qstash.publishJSON({
-        url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/cron/welcome-user`,
+        url: `${process.env.NEXT_PUBLIC_BASE_URL ?? getMainDomainUrl()}/api/cron/welcome-user`,
         body: {
           userId: message.user.id,
         },
