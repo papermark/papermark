@@ -280,8 +280,8 @@ export default async function handler(
         });
 
         if (linkData.enableConversation && dataroomLink) {
-          await tx.dataroom.update({
-            where: { id: targetId },
+          await tx.dataroom.updateMany({
+            where: { id: targetId, teamId },
             data: { conversationsEnabled: true },
           });
         }

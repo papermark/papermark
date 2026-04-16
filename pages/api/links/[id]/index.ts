@@ -440,9 +440,9 @@ export default async function handle(
         },
       });
 
-      if (linkData.enableConversation && dataroomLink) {
+      if (linkData.enableConversation && dataroomLink && link.dataroomId) {
         await tx.dataroom.update({
-          where: { id: targetId },
+          where: { id: link.dataroomId, teamId: link.teamId! },
           data: { conversationsEnabled: true },
         });
       }
