@@ -34,7 +34,10 @@ export async function POST(
 
     const teamAccess = await prisma.userTeam.findUnique({
       where: { userId_teamId: { userId, teamId } },
-      select: { role: true },
+      select: {
+        role: true,
+        team: { select: { plan: true } },
+      },
     });
 
     if (!teamAccess) {
@@ -44,6 +47,19 @@ export async function POST(
     if (teamAccess.role !== "ADMIN" && teamAccess.role !== "MANAGER") {
       return NextResponse.json(
         { message: "Only admins and managers can freeze data rooms." },
+        { status: 403 },
+      );
+    }
+
+    const plan = teamAccess.team.plan;
+    const hasDataroomsPlusPlan =
+      plan.includes("datarooms-plus") ||
+      plan.includes("datarooms-premium") ||
+      plan.includes("datarooms-unlimited");
+
+    if (!hasDataroomsPlusPlan) {
+      return NextResponse.json(
+        { message: "This feature requires a Data Rooms Plus plan or higher." },
         { status: 403 },
       );
     }

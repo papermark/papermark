@@ -27,7 +27,10 @@ export function useFreezeProgress({
   const frozenAtMs = frozenAt ? new Date(frozenAt).getTime() : null;
   const isArchiveInProgress = isFrozen && !freezeArchiveUrl && !!frozenAtMs;
 
-  const { data: tokenData } = useSWR<{ publicAccessToken: string }>(
+  const { data: tokenData } = useSWR<{
+    publicAccessToken: string;
+    hasRuns: boolean;
+  }>(
     isArchiveInProgress && !initialToken && teamId && dataroomId
       ? `/api/teams/${teamId}/datarooms/${dataroomId}/freeze/monitor-token`
       : null,
@@ -50,6 +53,15 @@ export function useFreezeProgress({
   const failedRun = runs.find((r) =>
     ["FAILED", "CRASHED", "CANCELED", "SYSTEM_FAILURE"].includes(r.status),
   );
+
+  const noRunsFound =
+    isArchiveInProgress &&
+    tokenData !== undefined &&
+    tokenData.hasRuns === false &&
+    runs.length === 0;
+
+  const isFailed =
+    isArchiveInProgress && !!failedRun && !completedRun && !activeRun;
 
   let progress = 0;
   let progressText = "";
@@ -79,6 +91,8 @@ export function useFreezeProgress({
     activeRun,
     completedRun,
     failedRun,
+    noRunsFound,
+    isFailed,
     runs,
   };
 }

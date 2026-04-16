@@ -1,11 +1,14 @@
 import { useCallback, useRef, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
+import { PlanEnum } from "@/ee/stripe/constants";
 import {
   AlertTriangleIcon,
+  CrownIcon,
   DownloadIcon,
   Loader2Icon,
   MailIcon,
+  RefreshCwIcon,
   SnowflakeIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -13,6 +16,9 @@ import { mutate } from "swr";
 
 import { useFreezeProgress } from "@/ee/features/dataroom-freeze/lib/swr/use-freeze-progress";
 
+import { usePlan } from "@/lib/swr/use-billing";
+
+import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -64,6 +70,7 @@ export default function FreezeSettings({
 }: FreezeSettingsProps) {
   const teamInfo = useTeam();
   const teamId = teamInfo?.currentTeam?.id;
+  const { isDataroomsPlus } = usePlan();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [step, setStep] = useState<DialogStep>("confirm-text");
@@ -77,6 +84,8 @@ export default function FreezeSettings({
 
   const [isDownloading, setIsDownloading] = useState(false);
 
+  const [isRetrying, setIsRetrying] = useState(false);
+
   const {
     isArchiveInProgress: isArchiveGenerating,
     progress,
@@ -84,6 +93,8 @@ export default function FreezeSettings({
     archiveReady: realtimeArchiveReady,
     failedRun,
     completedRun,
+    noRunsFound,
+    isFailed,
   } = useFreezeProgress({
     dataroomId,
     isFrozen,
@@ -93,6 +104,34 @@ export default function FreezeSettings({
   });
 
   const hasArchive = !!freezeArchiveUrl || realtimeArchiveReady;
+  const showRecovery = (noRunsFound || isFailed) && !hasArchive;
+
+  const handleRetryArchive = useCallback(async () => {
+    if (!teamId || isRetrying) return;
+    setIsRetrying(true);
+    try {
+      const res = await fetch(
+        `/api/teams/${teamId}/datarooms/${dataroomId}/freeze/retry-archive`,
+        { method: "POST" },
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          data.error || data.message || "Failed to retry archive",
+        );
+      }
+      const { publicAccessToken: token } = await res.json();
+      setPublicAccessToken(token);
+      toast.success("Archive generation restarted");
+      await mutate(`/api/teams/${teamId}/datarooms/${dataroomId}`);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to retry archive",
+      );
+    } finally {
+      setIsRetrying(false);
+    }
+  }, [teamId, dataroomId, isRetrying]);
 
   const isConfirmTextValid =
     confirmText.trim().toLowerCase() === CONFIRMATION_TEXT;
@@ -209,7 +248,7 @@ export default function FreezeSettings({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isArchiveGenerating && (
+          {isArchiveGenerating && !showRecovery && (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
                 {progressText || "Generating freeze archive..."}
@@ -218,12 +257,38 @@ export default function FreezeSettings({
             </div>
           )}
 
-          {failedRun && !completedRun && (
-            <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3">
-              <AlertTriangleIcon className="h-4 w-4 text-destructive" />
-              <p className="text-sm text-destructive">
-                Archive generation failed. Please try again.
-              </p>
+          {showRecovery && (
+            <div className="space-y-3 rounded-md border border-destructive/50 bg-destructive/10 p-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangleIcon className="h-4 w-4 shrink-0 text-destructive" />
+                <p className="text-sm text-destructive">
+                  {noRunsFound
+                    ? "Archive generation did not start. This may be a temporary issue."
+                    : "Archive generation failed."}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                  disabled={isRetrying}
+                  onClick={handleRetryArchive}
+                >
+                  {isRetrying ? (
+                    <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCwIcon className="h-3.5 w-3.5" />
+                  )}
+                  {isRetrying ? "Retrying..." : "Retry archive generation"}
+                </Button>
+                <a
+                  href="mailto:support@papermark.io?subject=Freeze%20archive%20failed"
+                  className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                >
+                  Contact support
+                </a>
+              </div>
             </div>
           )}
 
@@ -324,6 +389,7 @@ export default function FreezeSettings({
           Freezing creates a tamper-proof archive with SHA-256 integrity
           verification.
         </p>
+        {isDataroomsPlus ? (
         <Dialog
           open={dialogOpen}
           onOpenChange={(open) => {
@@ -476,6 +542,17 @@ export default function FreezeSettings({
             )}
           </DialogContent>
         </Dialog>
+        ) : (
+        <UpgradePlanModal
+          clickedPlan={PlanEnum.DataRoomsPlus}
+          trigger="datarooms_freeze_button"
+        >
+          <Button className="gap-2">
+            <CrownIcon className="h-4 w-4" />
+            Upgrade to freeze
+          </Button>
+        </UpgradePlanModal>
+        )}
       </CardFooter>
     </Card>
   );

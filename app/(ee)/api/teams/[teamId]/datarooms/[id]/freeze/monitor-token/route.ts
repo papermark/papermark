@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { runs } from "@trigger.dev/sdk";
 import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth/auth-options";
@@ -54,9 +55,22 @@ export async function GET(
     }
 
     const tag = `freeze:${dataroomId}:${dataroom.frozenAt.getTime()}`;
+
+    let hasRuns = false;
+    try {
+      const result = await runs.list({
+        tag: [tag],
+        taskIdentifier: ["dataroom-freeze-archive"],
+        limit: 1,
+      });
+      hasRuns = result.data.length > 0;
+    } catch (err) {
+      console.error("Failed to list freeze runs", err);
+    }
+
     const publicAccessToken = await generateTriggerPublicAccessToken(tag);
 
-    return NextResponse.json({ publicAccessToken });
+    return NextResponse.json({ publicAccessToken, hasRuns });
   } catch (error) {
     console.error("Error generating freeze monitor token:", error);
     return NextResponse.json(

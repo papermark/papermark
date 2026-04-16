@@ -10,7 +10,6 @@ import {
   buildFolderPathsFromHierarchy,
 } from "@/lib/dataroom/build-folder-hierarchy";
 import prisma from "@/lib/prisma";
-import { ratelimit } from "@/lib/redis";
 import { dataroomFreezeArchiveTask } from "@/ee/features/dataroom-freeze/lib/trigger/dataroom-freeze-archive";
 import { CustomUser } from "@/lib/types";
 import { generateTriggerPublicAccessToken } from "@/lib/utils/generate-trigger-auth-token";
@@ -18,7 +17,7 @@ import { generateTriggerPublicAccessToken } from "@/lib/utils/generate-trigger-a
 export const maxDuration = 60;
 
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { teamId: string; id: string } },
 ) {
   const session = await getServerSession(authOptions);
@@ -31,12 +30,7 @@ export async function POST(
 
   try {
     const teamAccess = await prisma.userTeam.findUnique({
-      where: {
-        userId_teamId: {
-          userId,
-          teamId,
-        },
-      },
+      where: { userId_teamId: { userId, teamId } },
       select: {
         role: true,
         team: { select: { plan: true } },
@@ -49,7 +43,7 @@ export async function POST(
 
     if (teamAccess.role !== "ADMIN" && teamAccess.role !== "MANAGER") {
       return NextResponse.json(
-        { message: "Only admins and managers can freeze data rooms." },
+        { message: "Only admins and managers can retry archive generation." },
         { status: 403 },
       );
     }
@@ -68,21 +62,15 @@ export async function POST(
     }
 
     const dataroom = await prisma.dataroom.findUnique({
-      where: {
-        id: dataroomId,
-        teamId,
-      },
+      where: { id: dataroomId, teamId },
       select: {
         id: true,
         name: true,
         isFrozen: true,
+        frozenAt: true,
+        freezeArchiveUrl: true,
         folders: {
-          select: {
-            id: true,
-            name: true,
-            path: true,
-            parentId: true,
-          },
+          select: { id: true, name: true, path: true, parentId: true },
         },
         documents: {
           select: {
@@ -117,84 +105,19 @@ export async function POST(
       );
     }
 
-    if (dataroom.isFrozen) {
+    if (!dataroom.isFrozen || !dataroom.frozenAt) {
       return NextResponse.json(
-        { error: "Dataroom is already frozen" },
+        { error: "Dataroom is not frozen" },
         { status: 400 },
       );
     }
 
-    const { token } = (await request.json()) as { token?: string };
-    if (!token || token.length !== 6) {
+    if (dataroom.freezeArchiveUrl) {
       return NextResponse.json(
-        { error: "A valid 6-digit verification code is required." },
+        { error: "Archive already exists" },
         { status: 400 },
       );
     }
-
-    const { success: rlSuccess } = await ratelimit(5, "1 m").limit(
-      `verify-freeze-otp:${userId}`,
-    );
-    if (!rlSuccess) {
-      return NextResponse.json(
-        { message: "Too many attempts. Please try again later." },
-        { status: 429 },
-      );
-    }
-
-    const verification = await prisma.verificationToken.findUnique({
-      where: {
-        token,
-        identifier: `freeze-otp:${dataroomId}:${userId}`,
-      },
-    });
-
-    if (!verification) {
-      return NextResponse.json(
-        { error: "Invalid verification code. Please try again." },
-        { status: 401 },
-      );
-    }
-
-    if (Date.now() > verification.expires.getTime()) {
-      await prisma.verificationToken.delete({ where: { token } });
-      return NextResponse.json(
-        { error: "Verification code expired. Please request a new one." },
-        { status: 401 },
-      );
-    }
-
-    await prisma.verificationToken.delete({ where: { token } });
-
-    const frozenAt = new Date();
-    const archivedLinkIds = await prisma.$transaction(async (tx) => {
-      await tx.dataroom.update({
-        where: { id: dataroomId },
-        data: {
-          isFrozen: true,
-          frozenAt,
-          frozenBy: userId,
-        },
-      });
-
-      const linksToArchive = await tx.link.findMany({
-        where: {
-          dataroomId,
-          isArchived: false,
-        },
-        select: { id: true },
-      });
-      const ids = linksToArchive.map((l) => l.id);
-
-      if (ids.length > 0) {
-        await tx.link.updateMany({
-          where: { id: { in: ids } },
-          data: { isArchived: true },
-        });
-      }
-
-      return ids;
-    });
 
     const computedPathMap = buildFolderPathsFromHierarchy(dataroom.folders);
     const folderMap = buildFolderNameMap(dataroom.folders, computedPathMap);
@@ -230,10 +153,7 @@ export async function POST(
       });
 
       if (!folderStructure[path]) {
-        const folderInfo = folderMap.get(path) || {
-          name: "Root",
-          id: null,
-        };
+        const folderInfo = folderMap.get(path) || { name: "Root", id: null };
         folderStructure[path] = {
           name: folderInfo.name,
           path: path,
@@ -297,66 +217,32 @@ export async function POST(
       }
     });
 
-    let handle;
-    let publicAccessToken;
-    try {
-      const storageConfig = await getTeamStorageConfigById(teamId);
-      const tag = `freeze:${dataroomId}:${frozenAt.getTime()}`;
+    const storageConfig = await getTeamStorageConfigById(teamId);
+    const tag = `freeze:${dataroomId}:${dataroom.frozenAt.getTime()}`;
 
-      handle = await dataroomFreezeArchiveTask.trigger(
-        {
-          dataroomId: dataroom.id,
-          dataroomName: dataroom.name,
-          teamId,
-          userId,
-          folderStructure,
-          fileKeys: fileKeys.filter(Boolean),
-          sourceBucket: storageConfig.bucket,
-        },
-        {
-          tags: [tag, `team_${teamId}`, `dataroom_${dataroomId}`],
-        },
-      );
+    const handle = await dataroomFreezeArchiveTask.trigger(
+      {
+        dataroomId: dataroom.id,
+        dataroomName: dataroom.name,
+        teamId,
+        userId,
+        folderStructure,
+        fileKeys: fileKeys.filter(Boolean),
+        sourceBucket: storageConfig.bucket,
+      },
+      {
+        tags: [tag, `team_${teamId}`, `dataroom_${dataroomId}`],
+      },
+    );
 
-      publicAccessToken = await generateTriggerPublicAccessToken(tag);
-    } catch (triggerError) {
-      console.error(
-        "Archive trigger failed after freeze committed, rolling back:",
-        triggerError,
-      );
-      await prisma.$transaction([
-        prisma.dataroom.update({
-          where: { id: dataroomId },
-          data: {
-            isFrozen: false,
-            frozenAt: null,
-            frozenBy: null,
-          },
-        }),
-        ...(archivedLinkIds.length > 0
-          ? [
-              prisma.link.updateMany({
-                where: { id: { in: archivedLinkIds } },
-                data: { isArchived: false },
-              }),
-            ]
-          : []),
-      ]);
-      return NextResponse.json(
-        {
-          message:
-            "Failed to start archive generation. The freeze has been reverted. Please try again.",
-        },
-        { status: 500 },
-      );
-    }
+    const publicAccessToken = await generateTriggerPublicAccessToken(tag);
 
     return NextResponse.json({
       runId: handle.id,
       publicAccessToken,
     });
   } catch (error) {
-    console.error("Error freezing dataroom:", error);
+    console.error("Error retrying freeze archive:", error);
     return NextResponse.json(
       {
         message: "Internal Server Error",
