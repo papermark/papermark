@@ -92,6 +92,7 @@ export default function DataroomLinksPage() {
         setIsOpen={setIsLinkSheetOpen}
         linkType="DATAROOM_LINK"
         existingLinks={links}
+        linkTargetId={dataroom.id}
       />
 
       {!canInviteViewers && (

@@ -363,6 +363,7 @@ export function DataroomSidebarContent() {
         isOpen={isLinkSheetOpen}
         setIsOpen={setIsLinkSheetOpen}
         linkType="DATAROOM_LINK"
+        linkTargetId={dataroomId}
       />
     </>
   );

@@ -92,15 +92,13 @@ export function DataroomLinkSheet({
   linkType: LinkType;
   currentLink?: DEFAULT_LINK_TYPE;
   existingLinks?: LinkWithViews[];
-  /** When set (e.g. mobile share from global nav), used instead of `router.query.id` */
-  linkTargetId?: string | null;
+  linkTargetId: string;
 }) {
   const router = useRouter();
-  const { id: routeId, groupId } = router.query as {
-    id?: string;
+  const { groupId } = router.query as {
     groupId?: string;
   };
-  const targetId = linkTargetId ?? routeId;
+  const targetId = linkTargetId;
 
   const { domains } = useDomains({ enabled: isOpen });
 
