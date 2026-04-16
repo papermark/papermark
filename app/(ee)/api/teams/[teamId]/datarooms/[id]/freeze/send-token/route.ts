@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import DataroomFreezeOtp from "@/ee/features/dataroom-freeze/emails/components/dataroom-freeze-otp";
 import { getServerSession } from "next-auth";
 
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
-
-import DataroomFreezeOtp from "@/ee/features/dataroom-freeze/emails/components/dataroom-freeze-otp";
+import { authOptions } from "@/lib/auth/auth-options";
 import prisma from "@/lib/prisma";
 import { ratelimit } from "@/lib/redis";
 import { sendEmail } from "@/lib/resend";
@@ -25,9 +24,7 @@ export async function POST(
   const userId = user.id;
 
   try {
-    const { success } = await ratelimit(3, "1 m").limit(
-      `freeze-otp:${userId}`,
-    );
+    const { success } = await ratelimit(3, "1 m").limit(`freeze-otp:${userId}`);
     if (!success) {
       return NextResponse.json(
         { message: "Too many requests. Please try again later." },

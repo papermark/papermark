@@ -5,7 +5,7 @@ import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getServerSession } from "next-auth";
 
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 
 import { ONE_MINUTE, ONE_SECOND } from "@/lib/constants";
 import prisma from "@/lib/prisma";

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTeamStorageConfigById } from "@/ee/features/storage/config";
 import { getServerSession } from "next-auth";
 
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 
 import {
   buildFolderNameMap,
