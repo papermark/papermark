@@ -9,6 +9,7 @@ import { ConversationListItem } from "@/ee/features/conversations/components/das
 import { ConversationsNotEnabledBanner } from "@/ee/features/conversations/components/dashboard/conversations-not-enabled-banner";
 import {
   BookOpenCheckIcon,
+  DownloadIcon,
   Loader2,
   MessageSquare,
   Search,
@@ -187,6 +188,41 @@ export default function DataroomConversationsPage() {
     setLocalConversationsEnabled(enabled);
   };
 
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportCsv = async () => {
+    if (!dataroom || !teamId) return;
+
+    setIsExporting(true);
+    try {
+      const response = await fetch(
+        `/api/teams/${teamId}/datarooms/${dataroom.id}/conversations/export-csv`,
+      );
+
+      if (!response.ok) throw new Error("Failed to export CSV");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download =
+        response.headers
+          .get("Content-Disposition")
+          ?.match(/filename="(.+)"/)?.[1] ?? "qa-pairs.csv";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+
+      toast.success("Q&A pairs exported successfully");
+    } catch (error) {
+      console.error("Error exporting CSV:", error);
+      toast.error("Failed to export Q&A pairs");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (!dataroom) {
     return <div>Loading...</div>;
   }
@@ -253,6 +289,7 @@ export default function DataroomConversationsPage() {
           onValueChange={setActiveTab}
           className="space-y-6"
         >
+          <div className="flex items-center justify-between">
           <TabsList>
             <TabsTrigger
               value="conversations"
@@ -273,6 +310,22 @@ export default function DataroomConversationsPage() {
               </Link>
             </TabsTrigger>
           </TabsList>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCsv}
+              disabled={isExporting || conversations.length === 0}
+              className="gap-2"
+            >
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <DownloadIcon className="h-4 w-4" />
+              )}
+              Export CSV
+            </Button>
+          </div>
 
           <TabsContent value="conversations" className="space-y-0">
             <div className="h-[calc(100vh-20rem)] overflow-hidden rounded-md border">
