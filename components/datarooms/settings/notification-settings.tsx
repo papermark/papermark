@@ -1,12 +1,14 @@
 import { useTeam } from "@/context/team-context";
-import { BadgeCheckIcon } from "lucide-react";
+import { PlanEnum } from "@/ee/stripe/constants";
+import { BadgeCheckIcon, CrownIcon } from "lucide-react";
 import { toast } from "sonner";
 import useSWR from "swr";
 
 import { usePlan } from "@/lib/swr/use-billing";
 import { fetcher } from "@/lib/utils";
 
-import PlanBadge from "@/components/billing/plan-badge";
+import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -84,10 +86,19 @@ export default function NotificationSettings({
   return (
     <Card className="bg-transparent">
       <CardHeader>
-        <CardTitle>
+        <CardTitle className="flex items-center gap-2">
           Notifications{" "}
-          {!isDataroomsPlus && !features?.roomChangeNotifications ? (
-            <PlanBadge plan="data rooms plus" />
+          {!isDataroomsPlus && !isTrial && !features?.roomChangeNotifications ? (
+            <UpgradePlanModal
+              clickedPlan={PlanEnum.DataRoomsPlus}
+              trigger="dataroom_notification_settings"
+              highlightItem={["invite"]}
+            >
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <CrownIcon className="h-4 w-4" />
+                Upgrade to Enable
+              </Button>
+            </UpgradePlanModal>
           ) : null}
         </CardTitle>
         <CardDescription>

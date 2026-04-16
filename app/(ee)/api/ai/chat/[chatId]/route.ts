@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { validateChatAccess } from "@/ee/features/ai/lib/permissions/validate-chat-access";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { getServerSession } from "next-auth";
 
 import { getFeatureFlags } from "@/lib/featureFlags";

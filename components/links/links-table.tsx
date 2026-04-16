@@ -16,6 +16,7 @@ import {
   CopyCheckIcon,
   CopyIcon,
   CopyPlusIcon,
+  CrownIcon,
   EyeIcon,
   EyeOffIcon,
   FileSlidersIcon,
@@ -33,7 +34,6 @@ import { toast } from "sonner";
 import { mutate } from "swr";
 import z from "zod";
 
-import { useFeatureFlags } from "@/lib/hooks/use-feature-flags";
 import { usePlan } from "@/lib/swr/use-billing";
 import useLimits from "@/lib/swr/use-limits";
 import { LinkWithViews, WatermarkConfig } from "@/lib/types";
@@ -173,17 +173,23 @@ const LinkUrlCell = ({
   );
 };
 
-// Link actions cell component - copy, preview, edit buttons
+// Link actions cell component - copy, preview, invite buttons
 const LinkActionsCell = ({
   link,
   onCopy,
   onPreview,
+  onInvite,
   isProcessing,
+  isDataroom,
+  canInvite,
 }: {
   link: LinkWithViews;
   onCopy: (url: string) => void;
   onPreview: (link: LinkWithViews) => void;
+  onInvite?: (link: LinkWithViews) => void;
   isProcessing: boolean;
+  isDataroom?: boolean;
+  canInvite?: boolean;
 }) => {
   const [copied, setCopied] = useState(false);
   const fullUrl = getFullUrl(link);
@@ -206,6 +212,12 @@ const LinkActionsCell = ({
     e.stopPropagation();
     e.preventDefault();
     onPreview(link);
+  };
+
+  const handleInvite = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onInvite?.(link);
   };
 
   return (
@@ -241,6 +253,18 @@ const LinkActionsCell = ({
           )}
         </Button>
       </ButtonTooltip>
+      {isDataroom && canInvite && (
+        <ButtonTooltip content="Invite via email">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 hover:text-foreground"
+            onClick={handleInvite}
+          >
+            <SendIcon className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+          </Button>
+        </ButtonTooltip>
+      )}
     </div>
   );
 };
@@ -267,7 +291,7 @@ export default function LinksTable({
 
   const now = Date.now();
   const router = useRouter();
-  const { isFree, isTrial } = usePlan();
+  const { isFree, isTrial, isDataroomsPlus } = usePlan();
   const { currentTeamId } = useTeam();
   const { id: targetId, groupId } = router.query as {
     id: string;
@@ -275,7 +299,7 @@ export default function LinksTable({
   };
 
   const { isMobile } = useMediaQuery();
-  const { isFeatureEnabled } = useFeatureFlags();
+  const canInviteViewers = isDataroomsPlus;
 
   let processedLinks = useMemo(() => {
     if (!links?.length) return [];
@@ -340,6 +364,7 @@ export default function LinksTable({
     targetType,
   });
   const [isInviteModalOpen, setIsInviteModalOpen] = useState<boolean>(false);
+  const [showInviteUpgrade, setShowInviteUpgrade] = useState<boolean>(false);
   const [inviteLink, setInviteLink] = useState<LinkWithViews | null>(null);
   const [inviteDefaultEmails, setInviteDefaultEmails] = useState<string[]>([]);
 
@@ -919,7 +944,10 @@ export default function LinksTable({
                             link={link}
                             onCopy={handleCopyToClipboard}
                             onPreview={handlePreviewLink}
+                            onInvite={handleSendInvitations}
                             isProcessing={isDocumentProcessing(primaryVersion)}
+                            isDataroom={isDataroom}
+                            canInvite={canInviteViewers}
                           />
                           {isMobile ? (
                             <ButtonTooltip content="Edit link">
@@ -1122,15 +1150,24 @@ export default function LinksTable({
                             Preview Link
                           </DropdownMenuItem>
                           {/* Dataroom-only: Send Invitations */}
-                          {isDataroom &&
-                            isFeatureEnabled("dataroomInvitations") && (
-                              <DropdownMenuItem
-                                onClick={() => handleSendInvitations(link)}
-                              >
+                          {isDataroom && (
+                            <DropdownMenuItem
+                              onClick={() =>
+                                canInviteViewers
+                                  ? handleSendInvitations(link)
+                                  : setShowInviteUpgrade(true)
+                              }
+                            >
+                              {canInviteViewers ? (
                                 <SendIcon className="mr-2 h-4 w-4" />
-                                Send Invitations
-                              </DropdownMenuItem>
-                            )}
+                              ) : (
+                                <CrownIcon className="mr-2 h-4 w-4" />
+                              )}
+                              {canInviteViewers
+                                ? "Send Invitations"
+                                : "Upgrade to send via email"}
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem
                             disabled={!canAddLinks}
                             onClick={() => handleDuplicateLink(link)}
@@ -1247,6 +1284,7 @@ export default function LinksTable({
               linkType={`${targetType}_LINK`}
               currentLink={selectedLink.id ? selectedLink : undefined}
               existingLinks={links}
+              linkTargetId={targetId}
             />
 
             <PermissionsSheet
@@ -1262,7 +1300,7 @@ export default function LinksTable({
               permissionGroupId={editPermissionLink?.permissionGroupId}
               onSave={handlePermissionsSave}
             />
-            {inviteLink && isFeatureEnabled("dataroomInvitations") ? (
+            {inviteLink ? (
               <InviteViewersModal
                 open={isInviteModalOpen}
                 setOpen={(open) => {
@@ -1276,6 +1314,7 @@ export default function LinksTable({
                 groupId={inviteLink.groupId ?? undefined}
                 linkId={inviteLink.id}
                 defaultEmails={inviteDefaultEmails}
+                canSend={canInviteViewers}
                 onSuccess={() => {
                   if (linksApiRoute) {
                     mutate(linksApiRoute);
@@ -1284,6 +1323,13 @@ export default function LinksTable({
                 }}
               />
             ) : null}
+            <UpgradePlanModal
+              clickedPlan={PlanEnum.DataRoomsPlus}
+              trigger="links_table_invite_upgrade"
+              highlightItem={["email-invite"]}
+              open={showInviteUpgrade}
+              setOpen={setShowInviteUpgrade}
+            />
           </>
         ) : (
           <LinkSheet

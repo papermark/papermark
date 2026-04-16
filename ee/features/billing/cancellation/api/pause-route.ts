@@ -4,7 +4,7 @@ import { PAUSE_COUPON_ID } from "@/ee/features/billing/cancellation/constants";
 import { sendPauseResumeNotificationTask } from "@/ee/features/billing/cancellation/lib/trigger/pause-resume-notification";
 import { automaticUnpauseTask } from "@/ee/features/billing/cancellation/lib/trigger/unpause-task";
 import { stripeInstance } from "@/ee/stripe";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { waitUntil } from "@vercel/functions";
 import { getServerSession } from "next-auth/next";
 

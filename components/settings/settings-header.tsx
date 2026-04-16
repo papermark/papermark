@@ -1,18 +1,22 @@
+import { PlanEnum } from "@/ee/stripe/constants";
+
 import { useFeatureFlags } from "@/lib/hooks/use-feature-flags";
 import { useIsAdmin } from "@/lib/hooks/use-is-admin";
+import { usePlan } from "@/lib/swr/use-billing";
 
 import { NavMenu } from "../navigation-menu";
 
 export function SettingsHeader() {
   const { features } = useFeatureFlags();
   const { isAdmin } = useIsAdmin();
+  const { isDataroomsPlus, isTrial } = usePlan();
 
   return (
     <header>
       <section className="mb-4 flex items-center justify-between md:mb-8 lg:mb-12">
         <div className="space-y-1">
           <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-            Settings
+            General Settings
           </h1>
           <p className="text-xs text-muted-foreground sm:text-sm">
             Manage your account settings
@@ -61,6 +65,9 @@ export function SettingsHeader() {
             label: "Notifications",
             href: `/settings/notifications`,
             segment: "notifications",
+            limited: !isDataroomsPlus && !isTrial,
+            clickedPlan: PlanEnum.DataRoomsPlus,
+            highlightItem: ["invite"],
           },
           {
             label: "Slack",

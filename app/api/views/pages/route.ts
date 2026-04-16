@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { verifyDataroomSession } from "@/lib/auth/dataroom-auth";
 import { verifyPreviewSession } from "@/lib/auth/preview-auth";
 import { getFile } from "@/lib/files/get-file";

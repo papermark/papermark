@@ -338,6 +338,7 @@ export function MobileDataroomMoreMenu({
         isOpen={linkSheetOpen}
         setIsOpen={setLinkSheetOpen}
         linkType="DATAROOM_LINK"
+        linkTargetId={dataroomId}
       />
     </>
   );

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { runs } from "@trigger.dev/sdk";
 import { getServerSession } from "next-auth";
 

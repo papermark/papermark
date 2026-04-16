@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
+import { PlanEnum } from "@/ee/stripe/constants";
 import { ConversationListItem } from "@/ee/features/conversations/components/dashboard/conversation-list-item";
 import { ConversationsNotEnabledBanner } from "@/ee/features/conversations/components/dashboard/conversations-not-enabled-banner";
 import {
@@ -32,6 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FeaturePreview } from "@/components/ui/feature-preview";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -61,9 +63,11 @@ export interface ConversationSummary {
 
 export default function DataroomConversationsPage() {
   const router = useRouter();
-  const { limits } = useLimits();
+  const { limits, error: limitsError, loading: limitsLoading } = useLimits();
   const { dataroom } = useDataroom();
   const { currentTeamId: teamId } = useTeam();
+
+  const hasConversationsAccess = limits?.conversationsInDataroom === true;
   const [searchQuery, setSearchQuery] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -95,7 +99,7 @@ export default function DataroomConversationsPage() {
   // SWR hook for fetching conversation summaries
   const { data: conversations = [], isLoading: isLoadingConversations } =
     useSWR<ConversationSummary[]>(
-      dataroom && teamId
+      dataroom && teamId && hasConversationsAccess
         ? `/api/teams/${teamId}/datarooms/${dataroom.id}/conversations`
         : null,
       fetcher,
@@ -112,7 +116,7 @@ export default function DataroomConversationsPage() {
 
   // Fetch published FAQs
   const { data: faqs = [] } = useSWR<PublishedFAQ[]>(
-    dataroom && teamId
+    dataroom && teamId && hasConversationsAccess
       ? `/api/teams/${teamId}/datarooms/${dataroom.id}/faqs`
       : null,
     fetcher,
@@ -187,15 +191,48 @@ export default function DataroomConversationsPage() {
     return <div>Loading...</div>;
   }
 
-  if (!limits?.conversationsInDataroom) {
-    // Redirect to documents page if conversations are not enabled
-    router.push(`/datarooms/${dataroom?.id}/documents`);
-  }
-
   const isConversationsEnabled =
     localConversationsEnabled !== undefined
       ? localConversationsEnabled
       : dataroom.conversationsEnabled;
+
+  if (limitsLoading) {
+    return (
+      <AppLayout>
+        <div className="relative mx-2 my-4 flex items-center justify-center px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!hasConversationsAccess) {
+    return (
+      <AppLayout>
+        <div className="relative mx-2 my-4 space-y-8 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              Q&A Conversations
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Manage conversations and FAQs for your data room.
+            </p>
+          </div>
+
+          <FeaturePreview
+            title="Q&A Conversations"
+            description="Enable Q&A to let viewers ask questions on specific documents and pages. Manage conversations, reply to inquiries, and publish FAQs."
+            requiredPlan={PlanEnum.DataRoomsPlus}
+            trigger="dataroom_conversations_tab"
+            upgradeButtonText="Data Rooms Plus"
+            highlightItem={["qa"]}
+          >
+            <MockConversationsUI />
+          </FeaturePreview>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -207,6 +244,7 @@ export default function DataroomConversationsPage() {
             teamId={teamId as string}
             isConversationsEnabled={isConversationsEnabled}
             onConversationsToggled={handleConversationsToggled}
+            isPlanWithConversations={hasConversationsAccess}
           />
         )}
 
@@ -350,5 +388,100 @@ export default function DataroomConversationsPage() {
         </DialogContent>
       </Dialog>
     </AppLayout>
+  );
+}
+
+function MockConversationsUI() {
+  const mockConversations = [
+    {
+      email: "investor@acme.com",
+      message: "Can you clarify the revenue projections on page 3?",
+      document: "Financial Reports",
+      time: "2 hours ago",
+      unread: 2,
+    },
+    {
+      email: "partner@venture.co",
+      message: "The legal terms look good. One question about...",
+      document: "Legal Documents",
+      time: "5 hours ago",
+      unread: 1,
+    },
+    {
+      email: "analyst@corp.io",
+      message: "Thanks for sharing. Could you provide more detail...",
+      document: "Executive Summary",
+      time: "1 day ago",
+      unread: 0,
+    },
+    {
+      email: "director@fund.com",
+      message: "I'd like to discuss the market analysis further.",
+      document: "Market Analysis.pdf",
+      time: "2 days ago",
+      unread: 0,
+    },
+    {
+      email: "cfo@enterprise.com",
+      message: "We reviewed the product roadmap and have a few...",
+      document: "Product Roadmap",
+      time: "3 days ago",
+      unread: 0,
+    },
+  ];
+
+  return (
+    <div className="h-[calc(100vh-20rem)] overflow-hidden rounded-md border">
+      <div className="flex h-full flex-col md:flex-row">
+        <div className="flex h-full w-full flex-col border-r md:w-96">
+          <div className="flex items-center p-4">
+            <div className="relative w-full">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search conversations..."
+                className="pl-8"
+                disabled
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 p-4 pt-0">
+            {mockConversations.map((conv) => (
+              <div
+                key={conv.email}
+                className="flex flex-col gap-1 rounded-lg border p-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{conv.email}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {conv.time}
+                  </span>
+                </div>
+                <p className="truncate text-xs text-muted-foreground">
+                  {conv.document}
+                </p>
+                <p className="truncate text-sm text-muted-foreground">
+                  {conv.message}
+                </p>
+                {conv.unread > 0 && (
+                  <Badge variant="notification" className="w-fit">
+                    {conv.unread} new
+                  </Badge>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="hidden flex-1 items-center justify-center md:flex">
+          <div className="text-center">
+            <MessageSquare className="mx-auto h-10 w-10 text-muted-foreground" />
+            <p className="mt-2 text-sm font-medium">Select a conversation</p>
+            <p className="text-xs text-muted-foreground">
+              Choose a conversation to view and reply
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -40,7 +40,7 @@ const StartDataRoomTrialButton = ({ teamId }: { teamId?: string }) => {
       onClick={handleStartTrial}
       className="cursor-pointer underline underline-offset-4 hover:text-foreground"
     >
-      Start free data room plan trial
+      Start free data room plus plan trial
     </span>
   );
 };
@@ -128,7 +128,7 @@ const PlanSelector = ({
         className={cn(
           "flex-1 rounded-md px-3 py-1 text-sm transition-colors",
           value === "base"
-            ? "bg-gray-300 text-foreground dark:bg-gray-600 dark:text-white"
+            ? "bg-[#fb7a00] text-white"
             : "text-gray-600 hover:text-gray-900 dark:text-muted-foreground dark:hover:text-white",
         )}
         onClick={() => onChange("base")}
@@ -275,22 +275,22 @@ export function UpgradePlanModal({
             p === PlanEnum.DataRooms ||
             p === PlanEnum.DataRoomsPlus ||
             p === PlanEnum.DataRoomsPremium,
-        ) && (
-          <p
-            className="cursor-pointer text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
-            onClick={() => setUnlimitedModalOpen(true)}
-          >
-            Deals with everything unlimited?{" "}
-            <span className="font-light underline underline-offset-4">
-              Get unlimited members, storage, and data rooms in one plan.
-            </span>
-          </p>
-        )}
+        ) &&
+          trigger !== "invite_team_members" && (
+            <p
+              className="cursor-pointer text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => setUnlimitedModalOpen(true)}
+            >
+              Deals with everything unlimited?{" "}
+              <span className="font-light underline underline-offset-4">
+                Get unlimited members, storage, and data rooms in one plan.
+              </span>
+            </p>
+          )}
 
-        <div className="isolate grid grid-cols-1 gap-4 overflow-hidden rounded-xl p-4 md:grid-cols-2">
+        <div className="isolate grid grid-cols-1 gap-4 overflow-hidden rounded-xl p-4 md:grid-cols-[19fr_21fr]">
           {plansToShow.map((planOption) => {
             const isDataRoomsUpgrade = plansToShow.includes(PlanEnum.DataRooms);
-
             // Determine which plan to show based on selection for Data Rooms
             let effectivePlan = planOption;
             let displayPlanName = planOption;
@@ -314,37 +314,117 @@ export function UpgradePlanModal({
               }
             }
 
+            const highlightForSelector = (() => {
+              if (
+                plansToShow[0] === PlanEnum.Business &&
+                plansToShow[1] === PlanEnum.DataRooms &&
+                planOption === PlanEnum.DataRooms
+              ) {
+                if (trigger === "sidebar_datarooms") {
+                  if (displayPlanName === PlanEnum.DataRoomsPlus)
+                    return ["documents"];
+                  if (displayPlanName === PlanEnum.DataRoomsPremium)
+                    return ["storage", "file-size"];
+                }
+                if (trigger === "invite_team_members") {
+                  if (displayPlanName === PlanEnum.DataRoomsPremium)
+                    return ["teams", "users"];
+                }
+              }
+              return [];
+            })();
+
             const planFeatures = getPlanFeatures(effectivePlan, {
               period,
+              highlightFeatures: highlightForSelector,
             });
+
+            const isBusinessDataRoomsView =
+              plansToShow[0] === PlanEnum.Business &&
+              plansToShow[1] === PlanEnum.DataRooms;
+
+            const isDataRoomsDataRoomsPlusView =
+              plansToShow[0] === PlanEnum.DataRooms &&
+              plansToShow[1] === PlanEnum.DataRoomsPlus;
+
+            const isRightColumn =
+              planOption === plansToShow[1] ||
+              (isBusinessDataRoomsView && planOption === PlanEnum.DataRooms);
+
+            const getBorderClass = () => {
+              if (isBusinessDataRoomsView) {
+                if (planOption === PlanEnum.Business)
+                  return "border-gray-200 dark:border-gray-700";
+                if (planOption === PlanEnum.DataRooms) {
+                  if (displayPlanName === PlanEnum.DataRooms)
+                    return "border-[#fb7a00]";
+                  return "border-gray-900 dark:border-white";
+                }
+              }
+              if (isDataRoomsDataRoomsPlusView) {
+                if (planOption === PlanEnum.DataRooms)
+                  return "border-[#fb7a00]";
+                if (planOption === PlanEnum.DataRoomsPlus) {
+                  if (displayPlanName === PlanEnum.DataRoomsPremium)
+                    return "border-gray-900 dark:border-white";
+                  return "border-gray-200 dark:border-gray-700";
+                }
+              }
+              if (isRightColumn)
+                return "border-gray-900 dark:border-white";
+              return "border-gray-200 dark:border-gray-700";
+            };
+
+            const getBadge = () => {
+              if (isBusinessDataRoomsView) {
+                if (planOption === PlanEnum.DataRooms && displayPlanName === PlanEnum.DataRooms)
+                  return { text: "Most popular", className: "bg-[#fb7a00]" };
+                if (planOption === PlanEnum.DataRooms && displayPlanName === PlanEnum.DataRoomsPremium)
+                  return { text: "Best offer", className: "bg-gray-900 dark:bg-white dark:text-gray-900" };
+                return null;
+              }
+              if (isDataRoomsDataRoomsPlusView) {
+                if (planOption === PlanEnum.DataRooms)
+                  return { text: "Most popular", className: "bg-[#fb7a00]" };
+                if (planOption === PlanEnum.DataRoomsPlus && displayPlanName === PlanEnum.DataRoomsPremium)
+                  return { text: "Best offer", className: "bg-gray-900 dark:bg-white dark:text-gray-900" };
+                return null;
+              }
+              if (isRightColumn && displayPlanName === PlanEnum.DataRoomsPremium)
+                return { text: "Best offer", className: "bg-gray-900 dark:bg-white dark:text-gray-900" };
+              if (planOption === PlanEnum.Business)
+                return { text: "Popular", className: "bg-[#fb7a00]" };
+              return null;
+            };
+
+            const badge = getBadge();
 
             return (
               <div
                 key={displayPlanName}
-                className={`relative flex flex-col rounded-lg border ${
-                  planOption === PlanEnum.Business ||
-                  (planOption === PlanEnum.DataRoomsPlus && isDataRoomsUpgrade)
-                    ? "border-[#fb7a00]"
-                    : "border-gray-200 dark:border-gray-700"
-                } bg-white p-6 shadow-sm dark:bg-gray-900`}
+                className={cn(
+                  "relative flex flex-col rounded-lg border bg-white p-6 shadow-sm dark:bg-gray-900",
+                  getBorderClass(),
+                )}
               >
-                <div className="mb-4 border-b border-gray-200 pb-2 dark:border-gray-700">
+                <div
+                  className="mb-4 border-b border-gray-200 pb-2 dark:border-gray-700"
+                >
                   <div className="flex items-center justify-between">
                     <h3 className="text-balance text-xl font-medium text-gray-900 dark:text-white">
                       {displayPlanName}
                     </h3>
                   </div>
-                  <span
-                    className={cn(
-                      "absolute right-2 top-2 rounded px-2 py-1 text-xs text-white",
-                      planOption === PlanEnum.Business && "bg-[#fb7a00]",
-                      displayPlanName === PlanEnum.DataRoomsPlus &&
-                        "bg-[#fb7a00]",
-                    )}
-                  >
-                    {planOption === PlanEnum.Business && "Most popular"}
-                    {displayPlanName === PlanEnum.DataRoomsPlus && "Best deal"}
-                  </span>
+                  {badge && (
+                    <span
+                      className={cn(
+                        "absolute right-2 top-2 rounded px-2 py-1 text-xs text-white",
+                        badge.className,
+                      )}
+                    >
+                      {badge.text}
+                    </span>
+                  )}
                 </div>
 
                 <div className="mb-2">
@@ -356,7 +436,9 @@ export function UpgradePlanModal({
                       ].amount
                     }
                   </span>
-                  <span className="text-gray-500 dark:text-white/75">
+                  <span
+                    className="text-gray-500 dark:text-white/75"
+                  >
                     /month{period === "yearly" && ", billed annually"}
                   </span>
                 </div>
@@ -412,7 +494,7 @@ export function UpgradePlanModal({
                         <FeatureItem
                           feature={{
                             ...feature,
-                            isHighlighted: highlightItem?.includes(feature.id),
+                            isHighlighted: feature.isHighlighted || highlightItem?.includes(feature.id),
                           }}
                           onUnlimitedClick={
                             feature.isUsers && isDataRoomPlan
@@ -428,13 +510,19 @@ export function UpgradePlanModal({
                 <div className="mt-auto">
                   <Button
                     variant={
-                      planOption === PlanEnum.Business ? "default" : "outline"
+                      planOption === PlanEnum.Business && !isBusinessDataRoomsView
+                        ? "default"
+                        : "outline"
                     }
-                    className={`w-full py-2 text-sm ${
-                      planOption === PlanEnum.Business
-                        ? "bg-[#fb7a00]/90 text-white hover:bg-[#fb7a00]"
-                        : "bg-gray-800 text-white hover:bg-gray-900 hover:text-white dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
-                    }`}
+                    className={cn("w-full py-2 text-sm", (() => {
+                      if (isBusinessDataRoomsView && planOption === PlanEnum.DataRooms && displayPlanName === PlanEnum.DataRooms)
+                        return "bg-[#fb7a00]/90 text-white hover:bg-[#fb7a00] hover:text-white";
+                      if (isDataRoomsDataRoomsPlusView && planOption === PlanEnum.DataRooms)
+                        return "bg-[#fb7a00]/90 text-white hover:bg-[#fb7a00] hover:text-white";
+                      if (planOption === PlanEnum.Business && !isBusinessDataRoomsView)
+                        return "bg-[#fb7a00]/90 text-white hover:bg-[#fb7a00] hover:text-white";
+                      return "bg-gray-800 text-white hover:bg-gray-900 hover:text-white dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200";
+                    })())}
                     loading={selectedPlan === planOption}
                     disabled={selectedPlan !== null}
                     onClick={() => {

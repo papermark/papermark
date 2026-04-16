@@ -5,7 +5,6 @@ import { useRouter } from "next/router";
 
 import { useEffect, useRef, useState } from "react";
 
-import { PlanEnum } from "@/ee/stripe/constants";
 import {
   BarChart3Icon,
   BellIcon,
@@ -28,10 +27,8 @@ import {
 } from "lucide-react";
 
 import { useDataroom } from "@/lib/swr/use-dataroom";
-import useLimits from "@/lib/swr/use-limits";
 import { cn } from "@/lib/utils";
 
-import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
 import { DataroomLinkSheet } from "@/components/links/link-sheet/dataroom-link-sheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -120,7 +117,6 @@ function ScrollingText({
 export function DataroomSidebarContent() {
   const router = useRouter();
   const { dataroom } = useDataroom();
-  const { limits } = useLimits();
   const { state, isMobile } = useSidebar();
   const dataroomId = dataroom?.id ?? (router.query.id as string);
   const [isLinkSheetOpen, setIsLinkSheetOpen] = useState(false);
@@ -174,7 +170,6 @@ export function DataroomSidebarContent() {
       href: `/datarooms/${dataroomId}/conversations`,
       icon: MessageSquareIcon,
       segment: "conversations",
-      limited: !limits?.conversationsInDataroom,
     },
     {
       title: "Branding",
@@ -271,25 +266,6 @@ export function DataroomSidebarContent() {
             {navItems.map((item) => {
               const active = isItemActive(item);
               const hasSubItems = item.items && item.items.length > 0;
-
-              if (item.limited) {
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <UpgradePlanModal
-                      clickedPlan={PlanEnum.DataRoomsPlus}
-                      trigger={`sidebar_dataroom_${item.segment}`}
-                    >
-                      <SidebarMenuButton
-                        tooltip={item.title}
-                        className="text-muted-foreground"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </SidebarMenuButton>
-                    </UpgradePlanModal>
-                  </SidebarMenuItem>
-                );
-              }
 
               if (hasSubItems) {
                 return (
@@ -424,6 +400,7 @@ export function DataroomSidebarContent() {
         isOpen={isLinkSheetOpen}
         setIsOpen={setIsLinkSheetOpen}
         linkType="DATAROOM_LINK"
+        linkTargetId={dataroomId}
       />
     </>
   );

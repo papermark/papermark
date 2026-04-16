@@ -96,6 +96,7 @@ export default function DataroomAnalyticsPage() {
             requiredPlan={PlanEnum.DataRooms}
             trigger="dataroom_analytics_tab"
             upgradeButtonText="Data Rooms"
+            highlightItem={["analytics", "audit"]}
           >
             <MockAnalyticsTable />
           </FeaturePreview>

@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { runs } from "@trigger.dev/sdk";
 import { waitUntil } from "@vercel/functions";
 import { getServerSession } from "next-auth/next";

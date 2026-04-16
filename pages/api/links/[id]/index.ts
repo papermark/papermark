@@ -452,6 +452,13 @@ export default async function handle(
         },
       });
 
+      if (linkData.enableConversation && dataroomLink && link.dataroomId) {
+        await tx.dataroom.update({
+          where: { id: link.dataroomId, teamId: link.teamId! },
+          data: { conversationsEnabled: true },
+        });
+      }
+
       // Update visitor groups (replace all)
       if (linkData.visitorGroupIds !== undefined) {
         // Delete existing visitor group associations

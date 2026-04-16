@@ -290,17 +290,16 @@ export const LinkOptions = ({
                 handleUpgradeStateChange={handleUpgradeStateChange}
               />
 
-              {limits?.conversationsInDataroom ? (
-                <ConversationSection
-                  {...{ data, setData }}
-                  isAllowed={
-                    isDataroomsPlus ||
-                    ((isBusiness || isDatarooms) &&
-                      limits?.conversationsInDataroom)
-                  }
-                  handleUpgradeStateChange={handleUpgradeStateChange}
-                />
-              ) : null}
+              <ConversationSection
+                {...{ data, setData }}
+                isAllowed={
+                  isTrial ||
+                  isDataroomsPlus ||
+                  ((isBusiness || isDatarooms) &&
+                    !!limits?.conversationsInDataroom)
+                }
+                handleUpgradeStateChange={handleUpgradeStateChange}
+              />
             </>
           ) : null}
         </div>

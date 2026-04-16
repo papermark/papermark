@@ -749,7 +749,7 @@ export default function Branding() {
                     text="Save changes"
                     clickedPlan={PlanEnum.Pro}
                     trigger="branding_page"
-                    highlightItem={["custom-branding"]}
+                    highlightItem={["custom-branding", "custom-domain", "custom-social-cards"]}
                   />
                 ) : (
                   <Button

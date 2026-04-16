@@ -1,13 +1,14 @@
 import Link from "next/link";
 
 import { useTeam } from "@/context/team-context";
-import { CircleHelpIcon, WebhookIcon } from "lucide-react";
+import { PlanEnum } from "@/ee/stripe/constants";
+import { CircleHelpIcon, CrownIcon, WebhookIcon } from "lucide-react";
 import useSWR from "swr";
 
 import { usePlan } from "@/lib/swr/use-billing";
 import { fetcher } from "@/lib/utils";
 
-import PlanBadge from "@/components/billing/plan-badge";
+import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
 import AppLayout from "@/components/layouts/app";
 import { SettingsHeader } from "@/components/settings/settings-header";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,15 @@ export default function WebhookSettings() {
               <h3 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
                 Webhooks{" "}
                 {(isFree || isPro) && !isTrial ? (
-                  <PlanBadge plan="Business" />
+                  <UpgradePlanModal
+                    clickedPlan={PlanEnum.Business}
+                    trigger="create_webhook"
+                    highlightItem={["webhooks"]}
+                  >
+                    <span className="cursor-pointer">
+                      <CrownIcon className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                    </span>
+                  </UpgradePlanModal>
                 ) : null}
               </h3>
               <p className="flex flex-row items-center gap-2 text-sm text-muted-foreground">

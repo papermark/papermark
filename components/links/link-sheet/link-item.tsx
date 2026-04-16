@@ -1,11 +1,6 @@
 import { CircleHelpIcon, RotateCcwIcon } from "lucide-react";
 
-
-
-import { usePlan } from "@/lib/swr/use-billing";
 import { cn } from "@/lib/utils";
-
-
 
 import PlanBadge from "@/components/billing/plan-badge";
 import { Button } from "@/components/ui/button";
@@ -33,10 +28,6 @@ export default function LinkItem({
   resetAction?: () => void;
   tooltipContent?: string;
 }) {
-  const { isTrial } = usePlan();
-  const showBadge =
-    isTrial && requiredPlan?.toLowerCase() === "data rooms plus";
-
   return (
     <div className="flex items-center justify-between gap-x-2">
       <div className="flex w-full items-center justify-between space-x-2">
@@ -57,7 +48,7 @@ export default function LinkItem({
               <CircleHelpIcon className="h-4 w-4 shrink-0 text-muted-foreground hover:text-foreground" />
             </BadgeTooltip>
           )}
-          {(!isAllowed && requiredPlan) || showBadge ? (
+          {!isAllowed && requiredPlan ? (
             <PlanBadge plan={requiredPlan} />
           ) : null}
         </h2>

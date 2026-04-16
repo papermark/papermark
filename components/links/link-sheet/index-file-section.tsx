@@ -46,6 +46,7 @@ export default function IndexFileSection({
             state: true,
             trigger: "link_sheet_index_file_section",
             plan: "Data Rooms Plus",
+            highlightItem: ["indexing"],
           })
         }
         tooltipContent="Allow visitors to generate an index file of all documents in the dataroom."
