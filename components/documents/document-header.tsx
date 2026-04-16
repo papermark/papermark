@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
 import { DocumentAIDialog } from "@/ee/features/ai/components/document-ai-dialog";
+import { RedactionDialog } from "@/ee/features/redaction/components/redaction-dialog";
 import { PlanEnum } from "@/ee/stripe/constants";
 import { Document, DocumentVersion } from "@prisma/client";
 import {
@@ -17,6 +18,7 @@ import {
   FolderIcon,
   MoonIcon,
   ServerIcon,
+  Shield,
   SheetIcon,
   SunIcon,
   TrashIcon,
@@ -27,6 +29,7 @@ import { toast } from "sonner";
 import { mutate } from "swr";
 
 import { getFile } from "@/lib/files/get-file";
+import { useFeatureFlags } from "@/lib/hooks/use-feature-flags";
 import { usePlan } from "@/lib/swr/use-billing";
 import useDataroomsSimple from "@/lib/swr/use-datarooms-simple";
 import { useTeamAI } from "@/lib/swr/use-team-ai";
@@ -99,6 +102,13 @@ export default function DocumentHeader({
   const [selectedPlan, setSelectedPlan] = useState<PlanEnum>(PlanEnum.Pro);
   const [exportModalOpen, setExportModalOpen] = useState<boolean>(false);
   const [aiDialogOpen, setAiDialogOpen] = useState<boolean>(false);
+  const [redactionDialogOpen, setRedactionDialogOpen] =
+    useState<boolean>(false);
+  const { isFeatureEnabled } = useFeatureFlags();
+  const isRedactionEnabled = isFeatureEnabled("redaction");
+  const canRedact =
+    isRedactionEnabled &&
+    (prismaDocument.type === "pdf" || primaryVersion.type === "pdf");
   const nameRef = useRef<HTMLHeadingElement>(null);
   const enterPressedRef = useRef<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
@@ -616,6 +626,20 @@ export default function DocumentHeader({
               </AddDocumentModal>
             )}
 
+          {/* Redaction Button */}
+          {canRedact ? (
+            <ButtonTooltip content="Redact document">
+              <Button
+                variant="outline"
+                size="icon"
+                className="hidden size-8 md:flex lg:size-9"
+                onClick={() => setRedactionDialogOpen(true)}
+              >
+                <Shield className="h-5 w-5" />
+              </Button>
+            </ButtonTooltip>
+          ) : null}
+
           {/* AI Agents Button */}
           {isAIEnabled &&
             prismaDocument.type !== "notion" &&
@@ -727,6 +751,19 @@ export default function DocumentHeader({
                   Add to dataroom
                 </DropdownMenuItem>
               )}
+
+              {/* Redact document - only when feature flag is on and doc is a PDF */}
+              {canRedact ? (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setRedactionDialogOpen(true);
+                    setMenuOpen(false);
+                  }}
+                >
+                  <Shield className="mr-2 h-4 w-4" />
+                  Redact document
+                </DropdownMenuItem>
+              ) : null}
 
               {/* AI Agents - only show when team has AI enabled */}
               {isAIEnabled &&
@@ -1017,6 +1054,18 @@ export default function DocumentHeader({
         agentsEnabled={prismaDocument.agentsEnabled}
         vectorStoreFileId={primaryVersion.vectorStoreFileId}
       />
+
+      {/* Redaction Dialog */}
+      {canRedact ? (
+        <RedactionDialog
+          open={redactionDialogOpen}
+          onOpenChange={setRedactionDialogOpen}
+          documentId={prismaDocument.id}
+          onApplied={() => {
+            mutate(`/api/teams/${teamId}/documents/${prismaDocument.id}`);
+          }}
+        />
+      ) : null}
     </header>
   );
 }
