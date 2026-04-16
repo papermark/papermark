@@ -64,8 +64,9 @@ model User {
   messages                  Message[]
 
   // FAQ system
-  publishedFaqItems  DataroomFaqItem[]
-  createdAnnotations DocumentAnnotation[] // Annotations created by this user
+  publishedFaqItems    DataroomFaqItem[]
+  createdAnnotations   DocumentAnnotation[] // Annotations created by this user
+  createdRedactionJobs DocumentRedactionJob[] // Redaction jobs created by this user
 
   installedIntegrations InstalledIntegration[]
 

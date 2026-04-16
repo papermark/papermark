@@ -1,0 +1,84 @@
+// Redaction feature (EE)
+//
+// Status and category-like fields are stored as String and validated with Zod at the
+// application layer (see ee/features/redaction/lib/schemas/redaction.ts) to avoid
+// migrations when adding new categories or statuses.
+
+model DocumentRedactionJob {
+  id                String          @id @default(cuid())
+  documentId        String
+  document          Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentVersionId String
+  documentVersion   DocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+  teamId            String
+  team              Team            @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdById       String
+  createdBy         User            @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  // Workflow state (Zod-validated). One of:
+  // PENDING | DETECTING | REVIEW | APPLYING | APPLIED | FAILED
+  status String @default("PENDING")
+
+  // User-provided terms to redact in addition to AI-detected PII
+  customTerms String[]
+
+  // Optional Trigger.dev run id tracking the detect/apply run (for realtime UI)
+  triggerRunId String?
+
+  // Optional error message if the job failed
+  errorMessage String?
+
+  redactions DocumentRedaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([documentId])
+  @@index([documentVersionId])
+  @@index([teamId])
+  @@index([documentId, createdAt(sort: Desc)])
+}
+
+model DocumentRedaction {
+  id    String               @id @default(cuid())
+  jobId String
+  job   DocumentRedactionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  // 1-based page number within the document version
+  pageNumber Int
+
+  // Normalized coordinates on a 0-1000 scale (matching Gemini box2d output)
+  x      Float
+  y      Float
+  width  Float
+  height Float
+
+  // What the AI detected (may be null for manual draws or image regions)
+  detectedText String?
+
+  // Zod-validated category. One of:
+  // PII_NAME | PII_EMAIL | PII_PHONE | PII_SSN | PII_ADDRESS | PII_TAX_ID |
+  // PII_ACCOUNT_NUMBER | CUSTOM_TERM | IMAGE | OTHER
+  category String?
+
+  // Zod-validated reason tag. One of:
+  // PRIVACY | GDPR | CPRA | STRATEGIC | COMMERCIAL | OTHER
+  reason String?
+
+  // "AI" or "MANUAL" - tracks whether this was detected by AI or drawn by the user
+  source String @default("AI")
+
+  // Zod-validated status. One of:
+  // PENDING | ACCEPTED | DECLINED | APPLIED
+  status String @default("PENDING")
+
+  // Detection confidence from the AI: LOW | MEDIUM | HIGH (null for manual)
+  confidence String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([jobId])
+  @@index([jobId, pageNumber])
+  @@index([jobId, status])
+}

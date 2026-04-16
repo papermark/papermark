@@ -25,6 +25,7 @@ model Team {
   uploadedDocuments DocumentUpload[]
   Tag               Tag[]
   annotations       DocumentAnnotation[] // Annotations created by team members
+  redactionJobs     DocumentRedactionJob[] // Document redaction jobs for this team
 
   installedIntegrations InstalledIntegration[]
 
