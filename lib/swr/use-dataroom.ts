@@ -35,6 +35,7 @@ export function useDataroom() {
   const { data: dataroom, error } = useSWR<
     Dataroom & {
       _count?: { viewerGroups: number; permissionGroups: number };
+      frozenByUser?: { name: string | null; email: string | null } | null;
       tags?: {
         tag: {
           id: string;

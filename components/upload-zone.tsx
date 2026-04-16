@@ -133,6 +133,7 @@ interface UploadZoneProps extends React.PropsWithChildren {
   folderPathName?: string;
   dataroomId?: string;
   dataroomName?: string;
+  disabled?: boolean;
 }
 
 export default function UploadZone({
@@ -148,6 +149,7 @@ export default function UploadZone({
   cancelledItemIdsRef,
   dataroomId,
   dataroomName,
+  disabled = false,
 }: UploadZoneProps) {
   const analytics = useAnalytics();
   const { plan, isFree, isTrial } = usePlan();
@@ -1198,6 +1200,10 @@ export default function UploadZone({
     onDrop,
     onDropRejected,
     getFilesFromEvent,
+    disabled,
+    noClick: disabled,
+    noDrag: disabled,
+    noDragEventsBubbling: disabled,
   });
 
   return (

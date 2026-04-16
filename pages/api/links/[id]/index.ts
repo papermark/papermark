@@ -225,12 +225,24 @@ export default async function handle(
             },
           },
         },
+        select: {
+          id: true,
+          dataroomId: true,
+          dataroom: { select: { isFrozen: true } },
+        },
       });
 
       if (!existingLink) {
         return res
           .status(404)
           .json({ error: "Link not found or unauthorized" });
+      }
+
+      if (existingLink.dataroom?.isFrozen) {
+        return res.status(403).json({
+          error:
+            "This data room is frozen. You cannot modify links for a frozen data room.",
+        });
       }
     } catch (error) {
       return res.status(500).json({

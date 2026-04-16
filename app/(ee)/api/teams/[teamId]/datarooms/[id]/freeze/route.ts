@@ -1,41 +1,32 @@
-import { NextApiRequest, NextApiResponse } from "next";
+import { NextRequest, NextResponse } from "next/server";
 
 import { getTeamStorageConfigById } from "@/ee/features/storage/config";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth";
+
+import { authOptions } from "@/pages/api/auth/[...nextauth]";
 
 import {
   buildFolderNameMap,
   buildFolderPathsFromHierarchy,
 } from "@/lib/dataroom/build-folder-hierarchy";
 import prisma from "@/lib/prisma";
-import { dataroomFreezeArchiveTask } from "@/lib/trigger/dataroom-freeze-archive";
+import { ratelimit } from "@/lib/redis";
+import { dataroomFreezeArchiveTask } from "@/ee/features/dataroom-freeze/lib/trigger/dataroom-freeze-archive";
 import { CustomUser } from "@/lib/types";
 import { generateTriggerPublicAccessToken } from "@/lib/utils/generate-trigger-auth-token";
 
-export const config = {
-  maxDuration: 60,
-};
+export const maxDuration = 60;
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse,
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { teamId: string; id: string } },
 ) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", ["POST"]);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
-  }
-
-  const session = await getServerSession(req, res, authOptions);
+  const session = await getServerSession(authOptions);
   if (!session) {
-    return res.status(401).end("Unauthorized");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { teamId, id: dataroomId } = req.query as {
-    teamId: string;
-    id: string;
-  };
-
+  const { teamId, id: dataroomId } = params;
   const userId = (session.user as CustomUser).id;
 
   try {
@@ -50,14 +41,14 @@ export default async function handler(
     });
 
     if (!teamAccess) {
-      return res.status(401).end("Unauthorized");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     if (teamAccess.role !== "ADMIN" && teamAccess.role !== "MANAGER") {
-      return res.status(403).json({
-        message:
-          "Only admins and managers can freeze data rooms.",
-      });
+      return NextResponse.json(
+        { message: "Only admins and managers can freeze data rooms." },
+        { status: 403 },
+      );
     }
 
     const dataroom = await prisma.dataroom.findUnique({
@@ -104,20 +95,68 @@ export default async function handler(
     });
 
     if (!dataroom) {
-      return res.status(404).json({ error: "Dataroom not found" });
+      return NextResponse.json(
+        { error: "Dataroom not found" },
+        { status: 404 },
+      );
     }
 
     if (dataroom.isFrozen) {
-      return res.status(400).json({ error: "Dataroom is already frozen" });
+      return NextResponse.json(
+        { error: "Dataroom is already frozen" },
+        { status: 400 },
+      );
     }
 
-    // Freeze the dataroom and archive all links in a transaction
+    const { token } = (await request.json()) as { token?: string };
+    if (!token || token.length !== 6) {
+      return NextResponse.json(
+        { error: "A valid 6-digit verification code is required." },
+        { status: 400 },
+      );
+    }
+
+    const { success: rlSuccess } = await ratelimit(5, "1 m").limit(
+      `verify-freeze-otp:${userId}`,
+    );
+    if (!rlSuccess) {
+      return NextResponse.json(
+        { message: "Too many attempts. Please try again later." },
+        { status: 429 },
+      );
+    }
+
+    const verification = await prisma.verificationToken.findUnique({
+      where: {
+        token,
+        identifier: `freeze-otp:${dataroomId}:${userId}`,
+      },
+    });
+
+    if (!verification) {
+      return NextResponse.json(
+        { error: "Invalid verification code. Please try again." },
+        { status: 401 },
+      );
+    }
+
+    if (Date.now() > verification.expires.getTime()) {
+      await prisma.verificationToken.delete({ where: { token } });
+      return NextResponse.json(
+        { error: "Verification code expired. Please request a new one." },
+        { status: 401 },
+      );
+    }
+
+    await prisma.verificationToken.delete({ where: { token } });
+
+    const frozenAt = new Date();
     await prisma.$transaction([
       prisma.dataroom.update({
         where: { id: dataroomId },
         data: {
           isFrozen: true,
-          frozenAt: new Date(),
+          frozenAt,
           frozenBy: userId,
         },
       }),
@@ -132,7 +171,6 @@ export default async function handler(
       }),
     ]);
 
-    // Build folder structure for the archive (same pattern as bulk download)
     const computedPathMap = buildFolderPathsFromHierarchy(dataroom.folders);
     const folderMap = buildFolderNameMap(dataroom.folders, computedPathMap);
 
@@ -185,7 +223,6 @@ export default async function handler(
       fileKeys.push(fileKey);
     };
 
-    // Root-level documents
     dataroom.documents
       .filter((doc) => !doc.folderId)
       .filter((doc) => doc.document.versions[0]?.type !== "notion")
@@ -202,11 +239,7 @@ export default async function handler(
         ),
       );
 
-    // Pre-index documents by folderId
-    const docsByFolderId = new Map<
-      string,
-      typeof dataroom.documents
-    >();
+    const docsByFolderId = new Map<string, typeof dataroom.documents>();
     for (const doc of dataroom.documents) {
       if (!doc.folderId) continue;
       const list = docsByFolderId.get(doc.folderId) ?? [];
@@ -240,7 +273,7 @@ export default async function handler(
     });
 
     const storageConfig = await getTeamStorageConfigById(teamId);
-    const tag = `freeze:${dataroomId}`;
+    const tag = `freeze:${dataroomId}:${frozenAt.getTime()}`;
 
     const handle = await dataroomFreezeArchiveTask.trigger(
       {
@@ -259,15 +292,18 @@ export default async function handler(
 
     const publicAccessToken = await generateTriggerPublicAccessToken(tag);
 
-    return res.status(200).json({
+    return NextResponse.json({
       runId: handle.id,
       publicAccessToken,
     });
   } catch (error) {
     console.error("Error freezing dataroom:", error);
-    return res.status(500).json({
-      message: "Internal Server Error",
-      error: (error as Error).message,
-    });
+    return NextResponse.json(
+      {
+        message: "Internal Server Error",
+        error: (error as Error).message,
+      },
+      { status: 500 },
+    );
   }
 }

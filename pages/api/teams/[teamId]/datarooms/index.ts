@@ -64,6 +64,7 @@ export default async function handle(
             id: true,
             name: true,
             internalName: true,
+            isFrozen: true,
             createdAt: true,
           },
           orderBy: {
@@ -138,6 +139,7 @@ export default async function handle(
           select: {
             id: true,
             name: true,
+            isFrozen: true,
             createdAt: true,
             _count: {
               select: { documents: true, views: true },

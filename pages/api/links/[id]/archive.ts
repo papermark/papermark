@@ -23,6 +23,18 @@ export default async function handle(
     const { isArchived } = req.body;
 
     try {
+      const link = await prisma.link.findUnique({
+        where: { id, deletedAt: null },
+        select: { dataroom: { select: { isFrozen: true } } },
+      });
+
+      if (link?.dataroom?.isFrozen) {
+        return res.status(403).json({
+          error:
+            "This data room is frozen. You cannot change link status for a frozen data room.",
+        });
+      }
+
       // Update the link in the database
       const updatedLink = await prisma.link.update({
         where: { id: id, deletedAt: null },

@@ -716,7 +716,10 @@ export default function LinksTable({
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json().catch(() => null);
+        throw new Error(
+          data?.error || `HTTP error! status: ${response.status}`,
+        );
       }
 
       const archivedLink = await response.json();
@@ -751,7 +754,11 @@ export default function LinksTable({
       );
     } catch (error) {
       console.error("Error archiving link:", error);
-      toast.error("Failed to update link status");
+      toast.error(
+        error instanceof Error && error.message !== `HTTP error! status: ${0}`
+          ? error.message
+          : "Failed to update link status",
+      );
     } finally {
       setLoadingLinks((prev) => {
         const newSet = new Set(prev);

@@ -604,6 +604,7 @@ export function DataroomItemsList({
         cancelledItemIdsRef={cancelledItemIdsRef}
         dataroomId={dataroomId}
         dataroomName={dataroom?.name}
+        disabled={dataroom?.isFrozen ?? false}
       >
         {isMobile ? (
           <div>

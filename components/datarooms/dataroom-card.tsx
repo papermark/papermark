@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 
 import { formatDistanceToNow } from "date-fns";
+import { SnowflakeIcon } from "lucide-react";
 
 import { TagColorProps } from "@/lib/types";
 
@@ -30,6 +31,7 @@ type DataroomWithDetails = {
   id: string;
   name: string;
   internalName?: string | null;
+  isFrozen?: boolean;
   _count: {
     documents: number;
     views: number;
@@ -88,25 +90,36 @@ export default function DataroomCard({ dataroom }: DataroomCardProps) {
                       className="flex items-center gap-1.5"
                       onClick={(e) => e.preventDefault()}
                     >
-                      <div
-                        className={`h-2 w-2 rounded-full ${
-                          isActive ? "bg-green-500" : "bg-gray-400"
-                        }`}
-                      />
-                      <span
-                        className={`text-xs ${
-                          isActive ? "text-green-600" : "text-gray-500"
-                        }`}
-                      >
-                        {isActive ? "Active" : "Inactive"}
-                      </span>
+                      {dataroom.isFrozen ? (
+                        <>
+                          <SnowflakeIcon className="h-3.5 w-3.5 text-blue-500" />
+                          <span className="text-xs text-blue-600">Frozen</span>
+                        </>
+                      ) : (
+                        <>
+                          <div
+                            className={`h-2 w-2 rounded-full ${
+                              isActive ? "bg-green-500" : "bg-gray-400"
+                            }`}
+                          />
+                          <span
+                            className={`text-xs ${
+                              isActive ? "text-green-600" : "text-gray-500"
+                            }`}
+                          >
+                            {isActive ? "Active" : "Inactive"}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>
-                      {isActive
-                        ? "Dataroom has active links"
-                        : "No active links"}
+                      {dataroom.isFrozen
+                        ? "Data room is frozen"
+                        : isActive
+                          ? "Dataroom has active links"
+                          : "No active links"}
                     </p>
                   </TooltipContent>
                 </Tooltip>
