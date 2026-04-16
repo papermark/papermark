@@ -5,7 +5,7 @@ import { isGenericDomain } from "@/lib/utils/email-domain";
 import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 
 const SSO_ELIGIBLE_PLANS = ["datarooms-premium", "datarooms-premium+old", "datarooms-unlimited", "datarooms-unlimited+old"];
 

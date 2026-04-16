@@ -5,7 +5,7 @@ import { getFilteredDataroomDocumentIds } from "@/ee/features/ai/lib/chat/get-fi
 import { sendMessage } from "@/ee/features/ai/lib/chat/send-message";
 import { validateChatAccess } from "@/ee/features/ai/lib/permissions/validate-chat-access";
 import { sendMessageSchema } from "@/ee/features/ai/schemas/chat";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { getServerSession } from "next-auth";
 
 import { getFeatureFlags } from "@/lib/featureFlags";

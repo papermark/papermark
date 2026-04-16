@@ -7,7 +7,7 @@ import {
 } from "@/ee/features/templates/constants/dataroom-templates";
 import { generateDataroomSchema } from "@/ee/features/templates/schemas/dataroom-templates";
 import { getLimits } from "@/ee/limits/server";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { getServerSession } from "next-auth/next";
 
 import { newId } from "@/lib/id-helper";

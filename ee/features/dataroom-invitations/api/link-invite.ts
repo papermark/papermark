@@ -6,7 +6,7 @@ import {
   SendLinkInvitationSchema,
   invitationEmailSchema,
 } from "@/ee/features/dataroom-invitations/lib/schema/dataroom-invitations";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { LinkType } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
