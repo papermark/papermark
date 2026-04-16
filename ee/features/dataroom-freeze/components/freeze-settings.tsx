@@ -347,7 +347,15 @@ export default function FreezeSettings({
             </DialogHeader>
 
             {step === "confirm-text" && (
-              <div className="space-y-4 py-2">
+              <form
+                className="space-y-4 py-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (isConfirmTextValid && !isSendingToken) {
+                    handleSendToken();
+                  }
+                }}
+              >
                 <div className="space-y-2">
                   <Label htmlFor="confirm-freeze">
                     Type <span className="font-mono font-bold">{CONFIRMATION_TEXT}</span> to
@@ -364,14 +372,15 @@ export default function FreezeSettings({
                 </div>
                 <DialogFooter>
                   <Button
+                    type="button"
                     variant="outline"
                     onClick={() => setDialogOpen(false)}
                   >
                     Cancel
                   </Button>
                   <Button
+                    type="submit"
                     variant="destructive"
-                    onClick={handleSendToken}
                     disabled={!isConfirmTextValid || isSendingToken}
                     className="gap-2"
                   >
@@ -385,7 +394,7 @@ export default function FreezeSettings({
                       : "Send verification code"}
                   </Button>
                 </DialogFooter>
-              </div>
+              </form>
             )}
 
             {step === "otp-sent" && (
