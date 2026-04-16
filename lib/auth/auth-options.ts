@@ -99,7 +99,7 @@ export const authOptions: NextAuthOptions = {
       version: "2.0",
       checks: ["pkce", "state"],
       authorization: {
-        url: `${process.env.NEXTAUTH_URL}/api/auth/saml/authorize`,
+        url: `${getMainDomainUrl()}/api/auth/saml/authorize`,
         params: {
           scope: "",
           response_type: "code",
@@ -107,10 +107,10 @@ export const authOptions: NextAuthOptions = {
         },
       },
       token: {
-        url: `${process.env.NEXTAUTH_URL}/api/auth/saml/token`,
+        url: `${getMainDomainUrl()}/api/auth/saml/token`,
         params: { grant_type: "authorization_code" },
       },
-      userinfo: `${process.env.NEXTAUTH_URL}/api/auth/saml/userinfo`,
+      userinfo: `${getMainDomainUrl()}/api/auth/saml/userinfo`,
       profile: async (profile) => {
         const name =
           `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
