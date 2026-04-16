@@ -128,7 +128,7 @@ export function DataroomLinkSheet({
   const [hasCustomPermissions, setHasCustomPermissions] =
     useState<boolean>(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState<boolean>(false);
-  const { dataroom } = useDataroom();
+  const { dataroom } = useDataroom(linkTargetId);
   const canInviteViewers = isDataroomsPlus;
 
   const isPresetsAllowed =
