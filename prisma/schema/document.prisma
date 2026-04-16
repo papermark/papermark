@@ -64,7 +64,19 @@ model DocumentVersion {
   pages             DocumentPage[]
   hasPages          Boolean                @default(false) // Indicates if the document has pages
   length            Int? // This is the length of the video in seconds
-  redactionJobs     DocumentRedactionJob[] // Redaction jobs targeting this version
+  redactionJobs     DocumentRedactionJob[] @relation("RedactionSourceVersion") // Redaction jobs using this version as input
+
+  // If set, this version was PRODUCED BY redacting another version. The value
+  // points at the pre-redaction version so the viewer can render a "Redacted"
+  // badge and "unredact" can simply flip primary back to redactedFromVersionId.
+  // If null, this version is NOT a redacted version.
+  redactedFromVersionId String?
+  redactedFromVersion   DocumentVersion?  @relation("RedactedFromVersion", fields: [redactedFromVersionId], references: [id], onDelete: SetNull)
+  redactedChildren      DocumentVersion[] @relation("RedactedFromVersion")
+
+  // Back reference to the job that produced this redacted version (if any).
+  producedByRedactionJob DocumentRedactionJob? @relation("RedactionResultVersion")
+
   createdAt         DateTime               @default(now())
   updatedAt         DateTime               @updatedAt
 
@@ -73,6 +85,7 @@ model DocumentVersion {
   @@index([documentId, isPrimary]) // Performance optimization for primary version queries
   @@index([documentId, createdAt(sort: Desc)]) // Partial index for primary versions
   @@index([documentId, isPrimary, createdAt]) // Optimize primary version lookups with ordering
+  @@index([redactedFromVersionId])
 }
 
 model DocumentPage {

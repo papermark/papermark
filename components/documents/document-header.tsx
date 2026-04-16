@@ -109,6 +109,13 @@ export default function DocumentHeader({
   const canRedact =
     isRedactionEnabled &&
     (prismaDocument.type === "pdf" || primaryVersion.type === "pdf");
+  // `redactedFromVersionId` is the canonical signal for "this version was
+  // produced by redacting another". We surface a badge so viewers and team
+  // members can immediately tell they're looking at the redacted output.
+  const isRedactedVersion = Boolean(
+    (primaryVersion as DocumentVersion & { redactedFromVersionId?: string | null })
+      .redactedFromVersionId,
+  );
   const nameRef = useRef<HTMLHeadingElement>(null);
   const enterPressedRef = useRef<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
@@ -569,6 +576,15 @@ export default function DocumentHeader({
               <span className="text-xs">
                 <CloudDownloadIcon className="h-6 w-6" />
                 <span className="sr-only">This document is download only</span>
+              </span>
+            </ButtonTooltip>
+          )}
+
+          {isRedactedVersion && (
+            <ButtonTooltip content="This version is redacted. The original is preserved as a prior version.">
+              <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                <Shield className="h-3.5 w-3.5" />
+                Redacted
               </span>
             </ButtonTooltip>
           )}

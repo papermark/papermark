@@ -145,6 +145,10 @@ export const applyRedactionsTask = task({
       if (!uploaded.type || !uploaded.data) {
         throw new Error("Failed to upload redacted PDF");
       }
+      // Narrow into non-null locals so the transaction closure below keeps
+      // the narrowing (TS doesn't widen through async callbacks).
+      const uploadedType = uploaded.type;
+      const uploadedData = uploaded.data;
 
       metadata.set("step", "Creating new document version...").set("progress", 85);
 
@@ -157,41 +161,49 @@ export const applyRedactionsTask = task({
       });
       const nextVersionNumber = (highestVersion?.versionNumber ?? 0) + 1;
 
-      const [newVersion] = await prisma.$transaction([
-        prisma.documentVersion.create({
+      // Demote existing primaries FIRST, then create the new redacted
+      // version as the only primary. Also back-link the job to the new
+      // version so `DocumentRedactionJob.resultingVersionId` identifies it.
+      const newVersion = await prisma.$transaction(async (tx) => {
+        await tx.documentVersion.updateMany({
+          where: { documentId: job.documentId, isPrimary: true },
+          data: { isPrimary: false },
+        });
+
+        const created = await tx.documentVersion.create({
           data: {
             documentId: job.documentId,
             versionNumber: nextVersionNumber,
-            file: uploaded.data,
+            file: uploadedData,
             originalFile: version.originalFile ?? version.file,
             type: version.type ?? "pdf",
             contentType: version.contentType ?? "application/pdf",
-            storageType: uploaded.type,
+            storageType: uploadedType,
             numPages: version.numPages,
             isPrimary: true,
             isVertical: false,
             fileSize: BigInt(redactedBytes.byteLength),
+            // Self-reference to the pre-redaction version. Non-null value
+            // here is the canonical signal that a version is a redacted one.
+            redactedFromVersionId: version.id,
           },
-        }),
-        // Demote all other primaries for this document.
-        prisma.documentVersion.updateMany({
-          where: { documentId: job.documentId, isPrimary: true },
-          data: { isPrimary: false },
-        }),
-      ]);
+        });
 
-      // Re-promote the row we just inserted (the updateMany above also cleared it).
-      await prisma.documentVersion.update({
-        where: { id: newVersion.id },
-        data: { isPrimary: true },
+        // Back-link the job -> resulting version so both sides can navigate.
+        await tx.documentRedactionJob.update({
+          where: { id: jobId },
+          data: { resultingVersionId: created.id },
+        });
+
+        return created;
       });
 
       // Point the Document.file at the redacted file.
       await prisma.document.update({
         where: { id: job.documentId },
         data: {
-          file: uploaded.data,
-          storageType: uploaded.type,
+          file: uploadedData,
+          storageType: uploadedType,
         },
       });
 

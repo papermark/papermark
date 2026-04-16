@@ -51,6 +51,10 @@ export async function GET(
       createdAt: true,
       updatedAt: true,
       documentVersionId: true,
+      // The version produced by this job (null until APPLIED). Clients can
+      // match this against the current primary version to know whether the
+      // document is currently showing the redacted output of this job.
+      resultingVersionId: true,
       createdBy: {
         select: { id: true, name: true, email: true },
       },

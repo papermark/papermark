@@ -8,8 +8,18 @@ model DocumentRedactionJob {
   id                String          @id @default(cuid())
   documentId        String
   document          Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  // The SOURCE version used as input to redaction. Stays stable for the
+  // lifetime of the job so reviewers can always rerun against the original.
   documentVersionId String
-  documentVersion   DocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+  documentVersion   DocumentVersion @relation("RedactionSourceVersion", fields: [documentVersionId], references: [id], onDelete: Cascade)
+
+  // The RESULTING version produced once the redactions were applied. Null
+  // until status transitions to APPLIED. Unique so each resulting version
+  // can be traced back to exactly one job.
+  resultingVersionId String?          @unique
+  resultingVersion   DocumentVersion? @relation("RedactionResultVersion", fields: [resultingVersionId], references: [id], onDelete: SetNull)
+
   teamId            String
   team              Team            @relation(fields: [teamId], references: [id], onDelete: Cascade)
   createdById       String
