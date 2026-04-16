@@ -74,8 +74,7 @@ export default async function handle(
     const hasAccess =
       plan.includes("datarooms-plus") ||
       plan.includes("datarooms-premium") ||
-      plan.includes("datarooms-unlimited") ||
-      plan.includes("drtrial");
+      plan.includes("datarooms-unlimited");
 
     if (!team || !hasAccess) {
       return res.status(403).json({

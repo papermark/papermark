@@ -299,7 +299,7 @@ export default function LinksTable({
   };
 
   const { isMobile } = useMediaQuery();
-  const canInviteViewers = isDataroomsPlus || isTrial;
+  const canInviteViewers = isDataroomsPlus;
 
   let processedLinks = useMemo(() => {
     if (!links?.length) return [];

@@ -16,8 +16,8 @@ import { BadgeTooltip } from "@/components/ui/tooltip";
 export default function DataroomLinksPage() {
   const { dataroom } = useDataroom();
   const { links } = useDataroomLinks();
-  const { isDataroomsPlus, isTrial } = usePlan();
-  const canInviteViewers = isDataroomsPlus || isTrial;
+  const { isDataroomsPlus } = usePlan();
+  const canInviteViewers = isDataroomsPlus;
   const [isLinkSheetOpen, setIsLinkSheetOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 

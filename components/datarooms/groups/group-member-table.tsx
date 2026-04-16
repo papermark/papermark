@@ -60,8 +60,8 @@ export default function GroupMemberTable({
     uninvitedEmails,
     mutate: mutateUninvited,
   } = useUninvitedMembers(dataroomId, groupId);
-  const { isDataroomsPlus, isTrial } = usePlan();
-  const canInviteViewers = isDataroomsPlus || isTrial;
+  const { isDataroomsPlus } = usePlan();
+  const canInviteViewers = isDataroomsPlus;
 
   const [addMembersOpen, setAddMembersOpen] = useState<boolean>(false);
   const [inviteOpen, setInviteOpen] = useState<boolean>(false);
