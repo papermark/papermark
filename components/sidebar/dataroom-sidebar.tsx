@@ -23,6 +23,7 @@ import {
   ShieldIcon,
   SnowflakeIcon,
   TableIcon,
+  TriangleAlertIcon,
   UsersIcon,
 } from "lucide-react";
 
@@ -209,9 +210,9 @@ export function DataroomSidebarContent() {
           icon: ShieldIcon,
         },
         {
-          title: "Freeze Data Room",
-          href: `/datarooms/${dataroomId}/settings/freeze`,
-          icon: SnowflakeIcon,
+          title: "Danger Zone",
+          href: `/datarooms/${dataroomId}/settings/danger`,
+          icon: TriangleAlertIcon,
         },
       ],
     },
@@ -355,7 +356,7 @@ export function DataroomSidebarContent() {
                   className="w-full group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2"
                   size="sm"
                 >
-                  <Link href={`/datarooms/${dataroomId}/settings/freeze`}>
+                  <Link href={`/datarooms/${dataroomId}/settings/danger`}>
                     <SnowflakeIcon className="!size-4 shrink-0 text-blue-500 group-data-[collapsible=icon]:block" />
                     <span className="group-data-[collapsible=icon]:hidden">
                       View archive

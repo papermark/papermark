@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
+import { useFreezeProgress } from "@/ee/features/dataroom-freeze/lib/swr/use-freeze-progress";
 import { PlanEnum } from "@/ee/stripe/constants";
 import {
   AlertTriangleIcon,
@@ -14,8 +15,6 @@ import {
 import { toast } from "sonner";
 import { mutate } from "swr";
 
-import { useFreezeProgress } from "@/ee/features/dataroom-freeze/lib/swr/use-freeze-progress";
-
 import { usePlan } from "@/lib/swr/use-billing";
 
 import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
@@ -28,22 +27,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
-import { Label } from "@/components/ui/label";
+import { Modal } from "@/components/ui/modal";
 import { Progress } from "@/components/ui/progress";
 import { TimestampTooltip } from "@/components/ui/timestamp-tooltip";
 
@@ -51,6 +41,7 @@ const CONFIRMATION_TEXT = "confirm freeze dataroom";
 
 interface FreezeSettingsProps {
   dataroomId: string;
+  dataroomName: string;
   isFrozen: boolean;
   frozenAt: string | Date | null;
   frozenByUser: { name: string | null; email: string | null } | null;
@@ -62,6 +53,7 @@ type DialogStep = "confirm-text" | "otp-sent" | "freezing";
 
 export default function FreezeSettings({
   dataroomId,
+  dataroomName,
   isFrozen,
   frozenAt,
   frozenByUser,
@@ -331,9 +323,7 @@ export default function FreezeSettings({
 
           {freezeArchiveHash && (
             <div className="space-y-2">
-              <p className="text-sm font-medium">
-                Archive Integrity (SHA-256)
-              </p>
+              <p className="text-sm font-medium">Archive Integrity (SHA-256)</p>
               <code className="block break-all rounded-md bg-muted p-2 font-mono text-xs">
                 {freezeArchiveHash}
               </code>
@@ -359,201 +349,186 @@ export default function FreezeSettings({
   }
 
   return (
-    <Card className="border-destructive/50 bg-transparent">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <SnowflakeIcon className="h-5 w-5" />
-          Freeze Data Room
-        </CardTitle>
-        <CardDescription>
-          Permanently close this data room from all viewer access.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4">
-          <p className="text-sm font-medium text-destructive">
-            This action cannot be undone.
+    <>
+      <Card className="border-destructive/50 bg-transparent">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <SnowflakeIcon className="h-5 w-5 text-destructive" />
+            Freeze Data Room
+          </CardTitle>
+          <CardDescription>
+            Permanently close this data room from all viewer access.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4">
+            <p className="text-sm font-medium text-destructive">
+              This action cannot be undone.
+            </p>
+            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+              <li>- All viewer access will be permanently revoked</li>
+              <li>- All existing links will be archived</li>
+              <li>
+                - A downloadable archive will be generated containing all
+                documents, audit logs, and Q&A data
+              </li>
+            </ul>
+          </div>
+        </CardContent>
+        <CardFooter className="flex items-center justify-between rounded-b-lg border-t bg-muted px-6 py-6">
+          <p className="text-sm text-muted-foreground">
+            Freezing creates a tamper-proof archive with SHA-256 integrity
+            verification.
           </p>
-          <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-            <li>- All viewer access will be permanently revoked</li>
-            <li>- All existing links will be archived</li>
-            <li>
-              - A downloadable archive will be generated containing all
-              documents, audit logs, and Q&A data
-            </li>
-          </ul>
-        </div>
-      </CardContent>
-      <CardFooter className="flex items-center justify-between rounded-b-lg border-t bg-muted px-6 py-6">
-        <p className="text-sm text-muted-foreground">
-          Freezing creates a tamper-proof archive with SHA-256 integrity
-          verification.
-        </p>
-        {isDataroomsPlus ? (
-        <Dialog
-          open={dialogOpen}
-          onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) resetDialog();
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button variant="destructive" className="gap-2">
+          {isDataroomsPlus ? (
+            <Button
+              variant="destructive"
+              className="gap-2"
+              onClick={() => setDialogOpen(true)}
+            >
               <SnowflakeIcon className="h-4 w-4" />
               Freeze Data Room
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Freeze this data room?</DialogTitle>
-              <DialogDescription>
-                This will permanently close the data room, archive all links,
-                and revoke all viewer access. This action cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
+          ) : (
+            <UpgradePlanModal
+              clickedPlan={PlanEnum.DataRoomsPlus}
+              trigger="datarooms_freeze_button"
+            >
+              <Button className="gap-2">
+                <CrownIcon className="h-4 w-4" />
+                Upgrade to freeze
+              </Button>
+            </UpgradePlanModal>
+          )}
+        </CardFooter>
+      </Card>
 
-            {step === "confirm-text" && (
-              <form
-                className="space-y-4 py-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (isConfirmTextValid && !isSendingToken) {
-                    handleSendToken();
-                  }
-                }}
-              >
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-freeze">
-                    Type <span className="font-mono font-bold">{CONFIRMATION_TEXT}</span> to
-                    continue
-                  </Label>
+      <Modal
+        showModal={dialogOpen}
+        setShowModal={setDialogOpen}
+        onClose={resetDialog}
+      >
+        <div className="flex flex-col items-center justify-center space-y-3 border-b border-border bg-white px-4 py-4 pt-8 dark:border-gray-900 dark:bg-gray-900 sm:px-8">
+          <CardTitle>Freeze Data Room</CardTitle>
+          <CardDescription className="text-md font-semibold text-foreground">
+            {dataroomName}
+          </CardDescription>
+          <CardDescription className="text-center">
+            {step === "otp-sent"
+              ? "Enter the 6-digit verification code we sent to your email to confirm freezing."
+              : "Warning: This will permanently close the data room, archive all links, and revoke all viewer access."}
+          </CardDescription>
+        </div>
+
+        <div className="bg-muted px-4 py-8 dark:bg-gray-900 sm:px-8">
+          {step === "confirm-text" && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (isConfirmTextValid && !isSendingToken) {
+                  handleSendToken();
+                }
+              }}
+              className="flex flex-col space-y-6 text-left"
+            >
+              <div>
+                <label
+                  htmlFor="confirm-freeze"
+                  className="block text-sm text-muted-foreground"
+                >
+                  To verify, type{" "}
+                  <span className="font-semibold text-foreground">
+                    {CONFIRMATION_TEXT}
+                  </span>{" "}
+                  below
+                </label>
+                <div className="relative mt-1 rounded-md shadow-sm">
                   <Input
                     id="confirm-freeze"
                     value={confirmText}
                     onChange={(e) => setConfirmText(e.target.value)}
-                    placeholder={CONFIRMATION_TEXT}
                     autoComplete="off"
                     autoFocus
+                    data-1p-ignore
+                    className="bg-white dark:border-gray-500 dark:bg-gray-800 focus:dark:bg-transparent"
                   />
                 </div>
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="destructive"
-                    disabled={!isConfirmTextValid || isSendingToken}
-                    className="gap-2"
-                  >
-                    {isSendingToken ? (
-                      <Loader2Icon className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <MailIcon className="h-4 w-4" />
-                    )}
-                    {isSendingToken
-                      ? "Sending code..."
-                      : "Send verification code"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            )}
-
-            {step === "otp-sent" && (
-              <div className="space-y-4 py-2">
-                <div className="space-y-2">
-                  <Label>
-                    Enter the 6-digit code sent to your email
-                  </Label>
-                  <div className="flex justify-center">
-                    <InputOTP
-                      ref={otpInputRef}
-                      maxLength={6}
-                      value={otpValue}
-                      onChange={setOtpValue}
-                    >
-                      <InputOTPGroup>
-                        {Array.from({ length: 6 }, (_, i) => (
-                          <InputOTPSlot
-                            key={i}
-                            index={i}
-                            className="h-12 w-12 text-lg font-semibold"
-                            style={{
-                              color: "hsl(var(--foreground))",
-                              borderColor: "hsl(var(--border))",
-                              caretColor: "hsl(var(--foreground))",
-                            }}
-                          />
-                        ))}
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-                  <p className="text-center text-xs text-muted-foreground">
-                    Didn&apos;t receive the code?{" "}
-                    <button
-                      type="button"
-                      className="text-foreground underline underline-offset-2 hover:text-foreground/80"
-                      onClick={() => {
-                        setStep("confirm-text");
-                        setOtpValue("");
-                      }}
-                    >
-                      Resend
-                    </button>
-                  </p>
-                </div>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={handleFreeze}
-                    disabled={otpValue.length !== 6 || isFreezing}
-                    className="gap-2"
-                  >
-                    {isFreezing ? (
-                      <Loader2Icon className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <SnowflakeIcon className="h-4 w-4" />
-                    )}
-                    {isFreezing
-                      ? "Freezing..."
-                      : "Confirm & freeze data room"}
-                  </Button>
-                </DialogFooter>
               </div>
-            )}
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={!isConfirmTextValid || isSendingToken}
+                loading={isSendingToken}
+                className="gap-2"
+              >
+                {!isSendingToken && <MailIcon className="h-4 w-4" />}
+                {isSendingToken ? "Sending code..." : "Send verification code"}
+              </Button>
+            </form>
+          )}
 
-            {step === "freezing" && (
-              <div className="flex flex-col items-center gap-3 py-6">
-                <Loader2Icon className="h-8 w-8 animate-spin text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Freezing data room...
+          {step === "otp-sent" && (
+            <div className="flex flex-col space-y-6 text-left">
+              <div>
+                <label className="block text-center text-sm text-muted-foreground">
+                  Enter the 6-digit code
+                </label>
+                <div className="mt-3 flex justify-center">
+                  <InputOTP
+                    ref={otpInputRef}
+                    maxLength={6}
+                    value={otpValue}
+                    onChange={setOtpValue}
+                    accentColor="#e5e5e5"
+                  >
+                    <InputOTPGroup>
+                      {Array.from({ length: 6 }, (_, i) => (
+                        <InputOTPSlot
+                          key={i}
+                          index={i}
+                          className="h-12 w-12 bg-white text-lg font-semibold dark:bg-gray-800"
+                        />
+                      ))}
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+                <p className="mt-3 text-center text-xs text-muted-foreground">
+                  Didn&apos;t receive the code?{" "}
+                  <button
+                    type="button"
+                    className="text-foreground underline underline-offset-2 hover:text-foreground/80"
+                    onClick={() => {
+                      setStep("confirm-text");
+                      setOtpValue("");
+                    }}
+                  >
+                    Resend
+                  </button>
                 </p>
               </div>
-            )}
-          </DialogContent>
-        </Dialog>
-        ) : (
-        <UpgradePlanModal
-          clickedPlan={PlanEnum.DataRoomsPlus}
-          trigger="datarooms_freeze_button"
-        >
-          <Button className="gap-2">
-            <CrownIcon className="h-4 w-4" />
-            Upgrade to freeze
-          </Button>
-        </UpgradePlanModal>
-        )}
-      </CardFooter>
-    </Card>
+              <Button
+                variant="destructive"
+                onClick={handleFreeze}
+                disabled={otpValue.length !== 6 || isFreezing}
+                loading={isFreezing}
+                className="gap-2"
+              >
+                {!isFreezing && <SnowflakeIcon className="h-4 w-4" />}
+                {isFreezing ? "Freezing..." : "Confirm freeze dataroom"}
+              </Button>
+            </div>
+          )}
+
+          {step === "freezing" && (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <Loader2Icon className="h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                Freezing data room...
+              </p>
+            </div>
+          )}
+        </div>
+      </Modal>
+    </>
   );
 }

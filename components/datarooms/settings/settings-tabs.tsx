@@ -6,8 +6,8 @@ import {
   BookOpenIcon,
   CogIcon,
   DownloadIcon,
-  LockIcon,
   ShieldIcon,
+  TriangleAlertIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -83,16 +83,16 @@ export default function SettingsTabs({ dataroomId }: SettingsTabsProps) {
         File Permissions
       </Link>
       <Link
-        href={`/datarooms/${dataroomId}/settings/freeze`}
+        href={`/datarooms/${dataroomId}/settings/danger`}
         className={cn(
           "flex items-center gap-x-2 rounded-md p-2 text-primary hover:bg-muted",
           {
-            "bg-muted font-medium": router.pathname.includes("freeze"),
+            "bg-muted font-medium": router.pathname.includes("danger"),
           },
         )}
       >
-        <LockIcon className="h-4 w-4" />
-        Freeze
+        <TriangleAlertIcon className="h-4 w-4" />
+        Danger Zone
       </Link>
     </nav>
   );
