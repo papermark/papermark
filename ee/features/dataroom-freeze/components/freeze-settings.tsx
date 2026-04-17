@@ -298,7 +298,7 @@ export default function FreezeSettings({
                     );
                     if (!res.ok) throw new Error("Failed to get download URL");
                     const { url } = await res.json();
-                    window.open(url, "_blank");
+                    window.location.assign(url);
                   } catch {
                     toast.error("Failed to download archive");
                   } finally {
