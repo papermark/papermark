@@ -6,7 +6,11 @@ import {
   getTeamStorageConfigById,
 } from "@/ee/features/storage/config";
 import { InvocationType, InvokeCommand } from "@aws-sdk/client-lambda";
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  DeleteObjectsCommand,
+  GetObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { logger, metadata, task } from "@trigger.dev/sdk";
 import archiver from "archiver";
@@ -109,6 +113,8 @@ export const dataroomFreezeArchiveTask = task({
     // Step 1: Create the documents zip(s) via Lambda (direct invocation)
     const documentsZipS3Keys: { bucket: string; key: string; region: string }[] =
       [];
+    let archiveCompleted = false;
+    try {
     if (fileKeys.length > 0) {
       metadata.set("progress", 0.1);
       metadata.set("text", "Creating document archive...");
@@ -243,10 +249,6 @@ export const dataroomFreezeArchiveTask = task({
         cb(null, chunk);
       },
     });
-    archive.on("error", (err) => {
-      logger.error("Archiver error", { error: err.message });
-      hashTap.destroy(err);
-    });
     archive.pipe(hashTap);
 
     // 32 MiB parts → supports ~320 GiB before hitting the 10,000-part ceiling.
@@ -264,6 +266,19 @@ export const dataroomFreezeArchiveTask = task({
       },
     });
 
+    // Registered after `upload` exists so archiver failures can also abort
+    // any in-flight multipart parts rather than leaving them in S3.
+    archive.on("error", (err) => {
+      logger.error("Archiver error", { error: err.message });
+      hashTap.destroy(err);
+      upload.abort().catch((abortErr) => {
+        logger.error("Failed to abort multipart upload after archiver error", {
+          error:
+            abortErr instanceof Error ? abortErr.message : String(abortErr),
+        });
+      });
+    });
+
     let uploadedBytes = 0;
     upload.on("httpUploadProgress", (p) => {
       if (typeof p.loaded === "number") uploadedBytes = p.loaded;
@@ -274,6 +289,7 @@ export const dataroomFreezeArchiveTask = task({
       throw err;
     });
 
+    try {
     const manifestEntries: { hash: string; path: string }[] = [];
     const teamStorageConfig = await getTeamStorageConfigById(teamId);
 
@@ -354,6 +370,21 @@ export const dataroomFreezeArchiveTask = task({
 
     await archive.finalize();
     await uploadPromise;
+    } catch (err) {
+      try {
+        await upload.abort();
+        logger.info("Aborted multipart S3 upload after error", {
+          bucket: archiveConfig.bucket,
+          key: s3Key,
+        });
+      } catch (abortErr) {
+        logger.error("Failed to abort multipart upload", {
+          error:
+            abortErr instanceof Error ? abortErr.message : String(abortErr),
+        });
+      }
+      throw err;
+    }
 
     const archiveHash = archiveHasher.digest("hex");
 
@@ -382,13 +413,86 @@ export const dataroomFreezeArchiveTask = task({
       s3Key,
     });
 
+    archiveCompleted = true;
+
     return {
       success: true,
       s3Key,
       archiveHash,
     };
+    } finally {
+      if (!archiveCompleted && documentsZipS3Keys.length > 0) {
+        await cleanupIntermediateZipParts(teamId, documentsZipS3Keys);
+      }
+    }
   },
 });
+
+async function cleanupIntermediateZipParts(
+  teamId: string,
+  parts: { bucket: string; key: string; region: string }[],
+): Promise<void> {
+  try {
+    const storageConfig = await getTeamStorageConfigById(teamId);
+
+    // Group by bucket+region so we can batch deletes per S3 endpoint.
+    const groups = new Map<
+      string,
+      { bucket: string; region: string; keys: string[] }
+    >();
+    for (const part of parts) {
+      const groupKey = `${part.region}::${part.bucket}`;
+      const existing = groups.get(groupKey);
+      if (existing) {
+        existing.keys.push(part.key);
+      } else {
+        groups.set(groupKey, {
+          bucket: part.bucket,
+          region: part.region,
+          keys: [part.key],
+        });
+      }
+    }
+
+    for (const group of groups.values()) {
+      const cleanupClient = new S3Client({
+        region: group.region,
+        credentials: {
+          accessKeyId: storageConfig.accessKeyId,
+          secretAccessKey: storageConfig.secretAccessKey,
+        },
+      });
+
+      // DeleteObjectsCommand supports up to 1000 keys per request.
+      for (let i = 0; i < group.keys.length; i += 1000) {
+        const chunk = group.keys.slice(i, i + 1000);
+        await cleanupClient.send(
+          new DeleteObjectsCommand({
+            Bucket: group.bucket,
+            Delete: {
+              Objects: chunk.map((Key) => ({ Key })),
+              Quiet: true,
+            },
+          }),
+        );
+      }
+
+      logger.info("Cleaned up intermediate document zip parts", {
+        bucket: group.bucket,
+        region: group.region,
+        count: group.keys.length,
+      });
+    }
+  } catch (cleanupError) {
+    logger.error("Failed to cleanup intermediate document zip parts", {
+      error:
+        cleanupError instanceof Error
+          ? cleanupError.message
+          : String(cleanupError),
+      partCount: parts.length,
+    });
+  }
+}
 
 async function generateAuditLogsCsv(
   dataroomId: string,
