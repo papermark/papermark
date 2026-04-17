@@ -349,18 +349,19 @@ export function DataroomSidebarContent() {
           {dataroom?.isFrozen ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link href={`/datarooms/${dataroomId}/settings/freeze`}>
-                  <Button
-                    variant="outline"
-                    className="w-full group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2"
-                    size="sm"
-                  >
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2"
+                  size="sm"
+                >
+                  <Link href={`/datarooms/${dataroomId}/settings/freeze`}>
                     <SnowflakeIcon className="!size-4 shrink-0 text-blue-500 group-data-[collapsible=icon]:block" />
                     <span className="group-data-[collapsible=icon]:hidden">
                       View archive
                     </span>
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </TooltipTrigger>
               <TooltipContent
                 side="right"
