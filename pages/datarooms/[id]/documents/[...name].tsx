@@ -40,6 +40,7 @@ export default function Documents() {
     documents: searchDocuments,
     folders: searchFolders,
     isLoading: isSearching,
+    error: searchError,
   } = useDataroomSearch({ query: searchQuery });
 
   const teamInfo = useTeam();
@@ -136,7 +137,9 @@ export default function Documents() {
         <div className="grid h-full gap-4 pb-2 md:grid-cols-4">
           <div className="hidden h-full min-h-0 truncate md:col-span-1 md:block">
             <ScrollArea showScrollbar>
-              <SidebarFolderTree dataroomId={dataroom?.id!} />
+              {dataroom?.id ? (
+                <SidebarFolderTree dataroomId={dataroom.id} />
+              ) : null}
               <ScrollBar orientation="horizontal" />
             </ScrollArea>
           </div>
@@ -148,14 +151,20 @@ export default function Documents() {
 
             {isSearchActive ? (
               <>
-                {isSearching ? (
+                {isSearching || !dataroom?.id ? (
                   <LoadingDocuments count={3} />
+                ) : searchError ? (
+                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
+                    <p className="text-sm text-muted-foreground">
+                      Something went wrong while searching. Please try again.
+                    </p>
+                  </div>
                 ) : (
                   <DataroomSearchResults
                     documents={searchDocuments}
                     folders={searchFolders}
                     teamInfo={teamInfo}
-                    dataroomId={dataroom?.id!}
+                    dataroomId={dataroom.id}
                     searchQuery={searchQuery}
                   />
                 )}
@@ -164,21 +173,21 @@ export default function Documents() {
               <>
                 <section id="documents-header-count" className="min-h-8" />
 
-                {isLoading ? <LoadingDocuments count={3} /> : null}
-
-                {isReordering ? (
+                {isLoading || !dataroom?.id ? (
+                  <LoadingDocuments count={3} />
+                ) : isReordering ? (
                   <DataroomSortableList
                     mixedItems={items}
                     folderPathName={name}
                     teamInfo={teamInfo}
-                    dataroomId={dataroom?.id!}
+                    dataroomId={dataroom.id}
                     setIsReordering={setIsReordering}
                   />
                 ) : (
                   <DataroomItemsList
                     mixedItems={items}
                     teamInfo={teamInfo}
-                    dataroomId={dataroom?.id!}
+                    dataroomId={dataroom.id}
                     folderPathName={name}
                     folderCount={folderCount}
                     documentCount={documentCount}
