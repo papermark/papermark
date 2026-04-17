@@ -137,12 +137,17 @@ export default async function handle(
     ]);
 
     // Build breadcrumb paths for documents that are in folders
-    const folderIds = [
-      ...new Set(documents.filter((d) => d.folderId).map((d) => d.folderId!)),
-    ];
+    // and for folders that have a parent
+    const folderIds = new Set<string>();
+    for (const d of documents) {
+      if (d.folderId) folderIds.add(d.folderId);
+    }
+    for (const f of folders) {
+      if (f.parentId) folderIds.add(f.parentId);
+    }
 
     const allFoldersInDataroom =
-      folderIds.length > 0
+      folderIds.size > 0
         ? await prisma.dataroomFolder.findMany({
             where: { dataroomId },
             select: { id: true, name: true, path: true, parentId: true },
