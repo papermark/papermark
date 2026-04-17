@@ -27,12 +27,6 @@ const nextConfig = {
         ],
       },
       {
-        // temporary redirect set on 2025-10-22
-        source: "/view/cmdn06aw00001ju04jgsf8h4f",
-        destination: "/view/cmh0uiv6t001mjm04sk10ecc8",
-        permanent: false,
-      },
-      {
         source: "/settings",
         destination: "/settings/general",
         permanent: false,
