@@ -1,15 +1,5 @@
 import { createHash } from "node:crypto";
-import {
-  createReadStream,
-  createWriteStream,
-  mkdtempSync,
-  rmSync,
-  statSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
+import { Readable, Transform } from "node:stream";
 
 import {
   getFreezeArchiveConfig,
@@ -47,6 +37,33 @@ function escapeCsvField(field: string | number | null | undefined): string {
 
 function csvRow(fields: (string | number | null | undefined)[]): string {
   return fields.map(escapeCsvField).join(",");
+}
+
+function appendStreamEntry(
+  archive: ReturnType<typeof archiver>,
+  source: Readable,
+  name: string,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const onEntry = (entry: { name?: string }) => {
+      if (entry.name === name) {
+        archive.off("entry", onEntry);
+        archive.off("error", onErr);
+        source.off("error", onErr);
+        resolve();
+      }
+    };
+    const onErr = (err: Error) => {
+      archive.off("entry", onEntry);
+      archive.off("error", onErr);
+      source.off("error", onErr);
+      reject(err);
+    };
+    archive.on("entry", onEntry);
+    archive.on("error", onErr);
+    source.on("error", onErr);
+    archive.append(source, { name });
+  });
 }
 
 export type FreezeArchivePayload = {
@@ -200,179 +217,176 @@ export const dataroomFreezeArchiveTask = task({
     metadata.set("progress", 0.7);
     metadata.set("text", "Building final archive...");
 
-    // Use a temp directory for all disk I/O, cleaned up at the end
-    const tmpDir = mkdtempSync(join(tmpdir(), "freeze-archive-"));
+    // Step 4-7: Stream documents + CSVs + MANIFEST through archiver → SHA-256 tap → multipart S3 upload.
+    // No disk I/O: the final archive is never materialized locally, so size is bounded by S3 limits
+    // (partSize × 10,000 parts), not the Trigger.dev machine's 10 GB disk.
+    const safeName = dataroomName.replace(/[^a-zA-Z0-9]/g, "_");
+    const uploadTimestamp = new Date().toISOString().split("T")[0];
+    const s3Key = `freeze-archives/${safeName}-${nanoid()}-${uploadTimestamp}.zip`;
 
-    try {
-      // Step 4: Download documents zip(s) from S3 directly, computing SHA-256 on the fly
-      const documentFiles: { name: string; path: string; hash: string }[] = [];
-      const teamStorageConfig = await getTeamStorageConfigById(teamId);
-      for (let i = 0; i < documentsZipS3Keys.length; i++) {
-        const s3Key = documentsZipS3Keys[i];
-        const downloadClient = new S3Client({
-          region: s3Key.region,
-          credentials: {
-            accessKeyId: teamStorageConfig.accessKeyId,
-            secretAccessKey: teamStorageConfig.secretAccessKey,
-          },
-        });
+    const archiveConfig = getFreezeArchiveConfig();
+    const s3Client = new S3Client({
+      region: archiveConfig.region,
+      credentials: {
+        accessKeyId: archiveConfig.accessKeyId,
+        secretAccessKey: archiveConfig.secretAccessKey,
+      },
+    });
 
-        const getResponse = await downloadClient.send(
-          new GetObjectCommand({ Bucket: s3Key.bucket, Key: s3Key.key }),
+    // zlib.level 0 (store) because every entry is either already-compressed (inner zips)
+    // or tiny text (CSVs / MANIFEST); deflate would waste CPU without shrinking the output.
+    const archive = archiver("zip", { zlib: { level: 0 } });
+    const archiveHasher = createHash("sha256");
+    const hashTap = new Transform({
+      transform(chunk, _enc, cb) {
+        archiveHasher.update(chunk);
+        cb(null, chunk);
+      },
+    });
+    archive.on("error", (err) => {
+      logger.error("Archiver error", { error: err.message });
+      hashTap.destroy(err);
+    });
+    archive.pipe(hashTap);
+
+    // 32 MiB parts → supports ~320 GiB before hitting the 10,000-part ceiling.
+    // Bump to 128–256 MiB if multi-TB archives become routine.
+    const upload = new Upload({
+      client: s3Client,
+      partSize: 32 * 1024 * 1024,
+      queueSize: 4,
+      params: {
+        Bucket: archiveConfig.bucket,
+        Key: s3Key,
+        Body: hashTap,
+        ContentType: "application/zip",
+        ContentDisposition: `attachment; filename="${safeName}-freeze-archive.zip"`,
+      },
+    });
+
+    let uploadedBytes = 0;
+    upload.on("httpUploadProgress", (p) => {
+      if (typeof p.loaded === "number") uploadedBytes = p.loaded;
+    });
+
+    const uploadPromise = upload.done().catch((err) => {
+      archive.destroy(err as Error);
+      throw err;
+    });
+
+    const manifestEntries: { hash: string; path: string }[] = [];
+    const teamStorageConfig = await getTeamStorageConfigById(teamId);
+
+    for (let i = 0; i < documentsZipS3Keys.length; i++) {
+      const srcKey = documentsZipS3Keys[i];
+      const downloadClient = new S3Client({
+        region: srcKey.region,
+        credentials: {
+          accessKeyId: teamStorageConfig.accessKeyId,
+          secretAccessKey: teamStorageConfig.secretAccessKey,
+        },
+      });
+
+      const getResponse = await downloadClient.send(
+        new GetObjectCommand({ Bucket: srcKey.bucket, Key: srcKey.key }),
+      );
+
+      if (!getResponse.Body) {
+        throw new Error(
+          `Empty S3 response body for documents zip (part ${i + 1})`,
         );
-
-        if (!getResponse.Body) {
-          throw new Error(
-            `Empty S3 response body for documents zip (part ${i + 1})`,
-          );
-        }
-
-        const name =
-          documentsZipS3Keys.length === 1
-            ? "documents.zip"
-            : `documents-${String(i + 1).padStart(3, "0")}.zip`;
-        const filePath = join(tmpDir, name);
-        const hash = createHash("sha256");
-        const writeStream = createWriteStream(filePath);
-
-        await pipeline(
-          getResponse.Body as Readable,
-          async function* (source) {
-            for await (const chunk of source) {
-              hash.update(chunk);
-              yield chunk;
-            }
-          },
-          writeStream,
-        );
-
-        const fileHash = hash.digest("hex");
-        const fileSize = statSync(filePath).size;
-        documentFiles.push({ name, path: filePath, hash: fileHash });
-        logger.info(`Documents zip streamed to disk (part ${i + 1})`, {
-          size: fileSize,
-        });
       }
 
-      // Step 5: Build final archive on disk with MANIFEST.sha256
-      const manifestEntries: { hash: string; path: string }[] = [];
-      const archivePath = join(tmpDir, "freeze-archive.zip");
+      const name =
+        documentsZipS3Keys.length === 1
+          ? "documents.zip"
+          : `documents-${String(i + 1).padStart(3, "0")}.zip`;
 
-      await new Promise<void>((resolve, reject) => {
-        const output = createWriteStream(archivePath);
-        const archive = archiver("zip", { zlib: { level: 6 } });
-
-        output.on("close", resolve);
-        archive.on("error", reject);
-        archive.pipe(output);
-
-        for (const { name, path: filePath, hash } of documentFiles) {
-          archive.file(filePath, { name });
-          manifestEntries.push({ hash, path: name });
-        }
-
-        const auditBuffer = Buffer.from(auditCsv, "utf-8");
-        archive.append(auditBuffer, { name: "audit-log.csv" });
-        manifestEntries.push({
-          hash: createHash("sha256").update(auditBuffer).digest("hex"),
-          path: "audit-log.csv",
-        });
-
-        const qaBuffer = Buffer.from(qaCsv, "utf-8");
-        archive.append(qaBuffer, { name: "qa-pairs.csv" });
-        manifestEntries.push({
-          hash: createHash("sha256").update(qaBuffer).digest("hex"),
-          path: "qa-pairs.csv",
-        });
-
-        const manifestContent = manifestEntries
-          .map((e) => `${e.hash}  ${e.path}`)
-          .join("\n");
-        const manifestBuffer = Buffer.from(manifestContent, "utf-8");
-        archive.append(manifestBuffer, { name: "MANIFEST.sha256" });
-
-        archive.finalize();
-      });
-
-      const archiveSize = statSync(archivePath).size;
-      logger.info("Final archive written to disk", { size: archiveSize });
-
-      metadata.set("progress", 0.8);
-      metadata.set("text", "Computing archive hash...");
-
-      // Step 6: Compute archive hash by streaming from disk
-      const archiveHash = await new Promise<string>((resolve, reject) => {
-        const hash = createHash("sha256");
-        const stream = createReadStream(archivePath);
-        stream.on("data", (chunk) => hash.update(chunk));
-        stream.on("end", () => resolve(hash.digest("hex")));
-        stream.on("error", reject);
-      });
-      logger.info("Archive hash computed", { archiveHash });
-
-      metadata.set("progress", 0.85);
-      metadata.set("text", "Uploading archive...");
-
-      // Step 7: Upload to S3 from disk stream
-      const safeName = dataroomName.replace(/[^a-zA-Z0-9]/g, "_");
-      const uploadTimestamp = new Date().toISOString().split("T")[0];
-      const s3Key = `freeze-archives/${safeName}-${nanoid()}-${uploadTimestamp}.zip`;
-
-      const archiveConfig = getFreezeArchiveConfig();
-      const s3Client = new S3Client({
-        region: archiveConfig.region,
-        credentials: {
-          accessKeyId: archiveConfig.accessKeyId,
-          secretAccessKey: archiveConfig.secretAccessKey,
+      const entryHasher = createHash("sha256");
+      const entryTap = new Transform({
+        transform(chunk, _enc, cb) {
+          entryHasher.update(chunk);
+          cb(null, chunk);
         },
       });
+      const source = (getResponse.Body as Readable).pipe(entryTap);
 
-      const upload = new Upload({
-        client: s3Client,
-        params: {
-          Bucket: archiveConfig.bucket,
-          Key: s3Key,
-          Body: createReadStream(archivePath),
-          ContentType: "application/zip",
-          ContentDisposition: `attachment; filename="${safeName}-freeze-archive.zip"`,
-        },
+      await appendStreamEntry(archive, source, name);
+      manifestEntries.push({ hash: entryHasher.digest("hex"), path: name });
+
+      const batchProgress =
+        0.7 + (0.2 * (i + 1)) / documentsZipS3Keys.length;
+      metadata.set("progress", batchProgress);
+      metadata.set(
+        "text",
+        documentsZipS3Keys.length === 1
+          ? "Uploading archive..."
+          : `Uploading archive (${i + 1}/${documentsZipS3Keys.length})...`,
+      );
+      logger.info(`Documents zip streamed into archive (part ${i + 1})`, {
+        name,
       });
-      await upload.done();
-
-      logger.info("Archive uploaded to S3", {
-        bucket: archiveConfig.bucket,
-        key: s3Key,
-        size: archiveSize,
-      });
-
-      // Step 8: Save archive S3 key and hash to the dataroom record
-      await prisma.dataroom.update({
-        where: { id: dataroomId, teamId },
-        data: {
-          freezeArchiveUrl: s3Key,
-          freezeArchiveHash: archiveHash,
-        },
-      });
-
-      metadata.set("progress", 1.0);
-      metadata.set("text", "Archive ready");
-      metadata.set("archiveReady", true);
-      metadata.set("archiveHash", archiveHash);
-
-      logger.info("Dataroom freeze archive completed", {
-        dataroomId,
-        archiveHash,
-        s3Key,
-      });
-
-      return {
-        success: true,
-        s3Key,
-        archiveHash,
-      };
-    } finally {
-      rmSync(tmpDir, { recursive: true, force: true });
     }
+
+    const auditBuffer = Buffer.from(auditCsv, "utf-8");
+    archive.append(auditBuffer, { name: "audit-log.csv" });
+    manifestEntries.push({
+      hash: createHash("sha256").update(auditBuffer).digest("hex"),
+      path: "audit-log.csv",
+    });
+
+    const qaBuffer = Buffer.from(qaCsv, "utf-8");
+    archive.append(qaBuffer, { name: "qa-pairs.csv" });
+    manifestEntries.push({
+      hash: createHash("sha256").update(qaBuffer).digest("hex"),
+      path: "qa-pairs.csv",
+    });
+
+    const manifestContent = manifestEntries
+      .map((e) => `${e.hash}  ${e.path}`)
+      .join("\n");
+    archive.append(Buffer.from(manifestContent, "utf-8"), {
+      name: "MANIFEST.sha256",
+    });
+
+    metadata.set("progress", 0.9);
+    metadata.set("text", "Finalizing upload...");
+
+    await archive.finalize();
+    await uploadPromise;
+
+    const archiveHash = archiveHasher.digest("hex");
+
+    logger.info("Archive uploaded to S3", {
+      bucket: archiveConfig.bucket,
+      key: s3Key,
+      size: uploadedBytes,
+    });
+
+    await prisma.dataroom.update({
+      where: { id: dataroomId, teamId },
+      data: {
+        freezeArchiveUrl: s3Key,
+        freezeArchiveHash: archiveHash,
+      },
+    });
+
+    metadata.set("progress", 1.0);
+    metadata.set("text", "Archive ready");
+    metadata.set("archiveReady", true);
+    metadata.set("archiveHash", archiveHash);
+
+    logger.info("Dataroom freeze archive completed", {
+      dataroomId,
+      archiveHash,
+      s3Key,
+    });
+
+    return {
+      success: true,
+      s3Key,
+      archiveHash,
+    };
   },
 });
 
