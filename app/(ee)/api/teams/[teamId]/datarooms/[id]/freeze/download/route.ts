@@ -41,6 +41,13 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (teamAccess.role !== "ADMIN" && teamAccess.role !== "MANAGER") {
+      return NextResponse.json(
+        { message: "Only admins and managers can download freeze archives." },
+        { status: 403 },
+      );
+    }
+
     if (!dataroom) {
       return NextResponse.json(
         { error: "Dataroom not found" },
