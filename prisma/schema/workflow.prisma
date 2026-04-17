@@ -22,8 +22,8 @@ model Workflow {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  entryLink  Link               @relation(fields: [entryLinkId], references: [id], onDelete: Cascade)
-  team       Team               @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  entryLink  Link                @relation(fields: [entryLinkId], references: [id], onDelete: Cascade)
+  team       Team                @relation(fields: [teamId], references: [id], onDelete: Cascade)
   steps      WorkflowStep[]
   executions WorkflowExecution[]
 
@@ -36,10 +36,10 @@ model WorkflowStep {
   id         String           @id @default(cuid())
   workflowId String
   name       String
-  stepOrder  Int              // Execution order (priority-based routing)
+  stepOrder  Int // Execution order (priority-based routing)
   stepType   WorkflowStepType @default(ROUTER)
-  conditions Json             // JSON array of conditions to evaluate
-  actions    Json             // JSON array of actions to execute
+  conditions Json // JSON array of conditions to evaluate
+  actions    Json // JSON array of actions to execute
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
 
@@ -58,8 +58,8 @@ model WorkflowExecution {
   status       ExecutionStatus
   startedAt    DateTime        @default(now())
   completedAt  DateTime?
-  result       Json?           // Final result/output (routing target)
-  metadata     Json?           // Context data (referrer, user agent, etc.)
+  result       Json? // Final result/output (routing target)
+  metadata     Json? // Context data (referrer, user agent, etc.)
 
   workflow Workflow          @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   stepLogs WorkflowStepLog[]
@@ -70,14 +70,14 @@ model WorkflowExecution {
 }
 
 model WorkflowStepLog {
-  id                String    @id @default(cuid())
+  id                String   @id @default(cuid())
   executionId       String
   workflowStepId    String
   conditionsMatched Boolean
-  conditionResults  Json?     // Which conditions passed/failed
-  actionsExecuted   Json?     // Which actions ran
-  executedAt        DateTime  @default(now())
-  duration          Int?      // Execution time in ms
+  conditionResults  Json? // Which conditions passed/failed
+  actionsExecuted   Json? // Which actions ran
+  executedAt        DateTime @default(now())
+  duration          Int? // Execution time in ms
   error             String?
 
   execution WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
@@ -86,4 +86,3 @@ model WorkflowStepLog {
   @@index([executionId])
   @@index([workflowStepId])
 }
-

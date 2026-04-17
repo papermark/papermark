@@ -150,7 +150,7 @@ export default async function VerifyInvitationPage({
                   By accepting this invitation, you acknowledge that you have
                   read and agree to Papermark&apos;s{" "}
                   <a
-                    href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/terms`}
+                    href="https://www.papermark.com/terms"
                     target="_blank"
                     className="underline hover:text-gray-900"
                   >
@@ -158,7 +158,7 @@ export default async function VerifyInvitationPage({
                   </a>{" "}
                   and{" "}
                   <a
-                    href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/privacy`}
+                    href="https://www.papermark.com/privacy"
                     target="_blank"
                     className="underline hover:text-gray-900"
                   >

@@ -5,6 +5,7 @@ import React from "react";
 
 import { Slash } from "lucide-react";
 import { ExtendedRecordMap } from "notion-types";
+import { parsePageId } from "notion-utils";
 import { useQueryState } from "nuqs";
 import { NotionRenderer } from "react-notion-x";
 // core styles shared by all of react-notion-x (required)
@@ -104,22 +105,17 @@ const obfuscateNotionIds = (container: HTMLElement) => {
     uuidPattern.lastIndex = 0;
   });
 
-  // Obfuscate anchor href attributes that contain hash references to Notion IDs
-  // This is important for table of contents links to work after ID obfuscation
-  const anchorsWithHash = container.querySelectorAll('a[href^="#"]');
-  anchorsWithHash.forEach((anchor) => {
+  // Obfuscate anchor href attributes that contain Notion IDs (skip external links with target)
+  const anchors = container.querySelectorAll("a[href]:not([target])");
+  anchors.forEach((anchor) => {
     const href = anchor.getAttribute("href");
-    if (href) {
-      // Extract the hash part (remove the leading #)
-      const hashId = href.slice(1);
-      if (uuidPattern.test(hashId)) {
-        const newHashId = hashId.replace(uuidPattern, (match) =>
-          getObfuscatedId(match),
-        );
-        anchor.setAttribute("href", `#${newHashId}`);
-      }
-      uuidPattern.lastIndex = 0;
+    if (href && uuidPattern.test(href)) {
+      const newHref = href.replace(uuidPattern, (match) =>
+        getObfuscatedId(match),
+      );
+      anchor.setAttribute("href", newHref);
     }
+    uuidPattern.lastIndex = 0;
   });
 };
 
@@ -278,20 +274,18 @@ export const NotionPage = ({
     };
   }, [screenshotProtectionEnabled]);
 
-  // Memoize the fetchSubPage function
   const fetchSubPage = useCallback(
     async (pageId: string | null) => {
       if (pageId) {
-        // Check if the recordMap is already in the cache
         if (recordMapCache.current[pageId]) {
           const currentRecordMap = recordMapCache.current[pageId];
           setRecordMapState(currentRecordMap);
           const firstBlockId = Object.keys(currentRecordMap.block)[0];
           const firstBlock = currentRecordMap.block[firstBlockId];
+          const blockValue = firstBlock?.value as Record<string, any>;
           setSubTitle(
-            firstBlock?.value?.properties?.title?.[0]?.[0] || "Untitled",
+            blockValue?.properties?.title?.[0]?.[0] || "Untitled",
           );
-          // Scroll to top when changing subpages
           window.scrollTo({ top: 0, behavior: "smooth" });
           return;
         }
@@ -306,15 +300,14 @@ export const NotionPage = ({
             },
           });
           const newRecordMap = await response.json();
-          // Store the fetched recordMap in the cache
           recordMapCache.current[pageId] = newRecordMap;
           setRecordMapState(newRecordMap);
           const firstBlockId = Object.keys(newRecordMap.block)[0];
-          const firstBlock = recordMap.block[firstBlockId];
+          const firstBlock = newRecordMap.block[firstBlockId];
+          const blockValue = firstBlock?.value as Record<string, any>;
           setSubTitle(
-            firstBlock?.value?.properties?.title?.[0]?.[0] || "Untitled",
+            blockValue?.properties?.title?.[0]?.[0] || "Untitled",
           );
-          // Scroll to top after loading new subpage
           window.scrollTo({ top: 0, behavior: "smooth" });
         } catch (error) {
           console.error("Error fetching subpage:", error);
@@ -323,19 +316,17 @@ export const NotionPage = ({
         }
       } else {
         setRecordMapState(recordMap);
-        // get the first item in the recordMap.block object
         const firstBlockId = Object.keys(recordMap.block)[0];
         const firstBlock = recordMap.block[firstBlockId];
-        setTitle(firstBlock?.value?.properties?.title?.[0]?.[0] || "Untitled");
-        // Scroll to top when returning to main page
+        const blockValue = firstBlock?.value as Record<string, any>;
+        setTitle(blockValue?.properties?.title?.[0]?.[0] || "Untitled");
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     },
-    [subPageId, recordMap],
+    [recordMap],
   );
 
-  // Use useMemo to memoize the effect of fetching the subpage
-  useMemo(() => {
+  useEffect(() => {
     fetchSubPage(subPageId);
   }, [subPageId, fetchSubPage]);
 
@@ -463,23 +454,75 @@ export const NotionPage = ({
     };
   }, [scrollToHashElement]);
 
+  const PageLinkComponent = useMemo(
+    () =>
+      function PageLink({
+        href,
+        className,
+        children,
+        style,
+      }: {
+        href?: string;
+        className?: string;
+        children?: React.ReactNode;
+        style?: React.CSSProperties;
+        [key: string]: any;
+      }) {
+        const handleClick = (e: React.MouseEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!href) return;
+
+          const pageId =
+            parsePageId(href, { uuid: false }) ??
+            href.split("/").pop()?.split("?")[0]?.split("#")[0];
+
+          if (pageId) {
+            setSubPageId(pageId);
+          }
+        };
+
+        return (
+          <a
+            className={className}
+            style={style}
+            href={href}
+            onClick={handleClick}
+          >
+            {children}
+          </a>
+        );
+      },
+    [setSubPageId],
+  );
+
+  const notionComponents = useMemo(
+    () => ({
+      Collection,
+      Code,
+      PageLink: PageLinkComponent,
+    }),
+    [PageLinkComponent],
+  );
+
   // Obfuscate Notion IDs in the DOM after rendering
   useEffect(() => {
     if (!notionContainerRef.current) return;
 
-    // Initial obfuscation
     const timeoutId = setTimeout(() => {
       if (notionContainerRef.current) {
         obfuscateNotionIds(notionContainerRef.current);
       }
     }, 100);
 
-    // Set up MutationObserver to handle dynamically loaded content
-    const observer = new MutationObserver((mutations) => {
-      // Debounce the obfuscation to avoid excessive processing
-      if (notionContainerRef.current) {
-        obfuscateNotionIds(notionContainerRef.current);
-      }
+    let debounceTimer: ReturnType<typeof setTimeout>;
+    const observer = new MutationObserver(() => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        if (notionContainerRef.current) {
+          obfuscateNotionIds(notionContainerRef.current);
+        }
+      }, 50);
     });
 
     observer.observe(notionContainerRef.current, {
@@ -490,6 +533,7 @@ export const NotionPage = ({
 
     return () => {
       clearTimeout(timeoutId);
+      clearTimeout(debounceTimer);
       observer.disconnect();
     };
   }, [recordMapState]);
@@ -554,34 +598,7 @@ export const NotionPage = ({
           fullPage={true}
           darkMode={theme ? theme === "dark" : false}
           disableHeader={true}
-          components={{
-            Collection,
-            Code,
-            PageLink: (props: {
-              className: string;
-              href: any;
-              children:
-                | string
-                | number
-                | boolean
-                | React.ReactElement<
-                    any,
-                    string | React.JSXElementConstructor<any>
-                  >
-                | React.ReactPortal
-                | null
-                | undefined;
-            }) => {
-              return (
-                <div
-                  className={props.className}
-                  onClick={() => setSubPageId(props.href.split("/")[1])}
-                >
-                  {props.children}
-                </div>
-              );
-            },
-          }}
+          components={notionComponents}
         />
       </div>
       {screenshotProtectionEnabled ? <ScreenProtector /> : null}

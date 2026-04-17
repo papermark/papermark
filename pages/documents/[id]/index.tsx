@@ -121,7 +121,7 @@ export default function DocumentPage() {
   if (overviewLoading) {
     return (
       <AppLayout>
-        <main className="relative mx-2 mb-10 mt-4 space-y-8 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
+        <main className="relative mx-2 mb-10 mt-4 space-y-8 px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
           <div className="flex h-screen items-center justify-center">
             <LoadingSpinner className="mr-1 h-20 w-20" />
           </div>
@@ -133,7 +133,7 @@ export default function DocumentPage() {
   if (!prismaDocument || !primaryVersion || !teamId) {
     return (
       <AppLayout>
-        <main className="relative mx-2 mb-10 mt-4 space-y-8 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
+        <main className="relative mx-2 mb-10 mt-4 space-y-8 px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
           <div className="flex h-screen items-center justify-center">
             <LoadingSpinner className="mr-1 h-20 w-20" />
           </div>
@@ -144,7 +144,7 @@ export default function DocumentPage() {
 
   return (
     <AppLayout>
-      <main className="relative mx-2 mb-10 mt-4 space-y-8 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
+      <main className="relative mx-2 mb-10 mt-4 space-y-8 px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
         {/* Action Header - Shows immediately */}
         <DocumentHeader
           primaryVersion={primaryVersion}
@@ -170,7 +170,7 @@ export default function DocumentPage() {
               advancedExcelEnabled={prismaDocument.advancedExcelEnabled}
               variant="outline"
               size="default"
-              showTooltip={false}
+              showTooltip
               className="h-8 whitespace-nowrap text-xs lg:h-9 lg:text-sm"
             />,
             <AddLinkButton key={"create-link"} />,

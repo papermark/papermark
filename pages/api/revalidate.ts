@@ -70,33 +70,33 @@ export default async function handler(
     }
 
     if (teamId) {
-      // revalidate all links for this team
-      const documentLinks = await prisma.document.findMany({
+      // revalidate all links for this team (both regular and custom domain)
+      const allLinks = await prisma.link.findMany({
         where: {
           teamId: teamId,
+          isArchived: false,
+          deletedAt: null,
         },
         select: {
-          links: {
-            where: {
-              isArchived: false,
-              deletedAt: null,
-              domainId: null,
-            },
-            select: {
-              id: true,
-            },
-          },
+          id: true,
+          domainSlug: true,
+          slug: true,
         },
       });
 
-      // Flatten the array of arrays into a single array
-      const flattenedLinkIds = documentLinks.flatMap(
-        (document) => document.links,
-      );
-
-      // Now linkIds is an array of only link IDs
-      for (const link of flattenedLinkIds) {
-        await res.revalidate(`/view/${link.id}`);
+      for (const link of allLinks) {
+        if (link.domainSlug && link.slug) {
+          console.log(
+            "revalidating domain link",
+            `/view/domains/${link.domainSlug}/${link.slug}`,
+          );
+          await res.revalidate(
+            `/view/domains/${link.domainSlug}/${link.slug}`,
+          );
+        } else {
+          console.log("revalidating link", `/view/${link.id}`);
+          await res.revalidate(`/view/${link.id}`);
+        }
       }
     }
 

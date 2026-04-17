@@ -1,4 +1,4 @@
-import { logger, schedules } from "@trigger.dev/sdk/v3";
+import { logger, schedules } from "@trigger.dev/sdk";
 import { del } from "@vercel/blob";
 
 import { jobStore } from "@/lib/redis-job-store";

@@ -18,8 +18,9 @@ import {
   Quote,
   Redo,
   Undo,
-  Youtube as YoutubeIcon,
 } from "lucide-react";
+
+import { Youtube as YoutubeIcon } from "@/components/shared/icons/youtube";
 
 import { Button } from "@/components/ui/button";
 import {

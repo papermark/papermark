@@ -32,7 +32,7 @@ export const sendOtpVerificationEmail = async (
     await sendEmail({
       from,
       to: email,
-      subject: `One-time passcode to access the ${isDataroom ? "dataroom" : "document"}`,
+      subject: `${code} is your verification code`,
       react: emailTemplate,
       test: process.env.NODE_ENV === "development",
       verify: true,

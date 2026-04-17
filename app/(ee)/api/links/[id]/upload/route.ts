@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { runs } from "@trigger.dev/sdk";
+import { waitUntil } from "@vercel/functions";
+
 import { processDocument } from "@/lib/api/documents/process-document";
 import { verifyDataroomSession } from "@/lib/auth/dataroom-auth";
 import { DocumentData } from "@/lib/documents/create-document";
 import prisma from "@/lib/prisma";
+import { sendDataroomChangeNotificationTask } from "@/lib/trigger/dataroom-change-notification";
 import { sendDataroomUploadNotificationTask } from "@/lib/trigger/dataroom-upload-notification";
-import { sanitizePlainText } from "@/lib/utils/sanitize-html";
 import { supportsAdvancedExcelMode } from "@/lib/utils/get-content-type";
-import { runs } from "@trigger.dev/sdk/v3";
-import { waitUntil } from "@vercel/functions";
+import { sanitizePlainText } from "@/lib/utils/sanitize-html";
 
 /**
  * GET /api/links/[id]/upload?dataroomId=xxx
@@ -37,10 +39,7 @@ export async function GET(
     );
 
     if (!dataroomSession || !dataroomSession.viewerId) {
-      return NextResponse.json(
-        { message: "Unauthorized" },
-        { status: 401 },
-      );
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     const { viewerId } = dataroomSession;
@@ -162,6 +161,11 @@ export async function POST(
             enableExcelAdvancedMode: true,
           },
         },
+        dataroom: {
+          select: {
+            enableVisitorUploadChangeNotifications: true,
+          },
+        },
       },
     });
 
@@ -221,7 +225,8 @@ export async function POST(
     const updatedDocumentData = {
       ...documentData,
       name: sanitizedDocumentName,
-      enableExcelAdvancedMode: documentData.supportedFileType === "sheet" &&
+      enableExcelAdvancedMode:
+        documentData.supportedFileType === "sheet" &&
         link.team?.enableExcelAdvancedMode &&
         supportsAdvancedExcelMode(documentData.contentType),
     };
@@ -324,6 +329,66 @@ export async function POST(
         );
       } catch (error) {
         console.error("Error triggering upload notification:", error);
+      }
+    }
+
+    // 5. Notify other dataroom visitors about the new upload (each visitor gets their own email)
+    //    Uses cancel-and-retrigger as a debounce: cancelled runs' document IDs
+    //    are accumulated into the new run so no uploads are lost.
+    if (link.dataroom?.enableVisitorUploadChangeNotifications) {
+      try {
+        const existingChangeRuns = await runs.list({
+          taskIdentifier: ["send-dataroom-change-notification"],
+          tag: [`dataroom_${dataroomId}`, `visitor_upload_${viewerId}`],
+          status: ["DELAYED", "QUEUED"],
+          period: "15m",
+        });
+
+        const matchingChangeRuns = existingChangeRuns.data.filter(
+          (run) =>
+            run.tags?.includes(`dataroom_${dataroomId}`) &&
+            run.tags?.includes(`visitor_upload_${viewerId}`),
+        );
+
+        let accumulatedDocIds: string[] = [newDataroomDocument.id];
+        for (const run of matchingChangeRuns) {
+          const fullRun = await runs.retrieve(run.id);
+          const existingIds = (
+            fullRun.payload as { dataroomDocumentIds?: string[] } | undefined
+          )?.dataroomDocumentIds;
+          if (Array.isArray(existingIds)) {
+            accumulatedDocIds.push(...existingIds);
+          }
+        }
+        accumulatedDocIds = [...new Set(accumulatedDocIds)];
+
+        await Promise.all(matchingChangeRuns.map((run) => runs.cancel(run.id)));
+
+        waitUntil(
+          sendDataroomChangeNotificationTask.trigger(
+            {
+              dataroomId,
+              dataroomDocumentIds: accumulatedDocIds,
+              senderUserId: null,
+              teamId: link.teamId,
+              excludeViewerId: viewerId,
+            },
+            {
+              idempotencyKey: `visitor-change-notification-${link.teamId}-${dataroomId}-${viewerId}-${Date.now()}`,
+              tags: [
+                `team_${link.teamId}`,
+                `dataroom_${dataroomId}`,
+                `visitor_upload_${viewerId}`,
+              ],
+              delay: new Date(Date.now() + 10 * 60 * 1000),
+            },
+          ),
+        );
+      } catch (error) {
+        console.error(
+          "Error triggering visitor upload change notification:",
+          error,
+        );
       }
     }
 

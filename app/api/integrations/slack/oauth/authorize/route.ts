@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { getServerSession } from "next-auth/next";
 import { z } from "zod";
 

@@ -86,7 +86,7 @@ export function DocumentUploadModal({
             )}
           </DialogHeader>
 
-          <div className="px-6 py-5">
+          <div className="min-w-0 px-6 py-5">
             {uploadSuccess ? (
               <div className="flex flex-col items-center justify-center py-8">
                 <CheckCircle2 className="h-12 w-12 text-green-500" />

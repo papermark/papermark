@@ -3,7 +3,9 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { parse } from "cookie";
 
 import {
+  collectFingerprintHeaders,
   createDataroomSession,
+  generateSessionFingerprint,
   getDataroomSessionByLinkIdInPagesRouter,
   updateDataroomSessionVerified,
 } from "@/lib/auth/dataroom-auth";
@@ -185,6 +187,13 @@ export default async function handler(
   const needNewSession = async () => {
     if (!view.dataroomId) return;
     const ipAddressValue = getIpAddress(req.headers) ?? "unknown";
+    const pagesHeader = (name: string) => {
+      const v = req.headers[name];
+      return (Array.isArray(v) ? v[0] : v) ?? null;
+    };
+    const fingerprint = generateSessionFingerprint(
+      collectFingerprintHeaders({ get: pagesHeader }),
+    );
     const { token, expiresAt } = await createDataroomSession(
       view.dataroomId,
       linkId,
@@ -192,6 +201,7 @@ export default async function handler(
       ipAddressValue,
       true,
       view.viewerId ?? undefined,
+      fingerprint,
     );
     sessionToken = token;
     const maxAge = Math.floor((expiresAt - Date.now()) / 1000);

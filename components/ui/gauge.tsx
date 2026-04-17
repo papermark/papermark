@@ -4,7 +4,7 @@ export const Gauge = ({
   showValue = true,
 }: {
   value: number;
-  size: "xs" | "small" | "medium" | "large";
+  size: "xxs" | "xs" | "small" | "medium" | "large";
   showValue: boolean;
 }) => {
   const circumference = 332; //2 * Math.PI * 53; // 2 * pi * radius
@@ -14,6 +14,11 @@ export const Gauge = ({
   const strokeDashoffset = initialOffset - valueInCircumference;
 
   const sizes = {
+    xxs: {
+      width: "20",
+      height: "20",
+      textSize: "text-[10px]",
+    },
     xs: {
       width: "24",
       height: "24",

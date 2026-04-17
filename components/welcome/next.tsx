@@ -49,7 +49,7 @@ export default function Next() {
               },
             })
           }
-          className="flex min-h-[200px] flex-col items-center justify-center space-y-5 overflow-hidden p-5 transition-colors hover:bg-gray-200 hover:dark:bg-gray-800 md:p-10"
+          className="flex min-h-[120px] flex-col items-center justify-center space-y-5 overflow-hidden p-5 transition-colors hover:bg-gray-200 hover:dark:bg-gray-800 md:min-h-[200px] md:p-10"
         >
           <FileIcon className="pointer-events-none h-auto w-12 sm:w-12" />
           <p className="text-lg font-medium">Document</p>
@@ -66,7 +66,7 @@ export default function Next() {
               },
             })
           }
-          className="flex min-h-[200px] flex-col items-center justify-center space-y-5 overflow-hidden p-5 transition-colors hover:bg-gray-200 hover:dark:bg-gray-800 md:p-10"
+          className="flex min-h-[120px] flex-col items-center justify-center space-y-5 overflow-hidden p-5 transition-colors hover:bg-gray-200 hover:dark:bg-gray-800 md:min-h-[200px] md:p-10"
         >
           <ServerIcon className="pointer-events-none h-auto w-12 sm:w-12" />
           <p className="text-lg font-medium">Data Room</p>

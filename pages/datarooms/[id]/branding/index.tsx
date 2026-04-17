@@ -14,8 +14,6 @@ import { useBrand, useDataroomBrand } from "@/lib/swr/use-brand";
 import { useDataroom } from "@/lib/swr/use-dataroom";
 import { cn, convertDataUrlToFile, uploadImage } from "@/lib/utils";
 
-import { DataroomHeader } from "@/components/datarooms/dataroom-header";
-import { DataroomNavigation } from "@/components/datarooms/dataroom-navigation";
 import AppLayout from "@/components/layouts/app";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -279,17 +277,6 @@ export default function DataroomBrandPage() {
   return (
     <AppLayout>
       <div className="relative mx-2 mb-10 mt-4 space-y-8 px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
-        <header>
-          <DataroomHeader
-            title={dataroom.name}
-            description={dataroom.pId}
-            internalName={dataroom.internalName}
-            actions={[]}
-          />
-
-          <DataroomNavigation dataroomId={dataroom.id} />
-        </header>
-
         <div className="mb-4 flex items-center justify-between md:mb-8 lg:mb-12">
           <div className="space-y-1">
             <h3 className="text-2xl font-semibold tracking-tight text-foreground">

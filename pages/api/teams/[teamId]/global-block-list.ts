@@ -20,38 +20,38 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(400).json({ error: "Invalid teamId" });
   }
 
-  const team = await prisma.team.findFirst({
+  const userId = (session.user as CustomUser).id;
+
+  const teamAccess = await prisma.userTeam.findUnique({
     where: {
-      id: teamId,
-      users: {
-        some: {
-          userId: (session.user as CustomUser).id,
-        },
+      userId_teamId: {
+        userId,
+        teamId,
       },
     },
-    include: {
-      users: true,
-    },
+    select: { role: true },
   });
 
-  if (!team) {
+  if (!teamAccess) {
     return res.status(404).json({ error: "Team not found" });
   }
 
-  const isUserAdminOrManager = team.users.some(
-    (user) =>
-      (user.role === "ADMIN" || user.role === "MANAGER") && user.userId === (session.user as CustomUser).id,
-  );
-
-  if (!isUserAdminOrManager) {
-    return res.status(403).json({ error: "Forbidden" });
-  }
-
   if (req.method === "GET") {
-    return res.status(200).json(team.globalBlockList || []);
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+      select: { globalBlockList: true },
+    });
+
+    return res.status(200).json(team?.globalBlockList || []);
   }
 
   if (req.method === "PUT") {
+    if (teamAccess.role !== "ADMIN" && teamAccess.role !== "MANAGER") {
+      return res.status(403).json({
+        error: "Only admins and managers can manage the block list.",
+      });
+    }
+
     try {
       const { blockList } = req.body;
 
@@ -62,12 +62,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const uniqueBlockList = sanitizeList(blockList.join("\n"), "both");
 
       await prisma.team.update({
-        where: {
-          id: teamId,
-        },
-        data: {
-          globalBlockList: uniqueBlockList,
-        },
+        where: { id: teamId },
+        data: { globalBlockList: uniqueBlockList },
       });
 
       return res.status(200).json({ message: "Global block list updated" });

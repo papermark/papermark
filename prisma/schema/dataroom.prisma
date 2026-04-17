@@ -2,7 +2,7 @@ model Dataroom {
   id           String             @id @default(cuid())
   pId          String             @unique // This is the generated public ID for the dataroom dr_1234
   name         String
-  internalName String?            // Private, internal name/alias visible only to the dataroom owner
+  internalName String? // Private, internal name/alias visible only to the dataroom owner
   description  String?
   teamId       String
   team         Team               @relation(fields: [teamId], references: [id], onDelete: Cascade)
@@ -35,7 +35,8 @@ model Dataroom {
   tags TagItem[]
 
   // notification settings
-  enableChangeNotifications Boolean @default(false)
+  enableChangeNotifications              Boolean @default(false)
+  enableVisitorUploadChangeNotifications Boolean @default(false)
 
   // unified permission strategy
   defaultPermissionStrategy DefaultPermissionStrategy @default(INHERIT_FROM_PARENT)
@@ -48,7 +49,15 @@ model Dataroom {
 
   // Introduction page settings
   introductionEnabled Boolean @default(false) // Toggle to show introduction on first visit
-  introductionContent Json?   // TipTap JSON content for the introduction page
+  introductionContent Json? // TipTap JSON content for the introduction page
+
+  // Freeze / close dataroom
+  isFrozen          Boolean   @default(false)
+  frozenAt          DateTime?
+  frozenBy          String?
+  frozenByUser      User?     @relation("frozenDatarooms", fields: [frozenBy], references: [id], onDelete: SetNull)
+  freezeArchiveUrl  String?
+  freezeArchiveHash String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -109,15 +118,15 @@ model DataroomFolder {
 }
 
 model DataroomBrand {
-  id             String   @id @default(cuid())
-  logo           String? // This should be a reference to where the file is stored (S3, Google Cloud Storage, etc.)
-  banner         String? // This should be a reference to where the file is stored (S3, Google Cloud Storage, etc.)
-  brandColor     String? // This should be a reference to the brand color
-  accentColor    String? // This should be a reference to the accent color
-  applyAccentColorToDataroomView Boolean @default(false) // When true, apply accentColor to dataroom list/tree viewer background
-  welcomeMessage String? // This should be a reference to the welcome message
-  dataroomId     String   @unique
-  dataroom       Dataroom @relation(fields: [dataroomId], references: [id], onDelete: Cascade)
+  id                             String   @id @default(cuid())
+  logo                           String? // This should be a reference to where the file is stored (S3, Google Cloud Storage, etc.)
+  banner                         String? // This should be a reference to where the file is stored (S3, Google Cloud Storage, etc.)
+  brandColor                     String? // This should be a reference to the brand color
+  accentColor                    String? // This should be a reference to the accent color
+  applyAccentColorToDataroomView Boolean  @default(false) // When true, apply accentColor to dataroom list/tree viewer background
+  welcomeMessage                 String? // This should be a reference to the welcome message
+  dataroomId                     String   @unique
+  dataroom                       Dataroom @relation(fields: [dataroomId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

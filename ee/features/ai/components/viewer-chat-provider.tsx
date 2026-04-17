@@ -5,6 +5,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useMemo,
   useState,
 } from "react";
 
@@ -110,26 +111,32 @@ export function ViewerChatProvider({
   const close = useCallback(() => setIsOpen(false), []);
   const toggle = useCallback(() => setIsOpen((prev) => !prev), []);
 
-  const config: ViewerChatConfig = {
-    dataroomId,
-    dataroomName,
-    documentId,
-    documentName,
-    linkId,
-    viewId,
-    viewerId,
-  };
+  const config: ViewerChatConfig = useMemo(
+    () => ({
+      dataroomId,
+      dataroomName,
+      documentId,
+      documentName,
+      linkId,
+      viewId,
+      viewerId,
+    }),
+    [dataroomId, dataroomName, documentId, documentName, linkId, viewId, viewerId],
+  );
 
-  const value: ViewerChatContextType = {
-    isOpen,
-    isEnabled: enabled,
-    config,
-    documents,
-    folders,
-    open,
-    close,
-    toggle,
-  };
+  const value: ViewerChatContextType = useMemo(
+    () => ({
+      isOpen,
+      isEnabled: enabled,
+      config,
+      documents,
+      folders,
+      open,
+      close,
+      toggle,
+    }),
+    [isOpen, enabled, config, documents, folders, open, close, toggle],
+  );
 
   return (
     <ViewerChatContext.Provider value={value}>

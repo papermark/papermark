@@ -1,14 +1,15 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import {
+  MAX_INVITATION_EMAILS_PER_DAY,
+  MAX_INVITATION_EMAILS_PER_REQUEST,
   SendLinkInvitationSchema,
   invitationEmailSchema,
 } from "@/ee/features/dataroom-invitations/lib/schema/dataroom-invitations";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { LinkType } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
-import { getFeatureFlags } from "@/lib/featureFlags";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 import { constructLinkUrl } from "@/lib/utils/link-url";
@@ -64,11 +65,20 @@ export default async function handle(
       return res.status(401).end("Unauthorized");
     }
 
-    // Check if dataroomInvitations feature is enabled for this team
-    const featureFlags = await getFeatureFlags({ teamId });
-    if (!featureFlags.dataroomInvitations) {
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+      select: { plan: true },
+    });
+
+    const plan = team?.plan ?? "";
+    const hasAccess =
+      plan.includes("datarooms-plus") ||
+      plan.includes("datarooms-premium") ||
+      plan.includes("datarooms-unlimited");
+
+    if (!team || !hasAccess) {
       return res.status(403).json({
-        error: "Dataroom invitations feature is not enabled for this team",
+        error: "Email invitations require a Data Rooms Plus plan or higher",
       });
     }
 
@@ -125,6 +135,12 @@ export default async function handle(
       });
     }
 
+    if (targetEmails.length > MAX_INVITATION_EMAILS_PER_REQUEST) {
+      return res.status(400).json({
+        error: `Maximum ${MAX_INVITATION_EMAILS_PER_REQUEST} recipients per request`,
+      });
+    }
+
     await prisma.viewer.createMany({
       data: targetEmails.map((email) => ({
         email,
@@ -136,14 +152,9 @@ export default async function handle(
     const viewers = await prisma.viewer.findMany({
       where: {
         teamId,
-        email: {
-          in: targetEmails,
-        },
+        email: { in: targetEmails },
       },
-      select: {
-        id: true,
-        email: true,
-      },
+      select: { id: true, email: true },
     });
 
     const viewerByEmail = viewers.reduce<Record<string, { id: string }>>(
@@ -156,21 +167,73 @@ export default async function handle(
       {},
     );
 
+    const validEmails = targetEmails.filter((email) => viewerByEmail[email]);
+    const invalidEmails = targetEmails.filter((email) => !viewerByEmail[email]);
+
+    if (validEmails.length === 0) {
+      return res.status(400).json({
+        error: "No valid recipient viewers found",
+      });
+    }
+
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    let reservedInvitations: { id: string; email: string }[];
+    try {
+      reservedInvitations = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${user.id}))`;
+
+        const dailySentCount = await tx.viewerInvitation.count({
+          where: {
+            invitedBy: user.id,
+            createdAt: { gte: oneDayAgo },
+            status: "SENT",
+          },
+        });
+
+        if (
+          dailySentCount + validEmails.length >
+          MAX_INVITATION_EMAILS_PER_DAY
+        ) {
+          throw new Error("DAILY_LIMIT_EXCEEDED");
+        }
+
+        const created: { id: string; email: string }[] = [];
+        for (const email of validEmails) {
+          const viewer = viewerByEmail[email]!;
+          const record = await tx.viewerInvitation.create({
+            data: {
+              viewerId: viewer.id,
+              linkId: link.id,
+              invitedBy: user.id,
+              customMessage,
+              status: "SENT",
+            },
+          });
+          created.push({ id: record.id, email });
+        }
+
+        return created;
+      });
+    } catch (error: any) {
+      if (error?.message === "DAILY_LIMIT_EXCEEDED") {
+        return res.status(429).json({
+          error: `Daily limit of ${MAX_INVITATION_EMAILS_PER_DAY} invitations reached. Contact support@papermark.com to increase your limit.`,
+        });
+      }
+      throw error;
+    }
+
     const linkUrl = constructLinkUrl(link);
 
     const successes: string[] = [];
     const failures: { email: string; error: string }[] = [];
 
-    for (const email of targetEmails) {
-      const viewer = viewerByEmail[email];
-      if (!viewer) {
-        failures.push({
-          email,
-          error: "Viewer not found",
-        });
-        continue;
-      }
+    for (const email of invalidEmails) {
+      failures.push({ email, error: "Viewer not found" });
+    }
 
+    for (const { id, email } of reservedInvitations) {
       try {
         await sendDataroomViewerInvite({
           dataroomName: link.dataroom?.name ?? "",
@@ -180,16 +243,6 @@ export default async function handle(
           customMessage,
         });
 
-        await prisma.viewerInvitation.create({
-          data: {
-            viewerId: viewer.id,
-            linkId: link.id,
-            invitedBy: user.id,
-            customMessage,
-            status: "SENT",
-          },
-        });
-
         successes.push(email);
       } catch (error: any) {
         failures.push({
@@ -197,14 +250,9 @@ export default async function handle(
           error: error?.message ?? "Unknown error",
         });
 
-        await prisma.viewerInvitation.create({
-          data: {
-            viewerId: viewer.id,
-            linkId: link.id,
-            invitedBy: user.id,
-            customMessage,
-            status: "FAILED",
-          },
+        await prisma.viewerInvitation.update({
+          where: { id },
+          data: { status: "FAILED" },
         });
       }
     }

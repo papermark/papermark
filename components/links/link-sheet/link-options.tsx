@@ -213,7 +213,13 @@ export const LinkOptions = ({
           />
           <CustomFieldsSection
             {...{ data, setData }}
-            isAllowed={isTrial || isBusiness || isDatarooms || isDataroomsPlus}
+            isAllowed={
+              isTrial ||
+              isBusiness ||
+              isDatarooms ||
+              isDataroomsPlus ||
+              (limits?.linkCustomFields ?? 0) > 0
+            }
             handleUpgradeStateChange={handleUpgradeStateChange}
             presets={currentPreset}
           />
@@ -284,17 +290,16 @@ export const LinkOptions = ({
                 handleUpgradeStateChange={handleUpgradeStateChange}
               />
 
-              {limits?.conversationsInDataroom ? (
-                <ConversationSection
-                  {...{ data, setData }}
-                  isAllowed={
-                    isDataroomsPlus ||
-                    ((isBusiness || isDatarooms) &&
-                      limits?.conversationsInDataroom)
-                  }
-                  handleUpgradeStateChange={handleUpgradeStateChange}
-                />
-              ) : null}
+              <ConversationSection
+                {...{ data, setData }}
+                isAllowed={
+                  isTrial ||
+                  isDataroomsPlus ||
+                  ((isBusiness || isDatarooms) &&
+                    !!limits?.conversationsInDataroom)
+                }
+                handleUpgradeStateChange={handleUpgradeStateChange}
+              />
             </>
           ) : null}
         </div>

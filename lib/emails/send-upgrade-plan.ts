@@ -9,6 +9,7 @@ const PLAN_TYPE_MAP = {
   datarooms: "Data Rooms",
   "datarooms-plus": "Data Rooms Plus",
   "datarooms-premium": "Data Rooms Premium",
+  "datarooms-unlimited": "Data Rooms Unlimited",
 };
 
 export const sendUpgradePlanEmail = async (

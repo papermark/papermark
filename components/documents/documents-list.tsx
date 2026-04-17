@@ -35,12 +35,13 @@ import { FolderWithCount, FolderWithCountAndPath } from "@/lib/swr/use-documents
 import { DocumentWithLinksAndLinkCountAndViewCount } from "@/lib/types";
 import { useMediaQuery } from "@/lib/utils/use-media-query";
 
+import {
+  useUploadCallbacks,
+  useUploadProgress,
+} from "@/context/upload-progress-context";
+
 import { Skeleton } from "@/components/ui/skeleton";
-import { UploadNotificationDrawer } from "@/components/upload-notification";
-import UploadZone, {
-  RejectedFile,
-  UploadState,
-} from "@/components/upload-zone";
+import UploadZone from "@/components/upload-zone";
 
 import { itemsMessage } from "../datarooms/folders/utils";
 import { Button } from "../ui/button";
@@ -56,16 +57,6 @@ import { EmptyDocuments } from "./empty-document";
 import FolderCard from "./folder-card";
 import { MoveToFolderModal, TSelectedFolder } from "./move-folder-modal";
 
-export type Upload = {
-  fileName: string;
-  progress: number;
-  documentId?: string;
-};
-
-export type File = {
-  fileName: string;
-  message: string;
-};
 
 export function DocumentsList({
   folders,
@@ -83,13 +74,17 @@ export function DocumentsList({
   foldersLoading: boolean;
 }) {
   const { isMobile } = useMediaQuery();
+  const { setRejectedFiles, cancelledItemIdsRef } = useUploadProgress();
+  const {
+    onTraversalStart,
+    onUploadBatchStart,
+    onUploadBatchUpdate,
+    onUploadRejected,
+    onUploadAborted,
+  } = useUploadCallbacks();
 
-  const [uploads, setUploads] = useState<UploadState[]>([]);
-  const [rejectedFiles, setRejectedFiles] = useState<RejectedFile[]>([]);
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [selectedFolders, setSelectedFolders] = useState<string[]>([]);
-
-  const [showDrawer, setShowDrawer] = useState<boolean>(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [draggedDocument, setDraggedDocument] =
     useState<DocumentWithLinksAndLinkCountAndViewCount | null>(null);
@@ -340,9 +335,6 @@ export function DocumentsList({
     setIsOverFolder(false);
   };
 
-  const handleCloseDrawer = () => {
-    setShowDrawer(false);
-  };
 
   const resetSelection = () => {
     setSelectedDocuments([]);
@@ -547,32 +539,13 @@ export function DocumentsList({
     <>
       <UploadZone
         folderPathName={folderPathName?.join("/")}
-        onUploadStart={(newUploads) => {
-          setUploads((prevUploads) => [...prevUploads, ...newUploads]);
-          setShowDrawer(true);
-        }}
-        onUploadProgress={(index, progress, documentId) => {
-          setUploads((prevUploads) => {
-            const recentBatchStartIndex = prevUploads.length - index - 1;
-            if (
-              recentBatchStartIndex < 0 ||
-              recentBatchStartIndex >= prevUploads.length
-            ) {
-              return prevUploads;
-            }
-            return prevUploads.map((upload, i) =>
-              i === recentBatchStartIndex
-                ? { ...upload, progress, documentId }
-                : upload,
-            );
-          });
-        }}
-        onUploadRejected={(rejected) => {
-          setRejectedFiles((prevRejected) => [...prevRejected, ...rejected]);
-          setShowDrawer(true);
-        }}
-        setUploads={setUploads}
+        onTraversalStart={onTraversalStart}
+        onUploadBatchStart={onUploadBatchStart}
+        onUploadBatchUpdate={onUploadBatchUpdate}
+        onUploadRejected={onUploadRejected}
+        onUploadAborted={onUploadAborted}
         setRejectedFiles={setRejectedFiles}
+        cancelledItemIdsRef={cancelledItemIdsRef}
       >
         {isMobile ? (
           <div className="space-y-4">
@@ -840,17 +813,6 @@ export function DocumentsList({
           </>
         )}
       </UploadZone>
-      {showDrawer ? (
-        <UploadNotificationDrawer
-          open={showDrawer}
-          onOpenChange={setShowDrawer}
-          uploads={uploads}
-          handleCloseDrawer={handleCloseDrawer}
-          setUploads={setUploads}
-          rejectedFiles={rejectedFiles}
-          setRejectedFiles={setRejectedFiles}
-        />
-      ) : null}
       <DeleteFolderModal />
       <DeleteItemsModal />
     </>

@@ -8,14 +8,13 @@ import notion from "@/lib/notion";
 import { getNotionPageIdFromSlug } from "@/lib/notion/utils";
 import prisma from "@/lib/prisma";
 import {
-  convertCadToPdfTask,
   convertFilesToPdfTask,
   convertKeynoteToPdfTask,
 } from "@/lib/trigger/convert-files";
 import { processVideo } from "@/lib/trigger/optimize-video-files";
 import { convertPdfToImageRoute } from "@/lib/trigger/pdf-to-image-route";
 import { getExtension, log } from "@/lib/utils";
-import { conversionQueue } from "@/lib/utils/trigger-utils";
+import { conversionQueueName } from "@/lib/utils/trigger-utils";
 import { sendDocumentCreatedWebhook } from "@/lib/webhook/triggers/document-created";
 import { sendLinkCreatedWebhook } from "@/lib/webhook/triggers/link-created";
 
@@ -120,12 +119,16 @@ export const processDocument = async ({
     },
   });
 
+  const isLogFile = name.toLowerCase().endsWith(".log");
+
   // determine if the document is download only
   const isDownloadOnly =
     type === "zip" ||
     type === "map" ||
     type === "email" ||
-    contentType === "text/tab-separated-values";
+    contentType === "text/tab-separated-values" ||
+    type === "cad" ||
+    isLogFile;
 
   // Save data to the database
   const document = await prisma.document.create({
@@ -191,11 +194,11 @@ export const processDocument = async ({
           `document_${document.id}`,
           `version:${document.versions[0].id}`,
         ],
-        queue: conversionQueue(teamPlan),
+        queue: conversionQueueName(teamPlan),
         concurrencyKey: teamId,
       },
     );
-  } else if (type === "docs" || type === "slides") {
+  } else if ((type === "docs" || type === "slides") && !isLogFile) {
     await convertFilesToPdfTask.trigger(
       {
         documentId: document.id,
@@ -209,27 +212,7 @@ export const processDocument = async ({
           `document_${document.id}`,
           `version:${document.versions[0].id}`,
         ],
-        queue: conversionQueue(teamPlan),
-        concurrencyKey: teamId,
-      },
-    );
-  }
-
-  if (type === "cad") {
-    await convertCadToPdfTask.trigger(
-      {
-        documentId: document.id,
-        documentVersionId: document.versions[0].id,
-        teamId,
-      },
-      {
-        idempotencyKey: `${teamId}-${document.versions[0].id}-cad`,
-        tags: [
-          `team_${teamId}`,
-          `document_${document.id}`,
-          `version:${document.versions[0].id}`,
-        ],
-        queue: conversionQueue(teamPlan),
+        queue: conversionQueueName(teamPlan),
         concurrencyKey: teamId,
       },
     );
@@ -255,7 +238,7 @@ export const processDocument = async ({
           `document_${document.id}`,
           `version:${document.versions[0].id}`,
         ],
-        queue: conversionQueue(teamPlan),
+        queue: conversionQueueName(teamPlan),
         concurrencyKey: teamId,
       },
     );
@@ -276,7 +259,7 @@ export const processDocument = async ({
           `document_${document.id}`,
           `version:${document.versions[0].id}`,
         ],
-        queue: conversionQueue(teamPlan),
+        queue: conversionQueueName(teamPlan),
         concurrencyKey: teamId,
       },
     );

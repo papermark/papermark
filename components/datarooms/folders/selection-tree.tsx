@@ -16,13 +16,17 @@ const FolderComponentSelection = memo(
     selectedFolder,
     setSelectedFolder,
     disableId,
+    ancestorDisabled,
   }: {
     folder: DataroomFolderWithDocuments;
     disableId?: string[];
     selectedFolder: TSelectedFolder;
     setSelectedFolder: React.Dispatch<React.SetStateAction<TSelectedFolder>>;
+    ancestorDisabled?: boolean;
   }) => {
-    // Recursively render child folders if they exist
+    const isSelfDisabled = disableId?.includes(folder.id) ?? false;
+    const isDisabled = ancestorDisabled || isSelfDisabled;
+
     const childFolders = useMemo(
       () =>
         folder.childFolders.map((childFolder) => (
@@ -32,16 +36,22 @@ const FolderComponentSelection = memo(
             selectedFolder={selectedFolder}
             disableId={disableId}
             setSelectedFolder={setSelectedFolder}
+            ancestorDisabled={isDisabled}
           />
         )),
-      [folder.childFolders, selectedFolder, setSelectedFolder, disableId],
+      [
+        folder.childFolders,
+        selectedFolder,
+        setSelectedFolder,
+        disableId,
+        isDisabled,
+      ],
     );
 
     const isActive = folder.id === selectedFolder?.id;
     const isChildActive = folder.childFolders.some(
       (childFolder) => childFolder.id === selectedFolder?.id,
     );
-    const isDisabled = disableId?.includes(folder.id);
 
     return (
       <div

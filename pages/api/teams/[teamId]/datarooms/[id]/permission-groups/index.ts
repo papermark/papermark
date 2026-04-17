@@ -3,6 +3,10 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { ItemType } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
+import {
+  revalidateLinkById,
+  revalidateLinksForPermissionGroup,
+} from "@/lib/api/links/revalidate";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
@@ -225,6 +229,14 @@ export default async function handle(
           accessControls,
         };
       });
+
+      // Revalidate ISR pages for the linked link so viewers see the correct files
+      if (linkId) {
+        await revalidateLinkById(linkId);
+      }
+      if (result.permissionGroup?.id) {
+        await revalidateLinksForPermissionGroup(result.permissionGroup.id);
+      }
 
       return res.status(200).json(result);
     } catch (error) {

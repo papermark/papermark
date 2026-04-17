@@ -107,15 +107,22 @@ export default async function handle(
       sheetData: undefined as any,
     };
 
+    const INITIAL_PAGES_TO_LOAD = 10;
+
     // Handle different file types
     if (primaryVersion.hasPages && primaryVersion.pages.length > 0) {
       // Documents with pages (PDFs, docs, slides)
+      // Only sign URLs for the first batch of pages to avoid timeouts on large documents.
+      // Remaining page URLs are fetched on-demand by the client via preview-pages endpoint.
       returnData.pages = await Promise.all(
-        primaryVersion.pages.map(async (page) => {
+        primaryVersion.pages.map(async (page, index) => {
           const { storageType, ...otherPageData } = page;
           return {
             ...otherPageData,
-            file: await getFile({ data: page.file, type: storageType }),
+            file:
+              index < INITIAL_PAGES_TO_LOAD
+                ? await getFile({ data: page.file, type: storageType })
+                : null,
           };
         }),
       );

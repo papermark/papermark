@@ -5,6 +5,7 @@ import { ItemType } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 import { z } from "zod";
 
+import { revalidateLinksForPermissionGroup } from "@/lib/api/links/revalidate";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
@@ -488,6 +489,9 @@ export default async function handle(
         validatedPermissions,
       );
 
+      // Revalidate ISR pages so viewers see the updated file list
+      await revalidateLinksForPermissionGroup(permissionGroupId);
+
       return res.status(200).json({ permissionGroup: updatedPermissionGroup });
     } catch (error) {
       return errorhandler(error, res);
@@ -551,12 +555,33 @@ export default async function handle(
         return res.status(404).json({ error: "Permission group not found" });
       }
 
+      // Find linked links before deletion (FK onDelete: SetNull clears the reference)
+      const linkedLinks = await prisma.link.findMany({
+        where: { permissionGroupId, deletedAt: null },
+        select: { id: true, domainId: true },
+      });
+
       // Delete the permission group (this will cascade delete access controls)
       await prisma.permissionGroup.delete({
         where: {
           id: permissionGroupId,
         },
       });
+
+      // Revalidate ISR pages so viewers see all files again (no restrictions)
+      const revalidateUrl = process.env.NEXTAUTH_URL;
+      const revalidateToken = process.env.REVALIDATE_TOKEN;
+      if (revalidateUrl && revalidateToken && linkedLinks.length > 0) {
+        await Promise.all(
+          linkedLinks.map((link) =>
+            fetch(
+              `${revalidateUrl}/api/revalidate?secret=${revalidateToken}&linkId=${link.id}&hasDomain=${link.domainId ? "true" : "false"}`,
+            ).catch((err) =>
+              console.error(`Error revalidating link ${link.id}:`, err),
+            ),
+          ),
+        );
+      }
 
       return res.status(200).json({ message: "Permission group deleted" });
     } catch (error) {

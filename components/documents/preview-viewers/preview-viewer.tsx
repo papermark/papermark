@@ -1,3 +1,5 @@
+import { useTeam } from "@/context/team-context";
+
 import { DocumentPreviewData } from "@/lib/types/document-preview";
 
 import { PreviewExcelViewer } from "./preview-excel-viewer";
@@ -10,11 +12,21 @@ interface PreviewViewerProps {
 }
 
 export function PreviewViewer({ documentData, onClose }: PreviewViewerProps) {
+  const { currentTeamId } = useTeam();
+
+  const previewPagesEndpoint = currentTeamId
+    ? `/api/teams/${currentTeamId}/documents/${documentData.documentId}/preview-pages`
+    : undefined;
+
   const renderViewer = () => {
     // Documents with pages (PDFs, docs, slides)
     if (documentData.pages && documentData.pages.length > 0) {
       return (
-        <PreviewPagesViewer documentData={documentData} onClose={onClose} />
+        <PreviewPagesViewer
+          documentData={documentData}
+          onClose={onClose}
+          pagesApiEndpoint={previewPagesEndpoint}
+        />
       );
     }
 

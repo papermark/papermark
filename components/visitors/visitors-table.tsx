@@ -143,8 +143,8 @@ export default function VisitorsTable({
           </Badge>
         )}
       </div>
-      <div className="rounded-md border">
-        <Table>
+      <div className="overflow-x-auto rounded-md border">
+        <Table className="min-w-[700px]">
           <TableHeader>
             <TableRow className="*:whitespace-nowrap *:font-medium hover:bg-transparent">
               <TableHead>Name</TableHead>
@@ -332,7 +332,10 @@ export default function VisitorsTable({
                   <Collapsible key={view.id} asChild>
                     <>
                       <CollapsibleTrigger asChild>
-                        <TableRow key={view.id} className="group/row">
+                        <TableRow
+                          key={view.id}
+                          className="group/row cursor-pointer [&[data-state=open]_.chevron]:rotate-180"
+                        >
                           {/* Name */}
                           <TableCell>
                             <div className="flex items-center overflow-visible sm:space-x-3">
@@ -417,8 +420,9 @@ export default function VisitorsTable({
                           </TableCell>
                           {/* Duration */}
                           <TableCell className="">
-                            <div className="text-sm text-muted-foreground">
-                              {durationFormat(view.totalDuration)}
+                            <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+                              <span>{durationFormat(view.totalDuration)}</span>
+                              <ChevronDown className="chevron h-4 w-4 shrink-0 transition-transform duration-200" />
                             </div>
                           </TableCell>
                           {/* Completion */}
@@ -450,41 +454,43 @@ export default function VisitorsTable({
                           {/* Actions */}
                           <TableCell className="text-center sm:text-right">
                             <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0 group-hover/row:ring-1 group-hover/row:ring-gray-200 group-hover/row:dark:ring-gray-700"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                  }}
-                                >
-                                  <span className="sr-only">Open menu</span>
-                                  <MoreHorizontalIcon className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0 group-hover/row:ring-1 group-hover/row:ring-gray-200 group-hover/row:dark:ring-gray-700"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
+                                    }}
+                                  >
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreHorizontalIcon className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>
+                                    Actions
+                                  </DropdownMenuLabel>
 
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    handleArchiveView(
-                                      view.id,
-                                      view.documentId ?? "",
-                                      view.isArchived,
-                                    );
-                                  }}
-                                  disabled={isLoading}
-                                >
-                                  <ArchiveIcon className="mr-2 h-4 w-4" />
-                                  Archive
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
+                                      handleArchiveView(
+                                        view.id,
+                                        view.documentId ?? "",
+                                        view.isArchived,
+                                      );
+                                    }}
+                                    disabled={isLoading}
+                                  >
+                                    <ArchiveIcon className="mr-2 h-4 w-4" />
+                                    Archive
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       </CollapsibleTrigger>

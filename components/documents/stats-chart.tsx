@@ -82,7 +82,7 @@ export default function StatsChart({
   }
 
   return stats && stats.views.length > 0 ? (
-    <div className="rounded-bl-lg border-b border-l pb-0.5 pl-0.5 md:pb-1 md:pl-1">
+    <div className="overflow-x-auto rounded-bl-lg border-b border-l pb-0.5 pl-0.5 md:pb-1 md:pl-1">
       <BarChartComponent data={durationData} />
     </div>
   ) : (

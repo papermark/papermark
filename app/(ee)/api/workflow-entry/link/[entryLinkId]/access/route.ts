@@ -6,7 +6,11 @@ import { AccessRequestSchema } from "@/ee/features/workflows/lib/types";
 import { ipAddress } from "@vercel/functions";
 import { z } from "zod";
 
-import { createDataroomSession } from "@/lib/auth/dataroom-auth";
+import {
+  collectFingerprintHeaders,
+  createDataroomSession,
+  generateSessionFingerprint,
+} from "@/lib/auth/dataroom-auth";
 import { createLinkSession } from "@/lib/auth/link-session";
 import prisma from "@/lib/prisma";
 import { ratelimit } from "@/lib/redis";
@@ -182,6 +186,9 @@ export async function POST(
     });
 
     // Create link session for the target link
+    const linkFingerprint = generateSessionFingerprint(
+      collectFingerprintHeaders(req.headers),
+    );
     const { token: sessionToken, expiresAt } = await createLinkSession(
       executionResult.targetLinkId!,
       executionResult.targetLinkType!,
@@ -193,6 +200,7 @@ export async function POST(
       viewer.id, // viewerId
       executionResult.targetDocumentId,
       executionResult.targetDataroomId,
+      linkFingerprint,
     );
 
     // Parse target URL safely with fallback
@@ -237,6 +245,9 @@ export async function POST(
       executionResult.targetDataroomId &&
       viewer
     ) {
+      const fingerprint = generateSessionFingerprint(
+        collectFingerprintHeaders(req.headers),
+      );
       const dataroomSession = await createDataroomSession(
         executionResult.targetDataroomId,
         executionResult.targetLinkId!,
@@ -244,6 +255,7 @@ export async function POST(
         ipAddressValue,
         true, // verified
         viewer.id,
+        fingerprint,
       );
 
       cookies().set(

@@ -1,4 +1,4 @@
-import { logger, task } from "@trigger.dev/sdk/v3";
+import { logger, task } from "@trigger.dev/sdk";
 import { put } from "@vercel/blob";
 import Bottleneck from "bottleneck";
 
@@ -692,26 +692,19 @@ async function exportDataroomVisits(
     dataroomViewMap.set(view.id, view);
   });
 
-  // Get user agent data for all document views at once with rate limiting
-  const userAgentDataMap = new Map();
-  for (const docView of documentViews) {
-    const userAgentData = await tinybirdLimiter.schedule(async () => {
-      const result = await getViewUserAgent({
-        viewId: docView.id,
-      });
+  // Fetch user agent data per dataroom view (stored in pm_click_events via recordLinkView)
+  const userAgentDataMap = new Map<
+    string,
+    { browser: string; os: string; device: string; country: string; city: string }
+  >();
+  for (const drView of dataroomViews) {
+    const userAgentData = await tinybirdLimiter.schedule(() =>
+      getViewUserAgent({ viewId: drView.id }),
+    );
 
-      if (!result || result.rows === 0) {
-        return getViewUserAgent_v2({
-          documentId: docView.document?.id || "null",
-          viewId: docView.id,
-          since: 0,
-        });
-      }
-
-      return result;
-    });
-
-    userAgentDataMap.set(docView.id, userAgentData);
+    if (userAgentData?.data[0]) {
+      userAgentDataMap.set(drView.id, userAgentData.data[0]);
+    }
   }
 
   // Create CSV
@@ -746,6 +739,8 @@ async function exportDataroomVisits(
   csvRows.push(createCsvRow(headers));
 
   exportData.forEach((view) => {
+    const ua = userAgentDataMap.get(view.dataroomViewId);
+
     if (view.documentViews.length === 0) {
       const rowData = [
         view.dataroomViewedAt,
@@ -764,11 +759,11 @@ async function exportDataroomVisits(
         "NaN",
         "NaN",
         "NaN",
-        "NaN",
-        "NaN",
-        "NaN",
-        "NaN",
-        "NaN",
+        ua?.browser || "NaN",
+        ua?.os || "NaN",
+        ua?.device || "NaN",
+        ua?.country || "NaN",
+        ua?.city || "NaN",
       ];
 
       // Add custom field values for this dataroom view using direct ID lookup
@@ -780,8 +775,6 @@ async function exportDataroomVisits(
       csvRows.push(createCsvRow(rowData));
     } else {
       view.documentViews.forEach((docView) => {
-        const userAgentData = userAgentDataMap.get(docView.viewId);
-
         const rowData = [
           view.dataroomViewedAt,
           view.dataroomDownloadedAt,
@@ -799,11 +792,11 @@ async function exportDataroomVisits(
           (docView.duration / 1000).toFixed(1),
           docView.completionRate,
           docView.documentVersion,
-          userAgentData?.data[0]?.browser || "NaN",
-          userAgentData?.data[0]?.os || "NaN",
-          userAgentData?.data[0]?.device || "NaN",
-          userAgentData?.data[0]?.country || "NaN",
-          userAgentData?.data[0]?.city || "NaN",
+          ua?.browser || "NaN",
+          ua?.os || "NaN",
+          ua?.device || "NaN",
+          ua?.country || "NaN",
+          ua?.city || "NaN",
         ];
 
         // Add custom field values for this dataroom view using direct ID lookup

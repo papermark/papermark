@@ -7,7 +7,7 @@ import {
 } from "@/ee/features/ai/lib/trigger";
 import { createTeamVectorStore } from "@/ee/features/ai/lib/vector-stores/create-team-vector-store";
 import { removeFileFromVectorStore } from "@/ee/features/ai/lib/vector-stores/remove-file-from-vector-store";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { getServerSession } from "next-auth";
 
 import { getFeatureFlags } from "@/lib/featureFlags";

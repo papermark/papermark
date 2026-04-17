@@ -12,7 +12,7 @@ export const sendDataroomTrialEndEmail = async (params: {
   let subject;
 
   emailTemplate = DataroomTrialEnd({ name });
-  subject = "Your Data Room plan trial has ended";
+  subject = "Your Data Room Plus plan trial has ended";
 
   try {
     await sendEmail({

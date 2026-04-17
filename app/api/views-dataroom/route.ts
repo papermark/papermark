@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { reportDeniedAccessAttempt } from "@/ee/features/access-notifications";
 import { getTeamStorageConfigById } from "@/ee/features/storage/config";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { ItemType, LinkAudienceType } from "@prisma/client";
 import { ipAddress, waitUntil } from "@vercel/functions";
 import { getServerSession } from "next-auth";
@@ -10,7 +10,9 @@ import { getServerSession } from "next-auth";
 import { hashToken } from "@/lib/api/auth/token";
 import {
   DataroomSession,
+  collectFingerprintHeaders,
   createDataroomSession,
+  generateSessionFingerprint,
 } from "@/lib/auth/dataroom-auth";
 import { verifyDataroomSession } from "@/lib/auth/dataroom-auth";
 import { PreviewSession, verifyPreviewSession } from "@/lib/auth/preview-auth";
@@ -50,6 +52,7 @@ export async function POST(request: NextRequest) {
       dataroomViewId,
       viewType,
       groupId,
+      startPage,
       ...data
     } = body as {
       linkId: string;
@@ -64,6 +67,7 @@ export async function POST(request: NextRequest) {
       dataroomViewId?: string;
       viewType: "DATAROOM_VIEW" | "DOCUMENT_VIEW";
       groupId?: string;
+      startPage?: number;
     };
 
     const { email, password, name, hasConfirmedAgreement } = data as {
@@ -144,6 +148,7 @@ export async function POST(request: NextRequest) {
         dataroom: {
           select: {
             agentsEnabled: true,
+            isFrozen: true,
             name: true,
           },
         },
@@ -174,6 +179,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { message: "Link has been deleted." },
         { status: 404 },
+      );
+    }
+
+    if (link.dataroom?.isFrozen) {
+      return NextResponse.json(
+        { message: "This data room has been closed." },
+        { status: 403 },
       );
     }
 
@@ -753,6 +765,9 @@ export async function POST(request: NextRequest) {
 
         // Create a dataroom session token if a dataroom session doesn't exist yet
         if (!dataroomSession && !isPreview) {
+          const fingerprint = generateSessionFingerprint(
+            collectFingerprintHeaders(request.headers),
+          );
           const newDataroomSession = await createDataroomSession(
             link.dataroomId!,
             linkId,
@@ -760,6 +775,7 @@ export async function POST(request: NextRequest) {
             ipAddress(request) ?? LOCALHOST_IP,
             isEmailVerified,
             viewer?.id,
+            fingerprint,
           );
 
           let basePath = `/view/${linkId}`;
@@ -865,6 +881,7 @@ export async function POST(request: NextRequest) {
       // otherwise, return file from document version
       let documentPages, documentVersion;
       let sheetData;
+      const INITIAL_PAGES_TO_LOAD = 10;
 
       if (hasPages) {
         // get pages from document version
@@ -882,12 +899,22 @@ export async function POST(request: NextRequest) {
           },
         });
 
+        // Sign URLs for pages around the requested start page (or page 1 by default).
+        // Remaining page URLs are fetched on-demand by the client via /api/views/pages.
+        const centerIndex = Math.max(0, (startPage ?? 1) - 1);
+        const halfWindow = Math.floor(INITIAL_PAGES_TO_LOAD / 2);
+        const signStart = Math.max(0, centerIndex - halfWindow);
+        const signEnd = Math.min(documentPages.length, signStart + INITIAL_PAGES_TO_LOAD);
+
         documentPages = await Promise.all(
-          documentPages.map(async (page) => {
+          documentPages.map(async (page, index) => {
             const { storageType, ...otherPage } = page;
             return {
               ...otherPage,
-              file: await getFile({ data: page.file, type: storageType }),
+              file:
+                index >= signStart && index < signEnd
+                  ? await getFile({ data: page.file, type: storageType })
+                  : null,
             };
           }),
         );
@@ -1067,6 +1094,9 @@ export async function POST(request: NextRequest) {
 
       // Create a dataroom session token if a dataroom session doesn't exist yet
       if (!dataroomSession && !isPreview) {
+        const fingerprint = generateSessionFingerprint(
+          collectFingerprintHeaders(request.headers),
+        );
         const newDataroomSession = await createDataroomSession(
           link.dataroomId!,
           linkId,
@@ -1074,6 +1104,7 @@ export async function POST(request: NextRequest) {
           ipAddress(request) ?? LOCALHOST_IP,
           isEmailVerified,
           viewer?.id,
+          fingerprint,
         );
 
         let basePath = `/view/${linkId}`;

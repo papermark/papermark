@@ -119,17 +119,11 @@ export default function NdaAgreements() {
                   Create your first NDA agreement to get started
                 </p>
               </div>
-              {isTrial || isBusiness || isDatarooms || isDataroomsPlus ? (
+              {(isTrial || isBusiness || isDatarooms || isDataroomsPlus) && (
                 <Button variant="outline" onClick={() => setIsOpen(true)}>
                   <FileTextIcon className="h-4 w-4" />
                   Create NDA agreement
                 </Button>
-              ) : (
-                <AgreementsUpgradeButton
-                  text="Create NDA Agreements"
-                  trigger="nda_agreements_page_empty_state"
-                  variant="outline"
-                />
               )}
             </div>
           )}

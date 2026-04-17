@@ -141,8 +141,9 @@ export function TeamSwitcher({
       <SidebarMenuItem>
         {showUpgradePlanModal ? (
           <UpgradePlanModal
-            clickedPlan={isTrial ? PlanEnum.Business : PlanEnum.Pro}
+            clickedPlan={PlanEnum.Business}
             trigger={"invite_team_members"}
+            highlightItem={["users"]}
           >
             <SidebarMenuButton
               size="lg"

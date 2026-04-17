@@ -78,6 +78,7 @@ export default async function handle(
           id: true,
           teamId: true,
           name: true,
+          isFrozen: true,
           agentsEnabled: true,
           vectorStoreId: true,
         },
@@ -86,6 +87,13 @@ export default async function handle(
       if (!dataroom) {
         return res.status(404).json({
           message: "Dataroom not found!",
+        });
+      }
+
+      if (dataroom.isFrozen) {
+        return res.status(403).json({
+          message:
+            "This data room is frozen. You cannot add documents to a frozen data room.",
         });
       }
 

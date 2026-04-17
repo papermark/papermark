@@ -3,11 +3,12 @@ import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import React from "react";
 
+import { UnlimitedPlanModal } from "@/components/billing/unlimited-plan-modal";
 import { useTeam } from "@/context/team-context";
 import { getStripe } from "@/ee/stripe/client";
 import { Feature, PlanEnum, getPlanFeatures } from "@/ee/stripe/constants";
 import { PLANS } from "@/ee/stripe/utils";
-import { CheckIcon, Users2Icon, XIcon } from "lucide-react";
+import { CheckIcon, InfinityIcon, Users2Icon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAnalytics } from "@/lib/analytics";
@@ -182,12 +183,25 @@ export default function UpgradePage() {
       </div>
 
       {/* Plan Type Selector */}
-      <div className="mb-8 flex justify-center">
+      <div className="mb-2 flex justify-center">
         <PlanTypeSelector 
           value={planType} 
           onChange={(value) => setPlanType(value)} 
         />
       </div>
+
+      {planType !== "documents" && (
+        <div className="mb-8 text-center">
+          <UnlimitedPlanModal period={period}>
+            <p className="cursor-pointer text-sm text-muted-foreground transition-colors hover:text-foreground">
+              Deals with everything unlimited?{" "}
+              <span className="font-light underline underline-offset-4">
+                Get unlimited members, storage, and data rooms in one plan.
+              </span>
+            </p>
+          </UnlimitedPlanModal>
+        </div>
+      )}
 
       {/* Document Sharing Plans (3 in a row) */}
       {planType === "documents" && (
@@ -199,30 +213,29 @@ export default function UpgradePage() {
             <div
               key={planOption}
               className={`relative flex flex-col rounded-lg border ${
-                planOption === PlanEnum.Business
+                planOption === PlanEnum.DataRooms || planOption === PlanEnum.DataRoomsPlus
                   ? "border-[#fb7a00]"
                   : planOption === PlanEnum.DataRoomsPremium
                     ? "border-gray-900 dark:border-gray-200"
-                    : planOption === PlanEnum.DataRoomsPlus
-                      ? "border-gray-800 dark:border-gray-300"
-                      : "border-gray-400"
+                    : "border-gray-400"
               } bg-white p-6 shadow-sm dark:bg-gray-900`}
             >
-              <div className="mb-4 border-b border-gray-200 pb-2">
+              <div className="mb-4 border-b border-gray-200 pb-2 dark:border-gray-700">
                 <h3 className="text-balance text-xl font-medium text-foreground text-gray-900 dark:text-white">
-                  {planOption}
+                  {planOption}{" "}
+                  {planOption === PlanEnum.Pro && (
+                    <span className="text-xs font-normal text-muted-foreground">
+                      All plans include unlimited visitors
+                    </span>
+                  )}
                 </h3>
-                {(planOption === PlanEnum.Business ||
+                {(planOption === PlanEnum.DataRooms ||
                   planOption === PlanEnum.DataRoomsPlus) && (
                   <span
-                    className={`absolute -top-3 right-4 rounded px-2 py-1 text-xs text-white ${
-                      planOption === PlanEnum.DataRoomsPlus
-                        ? "bg-gray-800 dark:bg-gray-200 dark:text-black"
-                        : "bg-[#fb7a00]"
-                    }`}
+                    className="absolute -top-3 right-4 rounded bg-[#fb7a00] px-2 py-1 text-xs text-white"
                   >
                     {planOption === PlanEnum.DataRoomsPlus
-                      ? "Best offer"
+                      ? "Best deal"
                       : "Most popular"}
                   </span>
                 )}
@@ -241,7 +254,7 @@ export default function UpgradePage() {
 
               <ul
                 role="list"
-                className="mb-4 mt-4 space-y-3 text-sm leading-6 text-gray-600"
+                className="mb-4 mt-4 space-y-3 text-sm leading-6 text-gray-600 dark:text-gray-300"
               >
                 {planFeatures.features.map((feature, i) => (
                   <li key={i}>
@@ -251,15 +264,13 @@ export default function UpgradePage() {
               </ul>
               <div className="mt-auto">
                 <Button
-                  variant={
-                    planOption === PlanEnum.Business ? "default" : "default"
-                  }
+                  variant="default"
                   className={`w-full py-2 text-sm ${
-                    planOption === PlanEnum.Business
+                    planOption === PlanEnum.DataRooms || planOption === PlanEnum.DataRoomsPlus
                       ? "bg-[#fb7a00]/90 text-white hover:bg-[#fb7a00]"
                       : planOption === PlanEnum.DataRoomsPremium
                         ? "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
-                        : "bg-gray-800 text-white hover:bg-gray-900 dark:hover:bg-gray-700/80"
+                        : "bg-gray-800 text-white hover:bg-gray-900 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
                   }`}
                   loading={selectedPlan === planOption}
                   disabled={selectedPlan !== null}
@@ -355,31 +366,29 @@ export default function UpgradePage() {
               <div
                 key={planOption}
                 className={`relative flex flex-col rounded-lg border ${
-                  planOption === PlanEnum.Business
+                  planOption === PlanEnum.DataRooms
                     ? "border-[#fb7a00]"
-                    : planOption === PlanEnum.DataRoomsPremium
+                    : planOption === PlanEnum.DataRoomsPlus || planOption === PlanEnum.DataRoomsPremium
                       ? "border-gray-900 dark:border-gray-200"
-                      : planOption === PlanEnum.DataRoomsPlus
-                        ? "border-gray-800 dark:border-gray-300"
-                        : "border-gray-400"
+                      : "border-gray-400"
                 } bg-white p-6 shadow-sm dark:bg-gray-900`}
               >
-                <div className="mb-4 border-b border-gray-200 pb-2">
+                <div className="mb-4 border-b border-gray-200 pb-2 dark:border-gray-700">
                   <h3 className="text-balance text-xl font-medium text-foreground text-gray-900 dark:text-white">
                     {planOption}
                   </h3>
-                  {(planOption === PlanEnum.Business ||
-                    planOption === PlanEnum.DataRoomsPlus) && (
+                  {planOption === PlanEnum.DataRooms && (
                     <span
-                      className={`absolute -top-3 right-4 rounded px-2 py-1 text-xs text-white ${
-                        planOption === PlanEnum.DataRoomsPlus
-                          ? "bg-gray-800 dark:bg-gray-200 dark:text-black"
-                          : "bg-[#fb7a00]"
-                      }`}
+                      className="absolute -top-3 right-4 rounded bg-[#fb7a00] px-2 py-1 text-xs text-white"
                     >
-                      {planOption === PlanEnum.DataRoomsPlus
-                        ? "Best offer"
-                        : "Most popular"}
+                      Most popular
+                    </span>
+                  )}
+                  {planOption === PlanEnum.DataRoomsPremium && (
+                    <span
+                      className="absolute -top-3 right-4 rounded bg-gray-900 px-2 py-1 text-xs text-white dark:bg-white dark:text-gray-900"
+                    >
+                      Best offer
                     </span>
                   )}
                 </div>
@@ -398,7 +407,7 @@ export default function UpgradePage() {
 
                 <ul
                   role="list"
-                  className="mb-4 mt-4 space-y-3 text-sm leading-6 text-gray-600"
+                  className="mb-4 mt-4 space-y-3 text-sm leading-6 text-gray-600 dark:text-gray-300"
                 >
                   {planFeatures.features.map((feature, i) => (
                     <li key={i}>
@@ -408,15 +417,13 @@ export default function UpgradePage() {
                 </ul>
                 <div className="mt-auto">
                   <Button
-                    variant={
-                      planOption === PlanEnum.Business ? "default" : "default"
-                    }
+                    variant="default"
                     className={`w-full py-2 text-sm ${
-                      planOption === PlanEnum.Business
+                      planOption === PlanEnum.DataRooms
                         ? "bg-[#fb7a00]/90 text-white hover:bg-[#fb7a00]"
-                        : planOption === PlanEnum.DataRoomsPremium
+                        : planOption === PlanEnum.DataRoomsPlus || planOption === PlanEnum.DataRoomsPremium
                           ? "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
-                          : "bg-gray-800 text-white hover:bg-gray-900 dark:hover:bg-gray-700/80"
+                          : "bg-gray-800 text-white hover:bg-gray-900 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
                     }`}
                     loading={selectedPlan === planOption}
                     disabled={selectedPlan !== null}
@@ -500,6 +507,7 @@ export default function UpgradePage() {
 
       {/* Data Rooms Plans (3 in a row) */}
       {planType === "datarooms" && (
+        <>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
           {[
             PlanEnum.DataRooms,
@@ -512,31 +520,25 @@ export default function UpgradePage() {
                 <div
                   key={planOption}
                   className={`relative flex flex-col rounded-lg border ${
-                    planOption === PlanEnum.Business
+                    planOption === PlanEnum.DataRooms
                       ? "border-[#fb7a00]"
-                      : planOption === PlanEnum.DataRoomsPremium
+                      : planOption === PlanEnum.DataRoomsPlus || planOption === PlanEnum.DataRoomsPremium
                         ? "border-gray-900 dark:border-gray-200"
-                        : planOption === PlanEnum.DataRoomsPlus
-                          ? "border-gray-800 dark:border-gray-300"
-                          : "border-gray-400"
+                        : "border-gray-400"
                   } bg-white p-6 shadow-sm dark:bg-gray-900`}
                 >
-                  <div className="mb-4 border-b border-gray-200 pb-2">
+                  <div className="mb-4 border-b border-gray-200 pb-2 dark:border-gray-700">
                     <h3 className="text-balance text-xl font-medium text-foreground text-gray-900 dark:text-white">
                       {planOption}
                     </h3>
-                    {(planOption === PlanEnum.Business ||
-                      planOption === PlanEnum.DataRoomsPlus) && (
-                      <span
-                        className={`absolute -top-3 right-4 rounded px-2 py-1 text-xs text-white ${
-                          planOption === PlanEnum.DataRoomsPlus
-                            ? "bg-gray-800 dark:bg-gray-200 dark:text-black"
-                            : "bg-[#fb7a00]"
-                        }`}
-                      >
-                        {planOption === PlanEnum.DataRoomsPlus
-                          ? "Best offer"
-                          : "Most popular"}
+                    {planOption === PlanEnum.DataRooms && (
+                      <span className="absolute -top-3 right-4 rounded bg-[#fb7a00] px-2 py-1 text-xs text-white">
+                        Most popular
+                      </span>
+                    )}
+                    {planOption === PlanEnum.DataRoomsPremium && (
+                      <span className="absolute -top-3 right-4 rounded bg-gray-900 px-2 py-1 text-xs text-white dark:bg-white dark:text-gray-900">
+                        Best offer
                       </span>
                     )}
                   </div>
@@ -555,7 +557,7 @@ export default function UpgradePage() {
 
                   <ul
                     role="list"
-                    className="mb-4 mt-4 space-y-3 text-sm leading-6 text-gray-600"
+                    className="mb-4 mt-4 space-y-3 text-sm leading-6 text-gray-600 dark:text-gray-300"
                   >
                     {planFeatures.features.map((feature, i) => (
                       <li key={i}>
@@ -565,15 +567,12 @@ export default function UpgradePage() {
                   </ul>
                   <div className="mt-auto">
                     <Button
-                      variant={
-                        planOption === PlanEnum.Business ? "default" : "default"
-                      }
                       className={`w-full py-2 text-sm ${
-                        planOption === PlanEnum.Business
+                        planOption === PlanEnum.DataRooms
                           ? "bg-[#fb7a00]/90 text-white hover:bg-[#fb7a00]"
-                          : planOption === PlanEnum.DataRoomsPremium
+                          : planOption === PlanEnum.DataRoomsPlus || planOption === PlanEnum.DataRoomsPremium
                             ? "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
-                            : "bg-gray-800 text-white hover:bg-gray-900 dark:hover:bg-gray-700/80"
+                            : "bg-gray-800 text-white hover:bg-gray-900 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
                       }`}
                       loading={selectedPlan === planOption}
                       disabled={selectedPlan !== null}
@@ -653,16 +652,44 @@ export default function UpgradePage() {
               );
             })}
         </div>
+
+        {/* Unlimited Plan Banner */}
+        <UnlimitedPlanModal period={period}>
+          <div className="mt-6 cursor-pointer rounded-xl border-2 border-gray-900 bg-white px-6 py-10 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800 md:px-8 md:py-20">
+            <div className="flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-4 md:gap-5">
+                <div className="flex h-12 w-12 flex-none items-center justify-center rounded-full border-2 border-gray-900 bg-transparent dark:border-gray-200">
+                  <InfinityIcon className="h-6 w-6 text-gray-900 dark:text-gray-200" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white md:text-xl">
+                    Data Rooms Unlimited
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Unlimited members, documents, storage, data rooms with no seat limits.
+                  </p>
+                </div>
+              </div>
+              <div className="flex w-full flex-col items-start gap-4 md:w-auto md:flex-row md:items-center md:gap-8">
+                <div className="md:text-right">
+                  <span className="text-3xl font-semibold tabular-nums text-gray-900 dark:text-white md:text-4xl">
+                    €{PLANS.find((p) => p.name === PlanEnum.DataRoomsUnlimited)!.price[period].amount}
+                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    /month{period === "yearly" && ", billed annually"}
+                  </span>
+                </div>
+                <Button size="lg" className="w-full bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200 md:w-auto">
+                  Get Unlimited
+                </Button>
+              </div>
+            </div>
+          </div>
+        </UnlimitedPlanModal>
+        </>
       )}
 
-      <div className="mt-8 flex flex-col items-center space-y-2">
-        <a
-          target="_blank"
-          className="text-sm text-muted-foreground underline-offset-4"
-        >
-          All plans include unlimited viewers and page by page document
-          analytics.
-        </a>
+      <div className="mt-8 flex flex-col items-center">
         <a
           href="https://cal.com/marcseitz/papermark"
           target="_blank"

@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { PlanEnum } from "@/ee/stripe/constants";
-import { ListOrderedIcon } from "lucide-react";
+import { CrownIcon, ListOrderedIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { useFeatureFlags } from "@/lib/hooks/use-feature-flags";
@@ -155,7 +155,10 @@ export default function RebuildIndexButton({
               trigger="datarooms_rebuild_index_button"
               highlightItem={["indexing"]}
             >
-              <Button>Upgrade to rebuild index</Button>
+              <Button className="gap-1.5">
+                <CrownIcon className="h-4 w-4" />
+                Upgrade to rebuild index
+              </Button>
             </UpgradePlanModal>
           )}
         </DialogFooter>

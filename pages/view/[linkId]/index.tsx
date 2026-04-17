@@ -51,6 +51,7 @@ type WorkflowLinkData = {
 };
 
 export interface ViewPageProps {
+  frozen?: boolean;
   linkData: DocumentLinkData | DataroomLinkData | WorkflowLinkData;
   notionData: {
     rootNotionPageId: string | null;
@@ -84,6 +85,15 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
     // Fetch link data directly from database to avoid internal HTTP fetch
     // which can be blocked by Vercel's edge protection (403 errors)
     const result = await fetchLinkDataById({ linkId });
+
+    if (result.status === "frozen") {
+      return {
+        props: {
+          frozen: true,
+        },
+        revalidate: 10,
+      };
+    }
 
     if (result.status !== "ok") {
       return {
@@ -331,6 +341,7 @@ export async function getStaticPaths() {
 }
 
 export default function ViewPage({
+  frozen,
   linkData,
   notionData,
   meta,
@@ -369,6 +380,12 @@ export default function ViewPage({
       <div className="flex h-screen items-center justify-center bg-black">
         <LoadingSpinner className="h-20 w-20" />
       </div>
+    );
+  }
+
+  if (frozen) {
+    return (
+      <NotFound message="This data room has been closed and is no longer available." />
     );
   }
 

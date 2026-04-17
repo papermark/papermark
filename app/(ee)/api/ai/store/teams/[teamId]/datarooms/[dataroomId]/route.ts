@@ -6,7 +6,7 @@ import {
   processDocumentForAITask,
 } from "@/ee/features/ai/lib/trigger";
 import { createDataroomVectorStore } from "@/ee/features/ai/lib/vector-stores/create-dataroom-vector-store";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { getServerSession } from "next-auth";
 
 import { getFeatureFlags } from "@/lib/featureFlags";

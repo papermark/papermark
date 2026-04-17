@@ -1,4 +1,4 @@
-import { metadata } from "@trigger.dev/sdk/v3";
+import { metadata } from "@trigger.dev/sdk";
 import { z } from "zod";
 
 const ZDocumentProgressStatus = z.object({

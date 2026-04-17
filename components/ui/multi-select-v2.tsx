@@ -230,8 +230,13 @@ export const MultiSelect = React.forwardRef<
             ref={ref}
             {...props}
             onClick={handleTogglePopover}
+            variant="outline"
+            size="sm"
             className={cn(
-              "flex h-auto w-full items-center justify-between rounded-md border border-input bg-inherit px-3 py-1.5 hover:bg-inherit focus:border-muted-foreground focus:outline-none focus:ring-1 focus:ring-inset focus:ring-muted-foreground dark:border-gray-500 dark:bg-gray-800 focus:dark:bg-transparent [&_svg]:pointer-events-auto",
+              "flex w-full items-center justify-between gap-1.5 rounded-md border border-input bg-background px-2 py-0 font-normal shadow-sm hover:bg-background focus:border-muted-foreground focus:outline-none focus:ring-1 focus:ring-inset focus:ring-muted-foreground dark:border-gray-500 dark:bg-gray-800 focus:dark:bg-transparent sm:gap-2 sm:px-3 [&_svg]:pointer-events-auto",
+              value.length === 0
+                ? "h-9 max-h-9 min-h-9 sm:h-10 sm:max-h-10 sm:min-h-10"
+                : "!h-auto min-h-9 py-1 sm:min-h-10 sm:py-1.5",
               className,
             )}
           >
@@ -266,8 +271,8 @@ export const MultiSelect = React.forwardRef<
                 </div>
               </div>
             ) : (
-              <div className="mx-auto flex w-full items-center justify-between">
-                <span className="py-[3px] text-sm font-normal text-muted-foreground">
+              <div className="mx-auto flex w-full min-w-0 items-center justify-between">
+                <span className="truncate py-0 text-sm font-normal leading-none text-muted-foreground">
                   {placeholder}
                 </span>
               </div>

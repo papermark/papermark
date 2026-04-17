@@ -21,15 +21,65 @@ const COOKIE_EXPIRATION_TIME = 23 * 60 * 60 * 1000; // 23 hours
  */
 function normalizeIp(ip: string): string {
   const trimmed = ip.trim();
-  // Treat all localhost variants as 127.0.0.1
   if (trimmed === "::1" || trimmed === "::ffff:127.0.0.1") {
     return LOCALHOST_IP;
   }
-  // Strip ::ffff: prefix from IPv4-mapped IPv6 addresses
   if (trimmed.startsWith("::ffff:")) {
     return trimmed.slice(7);
   }
   return trimmed;
+}
+
+/**
+ * Generate a stable browser fingerprint from request headers.
+ * Combines User-Agent, Accept-Language, and Sec-CH-UA client hints
+ * which remain constant across IP changes but differ between
+ * browsers/devices, making session sharing significantly harder.
+ *
+ * Sec-CH-UA headers are automatically sent by Chromium browsers and
+ * cannot be overridden by simple cookie-copy tools or browser extensions.
+ */
+export function generateSessionFingerprint(headers: {
+  userAgent: string;
+  acceptLanguage?: string;
+  secChUa?: string;
+  secChUaPlatform?: string;
+  secChUaMobile?: string;
+}): string {
+  const parts = [
+    headers.userAgent,
+    headers.acceptLanguage ?? "",
+    headers.secChUa ?? "",
+    headers.secChUaPlatform ?? "",
+    headers.secChUaMobile ?? "",
+  ];
+  return crypto.createHash("sha256").update(parts.join("|")).digest("hex");
+}
+
+export function collectFingerprintHeaders(h: {
+  get(name: string): string | null;
+}): Parameters<typeof generateSessionFingerprint>[0] {
+  return {
+    userAgent: h.get("user-agent") ?? "unknown",
+    acceptLanguage: h.get("accept-language") ?? undefined,
+    secChUa: h.get("sec-ch-ua") ?? undefined,
+    secChUaPlatform: h.get("sec-ch-ua-platform") ?? undefined,
+    secChUaMobile: h.get("sec-ch-ua-mobile") ?? undefined,
+  };
+}
+
+function getFingerprintFromNextRequest(request: NextRequest): string {
+  return generateSessionFingerprint(collectFingerprintHeaders(request.headers));
+}
+
+function getFingerprintFromPagesRequest(req: NextApiRequest): string {
+  const header = (name: string) => {
+    const v = req.headers[name];
+    return (Array.isArray(v) ? v[0] : v) ?? null;
+  };
+  return generateSessionFingerprint(
+    collectFingerprintHeaders({ get: header }),
+  );
 }
 
 // Define the Zod schema for session data
@@ -40,6 +90,7 @@ export const DataroomSessionSchema = z.object({
   viewerId: z.string().optional(),
   expiresAt: z.number(),
   ipAddress: z.string(),
+  fingerprint: z.string().optional(),
   verified: z.boolean(),
 });
 
@@ -53,6 +104,7 @@ async function createDataroomSession(
   ipAddress: string,
   verified: boolean,
   viewerId?: string,
+  fingerprint?: string,
 ): Promise<{ token: string; expiresAt: number }> {
   const sessionToken = crypto.randomBytes(32).toString("hex");
   const expiresAt = Date.now() + COOKIE_EXPIRATION_TIME;
@@ -64,13 +116,12 @@ async function createDataroomSession(
     viewerId,
     expiresAt,
     ipAddress: normalizeIp(ipAddress),
+    fingerprint,
     verified,
   };
 
-  // Validate session data before storing
   DataroomSessionSchema.parse(sessionData);
 
-  // Store session in Redis
   await redis.set(
     `dataroom_session:${sessionToken}`,
     JSON.stringify(sessionData),
@@ -99,20 +150,28 @@ async function verifyDataroomSession(
   try {
     const sessionData = DataroomSessionSchema.parse(session);
 
-    // Check if session is expired
     if (sessionData.expiresAt < Date.now()) {
       await redis.del(`dataroom_session:${sessionToken}`);
       return null;
     }
 
-    const ipAddressValue = normalizeIp(ipAddress(request) ?? LOCALHOST_IP);
-
-    if (ipAddressValue !== sessionData.ipAddress) {
-      await redis.del(`dataroom_session:${sessionToken}`);
-      return null;
+    // Validate browser fingerprint instead of IP to handle VPN/network changes.
+    // Sessions created before this change won't have a fingerprint; for those
+    // we fall back to the legacy IP check for a smooth rollout.
+    if (sessionData.fingerprint) {
+      const currentFingerprint = getFingerprintFromNextRequest(request);
+      if (currentFingerprint !== sessionData.fingerprint) {
+        await redis.del(`dataroom_session:${sessionToken}`);
+        return null;
+      }
+    } else {
+      const ipAddressValue = normalizeIp(ipAddress(request) ?? LOCALHOST_IP);
+      if (ipAddressValue !== sessionData.ipAddress) {
+        await redis.del(`dataroom_session:${sessionToken}`);
+        return null;
+      }
     }
 
-    // Check if the session is for the correct link and dataroom
     if (
       sessionData.linkId !== linkId ||
       sessionData.dataroomId !== dataroomId
@@ -123,7 +182,6 @@ async function verifyDataroomSession(
 
     return sessionData;
   } catch (error) {
-    // If validation fails, delete invalid session and return null
     await redis.del(`dataroom_session:${sessionToken}`);
     return null;
   }
@@ -165,17 +223,25 @@ export async function getDataroomSessionByLinkIdInPagesRouter(
   try {
     const sessionData = DataroomSessionSchema.parse(session);
 
-    // Check if session is expired
     if (sessionData.expiresAt < Date.now()) {
       await redis.del(`dataroom_session:${sessionToken}`);
       return null;
     }
 
-    // Get IP address from request
-    const ipAddressValue = normalizeIp(getIpAddress(req.headers) ?? LOCALHOST_IP);
-    if (ipAddressValue !== sessionData.ipAddress) {
-      await redis.del(`dataroom_session:${sessionToken}`);
-      return null;
+    if (sessionData.fingerprint) {
+      const currentFingerprint = getFingerprintFromPagesRequest(req);
+      if (currentFingerprint !== sessionData.fingerprint) {
+        await redis.del(`dataroom_session:${sessionToken}`);
+        return null;
+      }
+    } else {
+      const ipAddressValue = normalizeIp(
+        getIpAddress(req.headers) ?? LOCALHOST_IP,
+      );
+      if (ipAddressValue !== sessionData.ipAddress) {
+        await redis.del(`dataroom_session:${sessionToken}`);
+        return null;
+      }
     }
 
     if (sessionData.linkId !== linkId) {
@@ -185,7 +251,6 @@ export async function getDataroomSessionByLinkIdInPagesRouter(
 
     return sessionData;
   } catch (error) {
-    // If validation fails, delete invalid session and return null
     await redis.del(`dataroom_session:${sessionToken}`);
     return null;
   }

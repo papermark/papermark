@@ -64,6 +64,7 @@ export default async function handle(
             id: true,
             name: true,
             internalName: true,
+            isFrozen: true,
             createdAt: true,
           },
           orderBy: {
@@ -138,6 +139,7 @@ export default async function handle(
           select: {
             id: true,
             name: true,
+            isFrozen: true,
             createdAt: true,
             _count: {
               select: { documents: true, views: true },
@@ -234,15 +236,18 @@ export default async function handle(
               "datarooms",
               "datarooms-plus",
               "datarooms-premium",
+              "datarooms-unlimited",
               "business+old",
               "datarooms+old",
               "datarooms-plus+old",
               "datarooms-premium+old",
+              "datarooms-unlimited+old",
               "free+drtrial",
               "datarooms+drtrial",
               "business+drtrial",
               "datarooms-plus+drtrial",
               "datarooms-premium+drtrial",
+              "datarooms-unlimited+drtrial",
             ],
           },
           users: {
@@ -275,7 +280,7 @@ export default async function handle(
 
       const limits = await getLimits({ teamId, userId });
 
-      if (limits && dataroomCount >= limits.datarooms) {
+      if (limits && limits.datarooms !== null && dataroomCount >= limits.datarooms) {
         return res
           .status(403)
           .json({ message: "You have reached the limit of datarooms" });

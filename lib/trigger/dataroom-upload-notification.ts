@@ -1,5 +1,6 @@
-import { logger, task } from "@trigger.dev/sdk/v3";
+import { logger, task } from "@trigger.dev/sdk";
 
+import { dispatchNotification } from "@/lib/notifications/dispatch";
 import prisma from "@/lib/prisma";
 
 type UploadNotificationPayload = {
@@ -15,7 +16,6 @@ export const sendDataroomUploadNotificationTask = task({
   run: async (payload: UploadNotificationPayload) => {
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
 
-    // Get all recent uploads for this dataroom via this link by this viewer
     const recentUploads = await prisma.documentUpload.findMany({
       where: {
         dataroomId: payload.dataroomId,
@@ -46,7 +46,6 @@ export const sendDataroomUploadNotificationTask = task({
       return;
     }
 
-    // Get dataroom and link info
     const [dataroom, link] = await Promise.all([
       prisma.dataroom.findUnique({
         where: { id: payload.dataroomId },
@@ -65,73 +64,27 @@ export const sendDataroomUploadNotificationTask = task({
       return;
     }
 
-    // Get all active team members who are admins or managers
-    const users = await prisma.userTeam.findMany({
-      where: {
-        role: { in: ["ADMIN", "MANAGER"] },
-        status: "ACTIVE",
-        teamId: payload.teamId,
-      },
-      select: {
-        role: true,
-        user: {
-          select: {
-            email: true,
-          },
-        },
-      },
+    const documentNames = recentUploads.map(
+      (upload) => upload.originalFilename || "Untitled document",
+    );
+    const uploaderEmail = recentUploads[0]?.viewer?.email || null;
+    const linkName = link?.name || `Link #${payload.linkId.slice(-5)}`;
+
+    const recipients = await dispatchNotification({
+      teamId: payload.teamId,
+      notificationType: "DATAROOM_UPLOAD",
+      linkOwnerId: link?.ownerId,
     });
 
-    const adminEmail = users.find((user) => user.role === "ADMIN")?.user.email;
-
-    if (!adminEmail) {
-      logger.error("No admin email found for team", {
-        teamId: payload.teamId,
+    if (recipients.length === 0) {
+      logger.info("No recipients for upload notification", {
+        dataroomId: payload.dataroomId,
       });
       return;
     }
 
-    // Build team members list (excluding admin to avoid duplicate)
-    const teamMembers = users
-      .map((user) => user.user.email!)
-      .filter((email) => email !== adminEmail);
-
-    // Add link owner to team members if they exist and aren't already included
-    if (link?.ownerId) {
-      const linkOwner = await prisma.userTeam.findUnique({
-        where: {
-          userId_teamId: {
-            userId: link.ownerId,
-            teamId: payload.teamId,
-          },
-          status: "ACTIVE",
-        },
-        select: {
-          user: {
-            select: {
-              email: true,
-            },
-          },
-        },
-      });
-
-      if (
-        linkOwner?.user.email &&
-        linkOwner.user.email !== adminEmail &&
-        !teamMembers.includes(linkOwner.user.email)
-      ) {
-        teamMembers.push(linkOwner.user.email);
-      }
-    }
-
-    const documentNames = recentUploads.map(
-      (upload) => upload.originalFilename || "Untitled document",
-    );
-
-    // Use the viewer's email from the uploads
-    const uploaderEmail = recentUploads[0]?.viewer?.email || null;
-
-    const linkName = link?.name || `Link #${payload.linkId.slice(-5)}`;
+    const primaryRecipient = recipients[0];
+    const ccRecipients = recipients.slice(1).map((r) => r.email);
 
     try {
       const response = await fetch(
@@ -144,8 +97,8 @@ export const sendDataroomUploadNotificationTask = task({
             uploaderEmail,
             documentNames,
             linkName,
-            ownerEmail: adminEmail,
-            teamMembers,
+            ownerEmail: primaryRecipient.email,
+            teamMembers: ccRecipients,
             teamId: payload.teamId,
           }),
           headers: {

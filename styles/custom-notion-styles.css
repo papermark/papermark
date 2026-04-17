@@ -1,74 +1,136 @@
 /* 
- * Notion layout:
- * - Regular content (text, headings, lists): 708px max
- * - Tables and wide elements: up to 990px on desktop
+ * Notion-style CSS Grid layout.
+ * The grid lives on .notion-page-content-inner (the <article> rendered by react-notion-x)
+ * so individual blocks become grid items.
+ * Named lines: full-start | margin | content-start | 708px | content-end | margin | full-end
  */
 :root {
   --notion-max-width: 990px;
+  --notion-content-width: 708px;
+  --notion-margin-width: minmax(96px, 1fr);
 }
 
 .dark-mode {
   --bg-color: rgb(25, 25, 25);
 }
 
-/* 
- * Constrain regular content blocks to 708px (Notion's default text width).
- * Tables and collections will use the full 990px container width.
- */
-.notion-text,
-.notion-h1,
-.notion-h2,
-.notion-h3,
-.notion-hr,
-.notion-quote,
-.notion-callout,
-.notion-toggle,
-.notion-bulleted_list,
-.notion-numbered_list,
-.notion-to_do,
-.notion-list,
-.notion-code,
-.notion-bookmark,
-.notion-column_list {
-  max-width: 708px;
+.notion-page-content {
+  max-width: 100%;
 }
 
-/* Tables size to content, scroll horizontally if needed */
-.notion-simple-table {
-  display: block;
+.notion-page-content-inner {
+  display: grid;
+  grid-template-columns:
+    [full-start] var(--notion-margin-width)
+    [content-start] minmax(auto, var(--notion-content-width))
+    [content-end] var(--notion-margin-width)
+    [full-end];
   max-width: 100%;
+}
+
+.notion-page-content-inner > * {
+  grid-column: content;
+  min-width: 0;
+}
+
+.notion-page-content-inner > .notion-collection {
+  grid-column: full;
+  overflow-x: auto;
+}
+
+.notion-collection .notion-table-cell {
+  flex-shrink: 0;
+}
+
+@media (min-width: 769px) {
+  .notion-collection .notion-table {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .notion-collection .notion-table-view {
+    padding-left: max(
+      96px,
+      calc((100% - var(--notion-content-width)) / 2)
+    ) !important;
+    padding-right: max(
+      96px,
+      calc((100% - var(--notion-content-width)) / 2)
+    ) !important;
+    min-width: 100% !important;
+    width: max-content;
+    float: none !important;
+  }
+}
+
+/* Simple tables: left-aligned with content, extends to right edge of page.
+   Scrolls horizontally only if the table is wider than the available space. */
+.notion-page-content-inner > .notion-simple-table {
+  grid-column: content-start / -1;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-.notion-simple-table > table {
-  table-layout: auto;
-  width: auto; /* Size to content, don't force full width */
+.notion-simple-table > tbody {
+  display: table;
+  border-collapse: collapse;
+  border-spacing: 0;
+  width: max-content;
 }
 
-/* Give table cells proper spacing */
+/* Match Notion's cell padding with visible borders */
 .notion-simple-table td {
   padding: 8px 10px;
+  border: none;
+  border-bottom: 1px solid rgb(210, 210, 208);
+  border-right: 1px solid rgb(210, 210, 208);
 }
 
-/* On mobile, everything uses full width */
+.notion-simple-table tr:first-child td {
+  border-top: 1px solid rgb(210, 210, 208);
+}
+
+.notion-simple-table td:first-child {
+  border-left: 1px solid rgb(210, 210, 208);
+}
+
+.notion-simple-table-header-row td,
+.notion-simple-table-header-cell {
+  background: rgb(247, 246, 243);
+  font-weight: 500;
+}
+
+/* Dark mode: visible borders for simple tables */
+.dark .notion-simple-table td {
+  border-bottom-color: rgba(255, 255, 255, 0.2);
+  border-right-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark .notion-simple-table tr:first-child td {
+  border-top-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark .notion-simple-table td:first-child {
+  border-left-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark .notion-simple-table-header-row td,
+.dark .notion-simple-table-header-cell {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* On mobile, shrink margins and let react-notion-x handle table sizing natively */
 @media (max-width: 768px) {
-  .notion-text,
-  .notion-h1,
-  .notion-h2,
-  .notion-h3,
-  .notion-hr,
-  .notion-quote,
-  .notion-callout,
-  .notion-toggle,
-  .notion-bulleted_list,
-  .notion-numbered_list,
-  .notion-to_do,
-  .notion-list,
-  .notion-code,
-  .notion-bookmark,
-  .notion-column_list {
+  .notion-page.notion-full-page,
+  .notion-page-content-inner {
+    --notion-margin-width: 24px;
+  }
+
+  .notion-page-content-inner > .notion-simple-table {
+    grid-column: content;
+    display: block;
     max-width: 100%;
+    overflow-x: auto;
   }
 }
 
@@ -178,93 +240,42 @@ textarea,
   overflow-x: hidden;
 }
 
-/* Allow notion-page to show icon without clipping, content handles its own overflow */
-.notion-page {
+/* Apply the same content grid to .notion-page so icon + title align with body content */
+.notion-page.notion-full-page {
+  display: grid !important;
+  grid-template-columns:
+    [full-start] var(--notion-margin-width)
+    [content-start] minmax(auto, var(--notion-content-width))
+    [content-end] var(--notion-margin-width)
+    [full-end];
   max-width: 100%;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
-.notion-page-content {
-  max-width: 100%;
-  overflow-x: hidden;
+.notion-page.notion-full-page > * {
+  grid-column: content;
+  min-width: 0;
 }
 
-/* Table overflow handling - make tables horizontally scrollable */
-.notion-table {
-  width: 100%;
-  display: block;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  max-width: 100%;
-}
-
-/* Ensure table content can scroll when needed */
-.notion-table > table {
-  min-width: max-content;
+.notion-page.notion-full-page > .notion-page-cover-wrapper,
+.notion-page.notion-full-page > .notion-page-content {
+  grid-column: full;
 }
 
 .notion-simple-table-row td {
   vertical-align: top;
 }
 
-/* Collection/Database table wrapper for horizontal scroll */
-.notion-collection {
-  max-width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+/* Fix react-notion-x 7.10.0 rendering tabs before collection title.
+   Notion shows the title first, then tabs — use flex ordering to match. */
+div:has(> .notion-collection-header) {
+  display: flex;
+  flex-direction: column;
 }
 
-.notion-collection-table {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  max-width: 100%;
-}
-
-.notion-collection-table-wrapper {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  max-width: 100%;
-}
-
-/* Ensure the table body allows scrolling */
-.notion-collection-table-body {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Mobile-specific table overflow handling */
-@media (max-width: 768px) {
-  .notion-table,
-  .notion-collection,
-  .notion-collection-table,
-  .notion-collection-table-wrapper {
-    max-width: calc(100vw - 2rem);
-    overflow-x: auto;
-    margin-left: 0;
-    margin-right: 0;
-  }
-
-  /* Simple tables on mobile - contained width with scroll */
-  .notion-simple-table {
-    max-width: calc(100vw - 2rem);
-    overflow-x: auto;
-  }
-
-  /* Ensure full-width tables on mobile have proper containment */
-  .notion-page-content-inner {
-    max-width: 100%;
-    overflow-x: hidden;
-  }
-
-  /* Prevent body/html from scrolling horizontally */
-  .notion-app,
-  .notion-frame {
-    max-width: 100vw;
-    overflow-x: hidden;
-  }
-
-  .notion-page {
-    max-width: 100vw;
-  }
+.notion-collection-header {
+  order: -1;
 }
 
 /* Video blocks - match Notion's video layout */
@@ -322,7 +333,8 @@ textarea,
 }
 
 /* Video wrapper default aspect ratio when not specified */
-.notion-asset-wrapper > div:has(> video):not([style*="padding-bottom"]):not([style*="height"]) {
+.notion-asset-wrapper
+  > div:has(> video):not([style*="padding-bottom"]):not([style*="height"]) {
   aspect-ratio: 16 / 9;
 }
 
@@ -355,7 +367,7 @@ textarea,
   .notion-asset-wrapper iframe {
     max-width: 100%;
   }
-  
+
   .notion-asset-wrapper:has(video),
   .notion-asset-wrapper:has(iframe) {
     max-width: calc(100vw - 2rem);

@@ -9,7 +9,11 @@ import {
 import { ipAddress, waitUntil } from "@vercel/functions";
 import { z } from "zod";
 
-import { createDataroomSession } from "@/lib/auth/dataroom-auth";
+import {
+  collectFingerprintHeaders,
+  createDataroomSession,
+  generateSessionFingerprint,
+} from "@/lib/auth/dataroom-auth";
 import { createLinkSession } from "@/lib/auth/link-session";
 import { sendOtpVerificationEmail } from "@/lib/emails/send-email-otp-verification";
 import prisma from "@/lib/prisma";
@@ -300,6 +304,9 @@ async function handleAccess(req: NextRequest, link: any) {
   });
 
   // Create link session for the target link
+  const linkFingerprint = generateSessionFingerprint(
+    collectFingerprintHeaders(req.headers),
+  );
   const { token: sessionToken, expiresAt } = await createLinkSession(
     executionResult.targetLinkId!,
     executionResult.targetLinkType!,
@@ -311,6 +318,7 @@ async function handleAccess(req: NextRequest, link: any) {
     viewer.id, // viewerId
     executionResult.targetDocumentId,
     executionResult.targetDataroomId,
+    linkFingerprint,
   );
 
   // Parse target URL safely with fallback
@@ -355,6 +363,9 @@ async function handleAccess(req: NextRequest, link: any) {
     executionResult.targetDataroomId &&
     viewer
   ) {
+    const fingerprint = generateSessionFingerprint(
+      collectFingerprintHeaders(req.headers),
+    );
     const dataroomSession = await createDataroomSession(
       executionResult.targetDataroomId,
       executionResult.targetLinkId!,
@@ -362,6 +373,7 @@ async function handleAccess(req: NextRequest, link: any) {
       ipAddressValue,
       true, // verified
       viewer.id,
+      fingerprint,
     );
 
     cookies().set(

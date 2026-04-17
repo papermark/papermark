@@ -69,9 +69,18 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
       .parse(slugParam);
 
     const result = await fetchLinkDataByDomainSlug({ domain, slug });
+    if (result.status === "frozen") {
+      return {
+        props: {
+          frozen: true,
+        },
+        revalidate: 10,
+      };
+    }
     if (result.status !== "ok") {
       return {
         notFound: true,
+        revalidate: 10,
       };
     }
 
@@ -80,6 +89,7 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
     if (!linkType) {
       return {
         notFound: true,
+        revalidate: 10,
       };
     }
 
@@ -120,6 +130,7 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
     if (!link) {
       return {
         notFound: true,
+        revalidate: 10,
       };
     }
 
@@ -138,6 +149,7 @@ export const getStaticProps = async (context: GetStaticPropsContext) => {
         if (!notionPageId) {
           return {
             notFound: true,
+            revalidate: 10,
           };
         }
 
@@ -301,6 +313,7 @@ export async function getStaticPaths() {
 }
 
 export default function ViewPage({
+  frozen,
   linkData,
   notionData,
   meta,
@@ -312,6 +325,7 @@ export default function ViewPage({
   textSelectionEnabled,
   error,
 }: {
+  frozen?: boolean;
   linkData: DocumentLinkData | DataroomLinkData | WorkflowLinkData;
   notionData: {
     rootNotionPageId: string | null;
@@ -357,6 +371,12 @@ export default function ViewPage({
       <div className="flex h-screen items-center justify-center bg-black">
         <LoadingSpinner className="h-20 w-20" />
       </div>
+    );
+  }
+
+  if (frozen) {
+    return (
+      <NotFound message="This data room has been closed and is no longer available." />
     );
   }
 

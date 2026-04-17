@@ -149,18 +149,25 @@ export default function LinkSheet({
   linkType,
   currentLink,
   existingLinks,
+  linkTargetId,
+  onLinkCreatedNavigate,
 }: {
   isOpen: boolean;
   setIsOpen: Dispatch<SetStateAction<boolean>>;
   linkType: Omit<LinkType, "WORKFLOW_LINK">;
   currentLink?: DEFAULT_LINK_TYPE;
   existingLinks?: LinkWithViews[];
+  /** When set (e.g. mobile share), used instead of `router.query.id` for API calls */
+  linkTargetId?: string | null;
+  /** Called after a new link is created (not on update) */
+  onLinkCreatedNavigate?: (targetId: string) => void;
 }) {
   const router = useRouter();
-  const { id: targetId, groupId } = router.query as {
-    id: string;
+  const { id: routeId, groupId } = router.query as {
+    id?: string;
     groupId?: string;
   };
+  const targetId = linkTargetId ?? routeId;
 
   const { domains } = useDomains({ enabled: isOpen });
 
@@ -168,7 +175,12 @@ export default function LinkSheet({
     viewerGroups,
     loading: isLoadingGroups,
     mutate: mutateGroups,
-  } = useDataroomGroups();
+  } = useDataroomGroups({
+    dataroomId:
+      linkType === LinkType.DATAROOM_LINK
+        ? (linkTargetId ?? undefined)
+        : undefined,
+  });
   const teamInfo = useTeam();
   const { isFree, isPro, isBusiness, isDatarooms, isDataroomsPlus, isTrial } =
     usePlan();
@@ -296,6 +308,11 @@ export default function LinkSheet({
 
   const handleSubmit = async (event: any, shouldPreview: boolean = false) => {
     event.preventDefault();
+
+    if (!targetId) {
+      toast.error("Missing document or dataroom");
+      return;
+    }
 
     setIsSaving(true);
 
@@ -574,6 +591,7 @@ export default function LinkSheet({
       });
 
       toast.success("Link created successfully");
+      onLinkCreatedNavigate?.(targetId);
     }
 
     setData(DEFAULT_LINK_PROPS(linkType, groupId));

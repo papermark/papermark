@@ -4,7 +4,7 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl as getCloudfrontSignedUrl } from "@aws-sdk/cloudfront-signer";
 import { getSignedUrl as getS3SignedUrl } from "@aws-sdk/s3-request-presigner";
 
-import { ONE_HOUR, ONE_SECOND } from "@/lib/constants";
+import { ONE_HOUR, ONE_SECOND, TWO_MINUTES } from "@/lib/constants";
 import { getTeamS3ClientAndConfig } from "@/lib/files/aws-client";
 import { log } from "@/lib/utils";
 
@@ -39,7 +39,12 @@ export default async function handler(
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  const { key } = req.body as { key: string };
+  const { key, expiresIn: requestedExpiresIn } = req.body as {
+    key: string;
+    expiresIn?: number;
+  };
+
+  const expiration = Math.min(requestedExpiresIn || TWO_MINUTES, ONE_HOUR);
 
   try {
     // Extract teamId from key (format: teamId/docId/filename)
@@ -64,7 +69,7 @@ export default async function handler(
         url: distributionUrl.toString(),
         keyPairId: `${config.distributionKeyId}`,
         privateKey: `${config.distributionKeyContents}`,
-        dateLessThan: new Date(Date.now() + ONE_HOUR).toISOString(),
+        dateLessThan: new Date(Date.now() + expiration).toISOString(),
       });
 
       return res.status(200).json({ url });
@@ -76,7 +81,7 @@ export default async function handler(
     });
 
     const url = await getS3SignedUrl(client, getObjectCommand, {
-      expiresIn: ONE_HOUR / ONE_SECOND,
+      expiresIn: expiration / ONE_SECOND,
     });
 
     return res.status(200).json({ url });

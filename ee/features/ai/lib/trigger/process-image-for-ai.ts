@@ -1,12 +1,13 @@
 import { vertex } from "@/ee/features/ai/lib/models/google";
 import { openai } from "@/ee/features/ai/lib/models/openai";
-import { logger, metadata, task } from "@trigger.dev/sdk/v3";
+import { logger, metadata, task } from "@trigger.dev/sdk";
 import { generateText } from "ai";
 import path from "path";
 
 import { getFile } from "@/lib/files/get-file";
 import { putFileServer } from "@/lib/files/put-file-server";
 import prisma from "@/lib/prisma";
+import { processImageForAIQueue } from "@/lib/trigger/queues";
 
 import type { ProcessFilePayload } from "./types";
 
@@ -29,9 +30,7 @@ Format your response as clear, searchable text that would help someone find this
 export const processImageForAITask = task({
   id: "process-image-for-ai",
   retry: { maxAttempts: 3 },
-  queue: {
-    concurrencyLimit: 5,
-  },
+  queue: processImageForAIQueue,
   run: async (
     payload: ProcessFilePayload,
   ): Promise<{ fileId: string; markdownPath?: string }> => {

@@ -7,7 +7,7 @@ import {
 } from "@/ee/features/templates/constants/dataroom-templates";
 import { generateDataroomSchema } from "@/ee/features/templates/schemas/dataroom-templates";
 import { getLimits } from "@/ee/limits/server";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { getServerSession } from "next-auth/next";
 
 import { newId } from "@/lib/id-helper";
@@ -54,15 +54,18 @@ export default async function handle(
               "datarooms",
               "datarooms-plus",
               "datarooms-premium",
+              "datarooms-unlimited",
               "business+old",
               "datarooms+old",
               "datarooms-plus+old",
               "datarooms-premium+old",
+              "datarooms-unlimited+old",
               "free+drtrial",
               "datarooms+drtrial",
               "business+drtrial",
               "datarooms-plus+drtrial",
               "datarooms-premium+drtrial",
+              "datarooms-unlimited+drtrial",
             ],
           },
           users: {
@@ -95,7 +98,7 @@ export default async function handle(
 
       const limits = await getLimits({ teamId, userId });
 
-      if (limits && dataroomCount >= limits.datarooms) {
+      if (limits && limits.datarooms !== null && dataroomCount >= limits.datarooms) {
         return res
           .status(403)
           .json({ message: "You have reached the limit of datarooms" });

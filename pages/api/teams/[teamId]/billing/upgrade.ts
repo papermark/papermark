@@ -111,16 +111,19 @@ export default async function handle(
       }
     }
 
+    const isUnlimitedPlan = plan.slug === "datarooms-unlimited";
+
     const lineItem = {
       price: priceId,
-      quantity: oldAccount ? 1 : minimumQuantity,
-      ...(!oldAccount && {
-        adjustable_quantity: {
-          enabled: true,
-          minimum: minimumQuantity,
-          maximum: 99,
-        },
-      }),
+      quantity: isUnlimitedPlan ? 1 : oldAccount ? 1 : minimumQuantity,
+      ...(!oldAccount &&
+        !isUnlimitedPlan && {
+          adjustable_quantity: {
+            enabled: true,
+            minimum: minimumQuantity,
+            maximum: 99,
+          },
+        }),
     };
 
     const dubDiscount = await getDubDiscountForExternalUserId(userId);

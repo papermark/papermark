@@ -2,28 +2,30 @@
 import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
 
-import { ipAddress } from "@vercel/functions";
 import crypto from "crypto";
 import { z } from "zod";
 
+import {
+  collectFingerprintHeaders,
+  generateSessionFingerprint,
+} from "@/lib/auth/dataroom-auth";
 import { redis } from "@/lib/redis";
-import { LOCALHOST_IP } from "@/lib/utils/geo";
 
 const COOKIE_EXPIRATION_TIME = 23 * 60 * 60 * 1000; // 23 hours
 
 export const LinkSessionSchema = z.object({
   linkId: z.string(),
-  documentId: z.string().optional(), // For document links
-  dataroomId: z.string().optional(), // For dataroom links
+  documentId: z.string().optional(),
+  dataroomId: z.string().optional(),
   viewId: z.string(),
   viewerId: z.string().optional(),
   email: z.string(),
   expiresAt: z.number(),
   ipAddress: z.string(),
   userAgent: z.string(),
+  fingerprint: z.string().optional(),
   verified: z.boolean(),
   linkType: z.enum(["DOCUMENT_LINK", "DATAROOM_LINK", "WORKFLOW_LINK"]),
-  // Security enhancements
   accessCount: z.number().default(0),
   maxAccesses: z.number().default(1000),
   lastAccessedAt: z.number(),
@@ -43,6 +45,7 @@ export async function createLinkSession(
   viewerId?: string,
   documentId?: string,
   dataroomId?: string,
+  fingerprint?: string,
 ): Promise<{ token: string; expiresAt: number }> {
   const sessionToken = crypto.randomBytes(48).toString("base64url");
   const expiresAt = Date.now() + COOKIE_EXPIRATION_TIME;
@@ -59,6 +62,7 @@ export async function createLinkSession(
     expiresAt,
     ipAddress,
     userAgent,
+    fingerprint,
     verified,
     accessCount: 1,
     maxAccesses: 1000,
@@ -105,18 +109,23 @@ export async function verifyLinkSession(
       return null;
     }
 
-    // Verify IP address
-    const currentIp = ipAddress(request) ?? LOCALHOST_IP;
-    if (currentIp !== sessionData.ipAddress) {
-      await deleteLinkSession(sessionToken, sessionData.viewerId);
-      return null;
-    }
-
-    // Verify User Agent
-    const currentUserAgent = request.headers.get("user-agent") ?? "unknown";
-    if (currentUserAgent !== sessionData.userAgent) {
-      await deleteLinkSession(sessionToken, sessionData.viewerId);
-      return null;
+    // Verify browser identity. New sessions store a fingerprint (UA + language
+    // + client hints); legacy sessions without a fingerprint fall back to a
+    // plain User-Agent comparison.
+    if (sessionData.fingerprint) {
+      const currentFingerprint = generateSessionFingerprint(
+        collectFingerprintHeaders(request.headers),
+      );
+      if (currentFingerprint !== sessionData.fingerprint) {
+        await deleteLinkSession(sessionToken, sessionData.viewerId);
+        return null;
+      }
+    } else {
+      const currentUserAgent = request.headers.get("user-agent") ?? "unknown";
+      if (currentUserAgent !== sessionData.userAgent) {
+        await deleteLinkSession(sessionToken, sessionData.viewerId);
+        return null;
+      }
     }
 
     // Check link ID matches

@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { runs } from "@trigger.dev/sdk/v3";
+import { authOptions } from "@/lib/auth/auth-options";
+import { runs } from "@trigger.dev/sdk";
 import { waitUntil } from "@vercel/functions";
 import { getServerSession } from "next-auth/next";
 
@@ -14,6 +14,24 @@ import {
   conversationService,
 } from "../lib/api/conversations";
 import { messageService } from "../lib/api/messages";
+
+function escapeCsvField(field: string | number | null | undefined): string {
+  if (field === null || field === undefined) return "";
+  const s = String(field);
+  if (
+    s.includes(",") ||
+    s.includes("\n") ||
+    s.includes("\r") ||
+    s.includes('"')
+  ) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+function csvRow(fields: (string | number | null | undefined)[]): string {
+  return fields.map(escapeCsvField).join(",");
+}
 
 // Route mapping object to handle different paths
 const routeHandlers = {
@@ -638,6 +656,140 @@ const routeHandlers = {
     }
   },
 
+  // GET /api/teams/[teamId]/datarooms/[dataroomId]/conversations/export-csv
+  "GET /export-csv": async (req: NextApiRequest, res: NextApiResponse) => {
+    const session = await getServerSession(req, res, authOptions);
+    if (!session) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const userId = (session.user as CustomUser).id;
+    const { teamId, id: dataroomId } = req.query as {
+      teamId: string;
+      id: string;
+    };
+
+    try {
+      const dataroom = await prisma.dataroom.findUnique({
+        where: {
+          id: dataroomId,
+          team: {
+            id: teamId,
+            users: { some: { userId } },
+          },
+        },
+        select: { id: true, name: true },
+      });
+
+      if (!dataroom) {
+        return res.status(404).json({ error: "Dataroom not found" });
+      }
+
+      const [faqItems, conversations] = await Promise.all([
+        prisma.dataroomFaqItem.findMany({
+          where: { dataroomId },
+          include: {
+            dataroomDocument: {
+              include: {
+                document: { select: { name: true } },
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.conversation.findMany({
+          where: { dataroomId },
+          include: {
+            messages: {
+              orderBy: { createdAt: "asc" },
+              include: {
+                user: { select: { name: true, email: true } },
+                viewer: { select: { email: true } },
+              },
+            },
+            dataroomDocument: {
+              include: {
+                document: { select: { name: true } },
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+      ]);
+
+      const rows: string[] = [];
+
+      rows.push(
+        csvRow([
+          "Conversation ID",
+          "Type",
+          "Conversation Title",
+          "Document",
+          "Visibility",
+          "Sender",
+          "Sender Role",
+          "Message",
+          "Sent At",
+          "Conversation Started At",
+        ]),
+      );
+
+      for (const conversation of conversations) {
+        for (const message of conversation.messages) {
+          const senderEmail = message.user
+            ? message.user.email || "Team Member"
+            : message.viewer?.email || "Visitor";
+          const senderRole = message.userId ? "Team Member" : "Visitor";
+
+          rows.push(
+            csvRow([
+              conversation.id,
+              "Conversation",
+              conversation.title ?? "",
+              conversation.dataroomDocument?.document.name ?? "",
+              conversation.visibilityMode,
+              senderEmail,
+              senderRole,
+              message.content,
+              message.createdAt.toISOString(),
+              conversation.createdAt.toISOString(),
+            ]),
+          );
+        }
+      }
+
+      for (const item of faqItems) {
+        rows.push(
+          csvRow([
+            item.sourceConversationId ?? "",
+            "Published FAQ",
+            item.title ?? "",
+            item.dataroomDocument?.document.name ?? "",
+            item.visibilityMode,
+            "",
+            "",
+            `Q: ${item.editedQuestion}\nA: ${item.answer}`,
+            item.createdAt.toISOString(),
+            item.createdAt.toISOString(),
+          ]),
+        );
+      }
+
+      const csvContent = rows.join("\n");
+      const filename = `${dataroom.name.replace(/[^a-zA-Z0-9-_]/g, "_")}-qa-pairs.csv`;
+
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${filename}"`,
+      );
+      return res.status(200).send(csvContent);
+    } catch (error) {
+      console.error("Error exporting conversations CSV:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  },
+
   // DELETE /api/teams/[teamId]/datarooms/[dataroomId]/conversations/[conversationId]
   "DELETE /[conversationId]": async (
     req: NextApiRequest,
@@ -706,11 +858,12 @@ const routeHandlers = {
 export async function handleRoute(req: NextApiRequest, res: NextApiResponse) {
   const { method, query } = req;
 
-  // Normalize path - if first segment isn't 'summaries', treat it as conversationId
+  // Normalize path - if first segment isn't a known route, treat it as conversationId
   let path = "";
+  const knownRoutes = ["summaries", "export-csv"];
   if (Array.isArray(query.conversations)) {
-    if (query.conversations[0] === "summaries") {
-      path = "summaries";
+    if (knownRoutes.includes(query.conversations[0])) {
+      path = query.conversations[0];
     } else {
       // Replace the ID with [conversationId]
       path =

@@ -8,6 +8,43 @@ import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 
+async function revalidateLinksForDataroom(dataroomId: string): Promise<void> {
+  try {
+    const links = await prisma.link.findMany({
+      where: {
+        dataroomId,
+        deletedAt: null,
+        OR: [
+          { permissionGroupId: { not: null } },
+          { groupId: { not: null } },
+        ],
+      },
+      select: { id: true, domainId: true },
+    });
+
+    if (links.length === 0) return;
+
+    const revalidateUrl = process.env.NEXTAUTH_URL;
+    const revalidateToken = process.env.REVALIDATE_TOKEN;
+    if (!revalidateUrl || !revalidateToken) return;
+
+    await Promise.all(
+      links.map((link) =>
+        fetch(
+          `${revalidateUrl}/api/revalidate?secret=${revalidateToken}&linkId=${link.id}&hasDomain=${link.domainId ? "true" : "false"}`,
+        ).catch((err) =>
+          console.error(`Error revalidating link ${link.id}:`, err),
+        ),
+      ),
+    );
+  } catch (error) {
+    console.error(
+      `Error revalidating links for dataroom ${dataroomId}:`,
+      error,
+    );
+  }
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -106,6 +143,9 @@ export default async function handler(
       strategy,
       folderPath,
     );
+
+    // Revalidate ISR pages for links with permission restrictions
+    await revalidateLinksForDataroom(dataroomId);
 
     return res.status(200).json({
       message: "Permissions applied successfully",

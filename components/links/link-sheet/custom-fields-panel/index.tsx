@@ -1,10 +1,10 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 
 import { CustomField, CustomFieldType } from "@prisma/client";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
-import { usePlan } from "@/lib/swr/use-billing";
+import useLimits from "@/lib/swr/use-limits";
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,18 +37,14 @@ export default function CustomFieldsPanel({
   isConfigOpen: boolean;
   setIsConfigOpen: (open: boolean) => void;
 }) {
-  const { isDatarooms, isDataroomsPlus, isBusiness } = usePlan();
+  const { limits } = useLimits();
 
-  const fieldLimit = useMemo(() => {
-    if (isDatarooms || isDataroomsPlus) return 5;
-    if (isBusiness) return 1;
-    return 0;
-  }, [isDatarooms, isDataroomsPlus, isBusiness]);
+  const fieldLimit = limits?.linkCustomFields ?? 0;
 
   const addField = useCallback(() => {
     if (fields.length >= fieldLimit) {
       toast.error(
-        `You can only add up to ${fieldLimit} custom field${fieldLimit === 1 ? "" : "s"} on the ${isDatarooms ? "Data Rooms" : "Business"} plan`,
+        `You can only add up to ${fieldLimit} custom field${fieldLimit === 1 ? "" : "s"} on your current plan`,
       );
       return;
     }
@@ -63,7 +59,7 @@ export default function CustomFieldsPanel({
       orderIndex: fields.length,
     };
     onChange([...fields, newField]);
-  }, [fields, fieldLimit, isDatarooms, onChange]);
+  }, [fields, fieldLimit, onChange]);
 
   const updateField = useCallback(
     (index: number, updatedField: CustomFieldData) => {
@@ -121,8 +117,7 @@ export default function CustomFieldsPanel({
             {fieldLimit > 0 && (
               <span className="mt-1 block text-sm text-muted-foreground">
                 You can add up to {fieldLimit} custom field
-                {fieldLimit === 1 ? "" : "s"} on the{" "}
-                {isDatarooms ? "Data Rooms" : "Business"} plan.
+                {fieldLimit === 1 ? "" : "s"} on your current plan.
               </span>
             )}
           </SheetDescription>

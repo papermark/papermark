@@ -2,21 +2,17 @@ import { useState } from "react";
 
 import { useTeam } from "@/context/team-context";
 import { AgentsSettingsCard } from "@/ee/features/ai/components/agents-settings-card";
-import { Check, Copy } from "lucide-react";
+import { Check, CircleHelpIcon, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { mutate } from "swr";
 
-import { usePlan } from "@/lib/swr/use-billing";
 import { useDataroom } from "@/lib/swr/use-dataroom";
 
-import { DataroomHeader } from "@/components/datarooms/dataroom-header";
-import { DataroomNavigation } from "@/components/datarooms/dataroom-navigation";
 import DataroomTagSection from "@/components/datarooms/settings/dataroom-tag-section";
-import DeleteDataroom from "@/components/datarooms/settings/delete-dataroooom";
 import DuplicateDataroom from "@/components/datarooms/settings/duplicate-dataroom";
-import SettingsTabs from "@/components/datarooms/settings/settings-tabs";
 import AppLayout from "@/components/layouts/app";
 import { Button } from "@/components/ui/button";
+import { BadgeTooltip } from "@/components/ui/tooltip";
 import {
   Card,
   CardContent,
@@ -34,8 +30,6 @@ export default function Settings() {
   const teamId = teamInfo?.currentTeam?.id;
   const [isCopied, setIsCopied] = useState(false);
 
-  const { isBusiness, isDatarooms, isDataroomsPlus, isTrial } = usePlan();
-
   if (!dataroom) {
     return <div>Loading...</div>;
   }
@@ -43,24 +37,24 @@ export default function Settings() {
   return (
     <AppLayout>
       <main className="relative mx-2 mb-10 mt-4 space-y-8 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
-        <header>
-          <DataroomHeader
-            title={dataroom.name}
-            description={dataroom.pId}
-            internalName={dataroom.internalName}
-            actions={[]}
-          />
-
-          <DataroomNavigation dataroomId={dataroom.id} />
-        </header>
-
-        {/* Settings */}
-        <div className="mx-auto grid w-full gap-2">
-          <h1 className="text-2xl font-semibold">Settings</h1>
+        <div className="space-y-1">
+          <h3 className="text-2xl font-semibold tracking-tight text-foreground">
+            Data Room Settings
+          </h3>
+          <p className="flex flex-row items-center gap-2 text-sm text-muted-foreground">
+            Configure your data room settings.
+            <BadgeTooltip
+              linkText="Learn more"
+              content="Learn about data room configuration options."
+              key="settings"
+              link="https://www.papermark.com/help/article/create-data-room"
+            >
+              <CircleHelpIcon className="h-4 w-4 shrink-0 text-muted-foreground hover:text-foreground" />
+            </BadgeTooltip>
+          </p>
         </div>
-        <div className="mx-auto grid w-full items-start gap-6 md:grid-cols-[180px_1fr] lg:grid-cols-[250px_1fr]">
-          <SettingsTabs dataroomId={dataroom.id} />
-          <div className="grid gap-6">
+
+        <div className="grid gap-6">
             <Form
               title="Dataroom Name"
               description="This is the public name of your data room visible to all viewers."
@@ -219,12 +213,6 @@ export default function Settings() {
               </CardFooter>
             </Card>
 
-            {isBusiness || isDatarooms || isDataroomsPlus || isTrial ? (
-              <DeleteDataroom
-                dataroomId={dataroom.id}
-                dataroomName={dataroom.name}
-              />
-            ) : null}
             {/* <Card>
                   <CardHeader className="relative">
                     <CardTitle>Feedback Question</CardTitle>
@@ -404,7 +392,6 @@ export default function Settings() {
                 <Button variant="destructive">Delete document</Button>
               </CardFooter>
             </Card> */}
-          </div>
         </div>
       </main>
     </AppLayout>

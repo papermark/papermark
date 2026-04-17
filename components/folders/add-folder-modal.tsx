@@ -162,7 +162,7 @@ export function AddFolderModal({
         <UpgradePlanModal
           clickedPlan={PlanEnum.Pro}
           trigger={"add_folder_button"}
-          highlightItem={["folder", "multi-file"]}
+          highlightItem={["folder", "folder-sharing", "datarooms"]}
         >
           {children}
         </UpgradePlanModal>
@@ -195,6 +195,7 @@ export function AddFolderModal({
               id="folder-name"
               placeholder="Choose a helpful name"
               className="flex-1"
+              autoFocus
               value={folderName}
               onChange={(e) => setFolderName(e.target.value)}
             />

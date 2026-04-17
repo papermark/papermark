@@ -1,5 +1,5 @@
 import { python } from "@trigger.dev/python";
-import { logger, retry, task } from "@trigger.dev/sdk/v3";
+import { logger, retry, task } from "@trigger.dev/sdk";
 import { writeFile, readFile, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,6 +11,11 @@ import prisma from "@/lib/prisma";
 import { updateStatus } from "../utils/generate-trigger-status";
 import { getExtensionFromContentType } from "../utils/get-content-type";
 import { convertPdfToImageRoute } from "./pdf-to-image-route";
+import {
+  convertCadToPdfQueue,
+  convertFilesToPdfQueue,
+  convertKeynoteToPdfQueue,
+} from "./queues";
 
 export type ConvertPayload = {
   documentId: string;
@@ -21,9 +26,7 @@ export type ConvertPayload = {
 export const convertFilesToPdfTask = task({
   id: "convert-files-to-pdf",
   retry: { maxAttempts: 3 },
-  queue: {
-    concurrencyLimit: 10,
-  },
+  queue: convertFilesToPdfQueue,
   run: async (payload: ConvertPayload) => {
     updateStatus({ progress: 0, text: "Initializing..." });
 
@@ -319,9 +322,7 @@ export const convertFilesToPdfTask = task({
 export const convertCadToPdfTask = task({
   id: "convert-cad-to-pdf",
   retry: { maxAttempts: 3 },
-  queue: {
-    concurrencyLimit: 2,
-  },
+  queue: convertCadToPdfQueue,
   run: async (payload: ConvertPayload) => {
     const team = await prisma.team.findUnique({
       where: {
@@ -506,9 +507,7 @@ export const convertCadToPdfTask = task({
 export const convertKeynoteToPdfTask = task({
   id: "convert-keynote-to-pdf",
   retry: { maxAttempts: 3 },
-  queue: {
-    concurrencyLimit: 2,
-  },
+  queue: convertKeynoteToPdfQueue,
   run: async (payload: ConvertPayload) => {
     const team = await prisma.team.findUnique({
       where: {

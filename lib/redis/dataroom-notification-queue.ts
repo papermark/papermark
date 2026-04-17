@@ -4,7 +4,7 @@ const ITEM_TTL_SECONDS = 8 * 24 * 60 * 60; // 8 days
 
 type QueueItem = {
   dataroomDocumentId: string;
-  senderUserId: string;
+  senderUserId: string | null;
   queuedAt: number;
 };
 
@@ -44,7 +44,7 @@ export async function queueNotification({
   dataroomId: string;
   teamId: string;
   dataroomDocumentId: string;
-  senderUserId: string;
+  senderUserId: string | null;
 }) {
   const key = itemsKey(viewerId, dataroomId);
   const item: QueueItem = {

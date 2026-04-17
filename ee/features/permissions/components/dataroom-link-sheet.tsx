@@ -18,8 +18,11 @@ import { mutate } from "swr";
 import useSWR from "swr";
 import z from "zod";
 
+import { InviteViewersModal } from "@/ee/features/dataroom-invitations/components/invite-viewers-modal";
+
 import { useAnalytics } from "@/lib/analytics";
 import { usePlan } from "@/lib/swr/use-billing";
+import { useDataroom } from "@/lib/swr/use-dataroom";
 import useDataroomGroups from "@/lib/swr/use-dataroom-groups";
 import { useDomains } from "@/lib/swr/use-domains";
 import useLimits from "@/lib/swr/use-limits";
@@ -82,18 +85,20 @@ export function DataroomLinkSheet({
   linkType,
   currentLink,
   existingLinks,
+  linkTargetId,
 }: {
   isOpen: boolean;
   setIsOpen: Dispatch<SetStateAction<boolean>>;
   linkType: LinkType;
   currentLink?: DEFAULT_LINK_TYPE;
   existingLinks?: LinkWithViews[];
+  linkTargetId: string;
 }) {
   const router = useRouter();
-  const { id: targetId, groupId } = router.query as {
-    id: string;
+  const { groupId } = router.query as {
     groupId?: string;
   };
+  const targetId = linkTargetId;
 
   const { domains } = useDomains({ enabled: isOpen });
 
@@ -101,7 +106,7 @@ export function DataroomLinkSheet({
     viewerGroups,
     loading: isLoadingGroups,
     mutate: mutateGroups,
-  } = useDataroomGroups();
+  } = useDataroomGroups({ dataroomId: linkTargetId ?? undefined });
   const { currentTeamId: teamId } = useTeam();
   const { isFree, isPro, isBusiness, isDatarooms, isDataroomsPlus, isTrial } =
     usePlan();
@@ -122,6 +127,9 @@ export function DataroomLinkSheet({
   const [createdLink, setCreatedLink] = useState<LinkWithViews | null>(null);
   const [hasCustomPermissions, setHasCustomPermissions] =
     useState<boolean>(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState<boolean>(false);
+  const { dataroom } = useDataroom(linkTargetId);
+  const canInviteViewers = isDataroomsPlus;
 
   const isPresetsAllowed =
     isTrial ||
@@ -522,6 +530,11 @@ export function DataroomLinkSheet({
     shouldPreview: boolean,
     permissions: ItemPermission | null,
   ) => {
+    if (!targetId || !teamId) {
+      setIsSaving(false);
+      return;
+    }
+
     const endpointTargetType = `${linkType.replace("_LINK", "").toLowerCase()}s`; // "documents" or "datarooms"
 
     if (isUpdating) {
@@ -770,6 +783,10 @@ export function DataroomLinkSheet({
     shouldPreview: boolean = false,
     showSuccess: boolean = false,
   ) => {
+    if (!targetId) {
+      toast.error("Missing dataroom");
+      return;
+    }
     // For backward compatibility, extract permissions from linkData
     setIsSaving(true);
     const permissions = linkData.permissions || null;
@@ -789,14 +806,19 @@ export function DataroomLinkSheet({
   ) => {
     event.preventDefault();
 
+    if (!targetId) {
+      toast.error("Missing dataroom");
+      return;
+    }
+
     if (shouldManagePermissions && linkType === LinkType.DATAROOM_LINK) {
       // Store the link data and show permissions sheet
       setPendingLinkData(data);
       setShowPermissionsSheet(true);
       return;
     }
-    // Use the refactored function
-    await createLinkWithPermissions(data, shouldPreview);
+    const showSuccess = !currentLink && !shouldPreview;
+    await createLinkWithPermissions(data, shouldPreview, showSuccess);
   };
 
   const handleCreateAnother = () => {
@@ -1128,7 +1150,7 @@ export function DataroomLinkSheet({
                   loading={isSaving}
                   onClick={(e) => handleSubmit(e, false)}
                 >
-                  {currentLink ? "Update Link" : "Save Link"}
+                  {currentLink ? "Update Link" : "Save & Share"}
                 </Button>
                 <BadgeTooltip
                   content={currentLink ? "Update & Preview" : "Save & Preview"}
@@ -1150,13 +1172,13 @@ export function DataroomLinkSheet({
 
         <PermissionsSheet
           isOpen={showPermissionsSheet}
-          setIsOpen={(open) => {
+          setIsOpen={(open: boolean) => {
             setShowPermissionsSheet(open);
             if (!open) {
               setShowSuccessSheet(true);
             }
           }}
-          dataroomId={targetId}
+          dataroomId={targetId!}
           linkId={currentLink?.id ?? undefined}
           permissionGroupId={currentLink?.permissionGroupId ?? undefined}
           onSave={handlePermissionsSave}
@@ -1170,6 +1192,18 @@ export function DataroomLinkSheet({
           link={createdLink}
           hasCustomPermissions={hasCustomPermissions}
           onCreateAnother={handleCreateAnother}
+          onInviteViewers={() => setIsInviteModalOpen(true)}
+        />
+      )}
+
+      {createdLink && (
+        <InviteViewersModal
+          open={isInviteModalOpen}
+          setOpen={setIsInviteModalOpen}
+          dataroomId={targetId}
+          dataroomName={dataroom?.name ?? "this dataroom"}
+          linkId={createdLink.id}
+          canSend={canInviteViewers}
         />
       )}
     </>

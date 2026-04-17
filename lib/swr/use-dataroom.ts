@@ -18,23 +18,27 @@ export type DataroomFolderWithCount = DataroomFolder & {
   };
 };
 
-export function useDataroom() {
+export function useDataroom(dataroomId?: string) {
   const router = useRouter();
 
-  const { id } = router.query as {
+  const { id: routerId } = router.query as {
     id: string;
   };
+
+  const id = dataroomId ?? routerId;
 
   const teamInfo = useTeam();
   const teamId = teamInfo?.currentTeam?.id;
 
-  // Only make the API call if we're on a dataroom page
-  const isDataroomPage = router.pathname.startsWith("/datarooms");
+  // When dataroomId is explicitly provided, skip the pathname check
+  const isDataroomPage =
+    dataroomId || router.pathname.startsWith("/datarooms");
   const shouldFetch = teamId && id && isDataroomPage;
 
   const { data: dataroom, error } = useSWR<
     Dataroom & {
       _count?: { viewerGroups: number; permissionGroups: number };
+      frozenByUser?: { name: string | null; email: string | null } | null;
       tags?: {
         tag: {
           id: string;

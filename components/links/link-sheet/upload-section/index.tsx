@@ -203,6 +203,7 @@ export default function UploadSection({
             state: true,
             trigger: "link_sheet_upload_section",
             plan: "Data Rooms Plus",
+            highlightItem: ["requests"],
           })
         }
       />

@@ -87,6 +87,32 @@ export function getStorageConfig(storageRegion?: string): StorageConfig {
  * @param teamId - The team ID to get storage configuration for
  * @returns Promise<StorageConfig> - The storage configuration for the team
  */
+export interface FreezeArchiveStorageConfig {
+  bucket: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+}
+
+export function getFreezeArchiveConfig(): FreezeArchiveStorageConfig {
+  const bucket = process.env.NEXT_PRIVATE_ARCHIVE_BUCKET;
+  if (!bucket) {
+    throw new Error(
+      "Missing environment variable: NEXT_PRIVATE_ARCHIVE_BUCKET",
+    );
+  }
+
+  const baseConfig = getStorageConfig();
+
+  return {
+    bucket,
+    region:
+      process.env.NEXT_PRIVATE_ARCHIVE_REGION || baseConfig.region,
+    accessKeyId: baseConfig.accessKeyId,
+    secretAccessKey: baseConfig.secretAccessKey,
+  };
+}
+
 export async function getTeamStorageConfigById(
   teamId: string,
 ): Promise<StorageConfig> {

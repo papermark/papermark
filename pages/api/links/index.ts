@@ -76,6 +76,24 @@ export default async function handler(
         });
       }
 
+      if (dataroomLink && targetId) {
+        const dataroom = await prisma.dataroom.findUnique({
+          where: { id: targetId, teamId },
+          select: { isFrozen: true },
+        });
+        if (!dataroom) {
+          return res.status(400).json({
+            error: "Invalid data room.",
+          });
+        }
+        if (dataroom.isFrozen) {
+          return res.status(403).json({
+            error:
+              "This data room is frozen. You cannot create new links for a frozen data room.",
+          });
+        }
+      }
+
       const hashedPassword =
         password && password.length > 0
           ? await generateEncrpytedPassword(password)
@@ -278,6 +296,13 @@ export default async function handler(
             },
           },
         });
+
+        if (linkData.enableConversation && dataroomLink) {
+          await tx.dataroom.updateMany({
+            where: { id: targetId, teamId },
+            data: { conversationsEnabled: true },
+          });
+        }
 
         let tags: Partial<Tag>[] = [];
         if (linkData.tags?.length) {

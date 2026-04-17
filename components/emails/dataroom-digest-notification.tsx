@@ -24,20 +24,25 @@ export default function DataroomDigestNotification({
     { documentName: "Document B" },
     { documentName: "Document C" },
   ],
-  senderEmail = "example@example.com",
+  senderEmail,
   url = "https://app.papermark.com/datarooms/123",
   preferencesUrl = "https://app.papermark.com/notification-preferences?token=abc",
   frequency = "daily",
 }: {
   dataroomName: string;
   documents: DocumentChange[];
-  senderEmail: string;
+  senderEmail: string | null;
   url: string;
   preferencesUrl: string;
-  frequency: "daily" | "weekly";
+  frequency: "daily" | "weekly" | "instant";
 }) {
   const count = documents.length;
-  const periodLabel = frequency === "daily" ? "today" : "this week";
+  const periodLabel =
+    frequency === "instant"
+      ? "recently"
+      : frequency === "daily"
+        ? "today"
+        : "this week";
 
   return (
     <Html>
@@ -91,9 +96,15 @@ export default function DataroomDigestNotification({
                 reserved.
               </Text>
               <Text className="text-xs">
-                You received this {frequency} digest from{" "}
-                <span className="font-semibold">{senderEmail}</span> because you
-                viewed the dataroom{" "}
+                You received this{" "}
+                {frequency !== "instant" ? `${frequency} digest ` : "notification "}
+                {senderEmail ? (
+                  <>
+                    from{" "}
+                    <span className="font-semibold">{senderEmail}</span>{" "}
+                  </>
+                ) : null}
+                because you viewed the dataroom{" "}
                 <span className="font-semibold">{dataroomName}</span> on
                 Papermark. If you have any feedback or questions about this
                 email, simply reply to it.{" "}

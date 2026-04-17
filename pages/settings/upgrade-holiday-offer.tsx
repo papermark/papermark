@@ -780,7 +780,7 @@ export default function UpgradeHolidayOfferPage() {
 
       <div className="mt-8 flex flex-col items-center space-y-2">
         <p className="text-sm text-muted-foreground">
-          All plans include unlimited viewers and page by page document
+          All plans include unlimited visitors and page by page document
           analytics.
         </p>
         <a

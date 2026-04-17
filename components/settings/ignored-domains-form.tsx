@@ -68,7 +68,7 @@ export default function IgnoredDomainsForm() {
     }).then(async (res) => {
       if (!res.ok) {
         const { error } = await res.json();
-        throw new Error(error?.message || "Failed to update ignored domains.");
+        throw new Error(error || "Failed to update ignored domains.");
       }
       await mutate();
       return res.json();

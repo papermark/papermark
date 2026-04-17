@@ -4,11 +4,9 @@ import {
   Body,
   Container,
   Head,
-  Heading,
   Hr,
   Html,
   Img,
-  Preview,
   Section,
   Tailwind,
   Text,
@@ -25,50 +23,59 @@ export default function OtpEmailVerification({
   isDataroom: boolean;
   logo?: string;
 }) {
+  const resourceLabel = isDataroom ? "dataroom" : "document";
+
   return (
     <Html>
       <Head />
-      <Preview>Your Email Verification Code</Preview>
       <Tailwind>
         <Body className="mx-auto my-auto bg-white font-sans">
-          <Container className="mx-auto my-10 w-[465px] p-5">
-            <div className="mx-0 mb-8 mt-4 p-0 text-center">
+          <Container className="mx-auto my-10 max-w-[600px] rounded border border-solid border-neutral-200 px-10 py-5">
+            <Section className="mt-8">
               {logo ? (
                 <Img
                   src={logo}
                   alt="Logo"
                   width="120"
                   height="36"
-                  className="mx-auto"
                 />
               ) : (
-                <Text className="text-2xl font-normal">
-                  <span className="font-bold tracking-tighter">Papermark</span>
+                <Text className="text-2xl font-bold tracking-tighter">
+                  Papermark
                 </Text>
               )}
-            </div>
-            <Heading className="mx-0 my-7 p-0 text-center text-xl font-semibold text-black">
-              Please confirm your email address
-            </Heading>
-            <Text className="mx-auto text-sm leading-6">
-              Enter this code on the link verification page to view the{" "}
-              {isDataroom ? "dataroom" : "document"}:
-            </Text>
-            <Section className="my-8">
-              <div className="mx-auto w-fit rounded-xl px-6 py-3 text-center font-mono text-2xl font-semibold tracking-[0.25em]">
-                {code}
-              </div>
             </Section>
-            <Text className="text-sm leading-6 text-black">
-              This code expires in 10 minutes.
+            <Text className="mx-0 my-7 p-0 text-xl font-semibold text-black">
+              Verify your email
             </Text>
-            <Hr />
-            <Section className="mt-8 text-gray-400">
-              <Text className="text-xs">
-                This email was intended for{" "}
-                <span className="text-black">{email}</span>. If you were not
-                expecting this email, you can ignore this email. If you have any
-                feedback or questions about this email, simply reply to it.
+            <Text className="text-sm leading-6 text-neutral-600">
+              Enter this code to verify your email and access the{" "}
+              {resourceLabel} shared with you on Papermark:
+            </Text>
+            <Section className="my-6">
+              <Text
+                className="m-0 rounded-lg bg-neutral-100 px-4 py-3 text-center text-2xl font-bold tracking-[0.3em] text-black"
+                style={{ fontFamily: "monospace", letterSpacing: "0.3em" }}
+              >
+                {code}
+              </Text>
+            </Section>
+            <Text className="text-sm leading-6 text-neutral-600">
+              This code will expire in 10 minutes.
+            </Text>
+            <Text className="mt-4 text-sm leading-5 text-neutral-500">
+              This email was intended for{" "}
+              <span className="text-black">{email}</span>. If you were not
+              expecting this email, you can safely ignore it.
+            </Text>
+            <Hr className="my-6" />
+            <Section className="text-gray-400">
+              <Text className="text-xs text-neutral-500">
+                Papermark, Inc.
+                <br />
+                1111B S Governors Ave #28117
+                <br />
+                Dover, DE 19904
               </Text>
             </Section>
           </Container>

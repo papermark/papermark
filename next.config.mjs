@@ -186,7 +186,8 @@ const nextConfig = {
       "@google-cloud/kms": false,
       "@google-cloud/secret-manager": false,
       // Jackson pulls TypeORM/Mongo optional drivers we don't use (Postgres-only setup).
-      // Aliasing prevents noisy module resolution warnings in dev/build.
+      // Aliasing prevents module resolution errors in dev/build.
+      mongodb: false,
       mysql: false,
       "react-native-sqlite-storage": false,
       aws4: false,

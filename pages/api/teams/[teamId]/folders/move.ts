@@ -50,6 +50,28 @@ export default async function handle(
           },
         });
 
+        // Prevent moving a folder into itself or one of its descendants.
+        if (selectedFolder) {
+          const allFolders = await prisma.folder.findMany({
+            where: { teamId },
+            select: { id: true, parentId: true },
+          });
+          const parentMap = new Map(
+            allFolders.map((f) => [f.id, f.parentId]),
+          );
+          const folderIdSet = new Set(folderIds);
+          const visited = new Set<string>();
+          let currentId: string | null = selectedFolder;
+          while (currentId) {
+            if (folderIdSet.has(currentId)) {
+              throw new Error("MOVE_INVALID_PARENT");
+            }
+            if (visited.has(currentId)) break;
+            visited.add(currentId);
+            currentId = parentMap.get(currentId) ?? null;
+          }
+        }
+
         const existingFolders = await prisma.folder.findMany({
           where: {
             teamId,
@@ -66,9 +88,9 @@ export default async function handle(
             .filter((name) => existingFolderNames.has(name));
 
           if (duplicateNames.length > 0) {
-            return res.status(409).json({
-              message: `Cannot move folders: Duplicate names found inside target folder - ${duplicateNames.join(", ")}`,
-            });
+            throw new Error(
+              `MOVE_DUPLICATE_NAMES:${duplicateNames.join(", ")}`,
+            );
           }
         }
         // Fetch all nested subfolders of the selected folders (excluding the folders themselves)
@@ -152,7 +174,22 @@ export default async function handle(
         newPath: folder?.path,
       });
     } catch (error) {
-      return res.status(500).end(error);
+      if (error instanceof Error) {
+        if (error.message === "MOVE_INVALID_PARENT") {
+          return res.status(400).json({
+            message:
+              "Cannot move a folder into itself or one of its subfolders",
+          });
+        }
+        if (error.message.startsWith("MOVE_DUPLICATE_NAMES:")) {
+          const names = error.message.slice("MOVE_DUPLICATE_NAMES:".length);
+          return res.status(409).json({
+            message: `Cannot move folders: Duplicate names found inside target folder - ${names}`,
+          });
+        }
+      }
+      console.error(error);
+      return res.status(500).end("Failed to move folder");
     }
   } else {
     // We only allow PATCH requests

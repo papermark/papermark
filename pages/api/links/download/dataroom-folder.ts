@@ -29,13 +29,14 @@ export default async function handler(
   }
 
   try {
-    const { folderId, dataroomId, viewId, linkId, emailNotification } = req.body as {
-      folderId: string;
-      dataroomId: string;
-      viewId: string;
-      linkId: string;
-      emailNotification?: boolean;
-    };
+    const { folderId, dataroomId, viewId, linkId, emailNotification } =
+      req.body as {
+        folderId: string;
+        dataroomId: string;
+        viewId: string;
+        linkId: string;
+        emailNotification?: boolean;
+      };
     if (!folderId) {
       return res
         .status(400)
@@ -148,8 +149,13 @@ export default async function handler(
     });
 
     // Collect descendants via parentId chain (source of truth)
-    const descendantIds = collectDescendantIds(rootFolder.id, allDataroomFolders);
-    const subfolders = allDataroomFolders.filter((f) => descendantIds.has(f.id));
+    const descendantIds = collectDescendantIds(
+      rootFolder.id,
+      allDataroomFolders,
+    );
+    const subfolders = allDataroomFolders.filter((f) =>
+      descendantIds.has(f.id),
+    );
 
     // Keep the full (unfiltered) folder list for path computation below.
     // Permission filtering may remove parent folders that only have canView
@@ -179,6 +185,7 @@ export default async function handler(
                 originalFile: true,
                 numPages: true,
                 contentType: true,
+                fileSize: true,
               },
               take: 1,
             },
@@ -235,7 +242,8 @@ export default async function handler(
     const computedPathMap = buildFolderPathsFromHierarchy(fullFolders);
 
     // Compute the root folder's path from the hierarchy
-    const computedRootPath = computedPathMap.get(rootFolder.id) ?? rootFolder.path;
+    const computedRootPath =
+      computedPathMap.get(rootFolder.id) ?? rootFolder.path;
 
     const folderStructure: {
       [key: string]: {
@@ -247,6 +255,7 @@ export default async function handler(
           type?: string;
           numPages?: number;
           needsWatermark?: boolean;
+          size?: number;
         }[];
       };
     } = {};
@@ -260,6 +269,7 @@ export default async function handler(
       fileKey: string,
       fileType?: string,
       numPages?: number,
+      fileSize?: number,
     ) => {
       let relativePath = "";
       if (computedFolderPath !== rootFolderInfo.computedPath) {
@@ -300,12 +310,16 @@ export default async function handler(
           type: fileType,
           numPages: numPages,
           needsWatermark: needsWatermark ?? undefined,
+          size: fileSize,
         });
         fileKeys.push(fileKey);
       }
     };
 
-    const rootFolderInfo = { name: rootFolder.name, computedPath: computedRootPath };
+    const rootFolderInfo = {
+      name: rootFolder.name,
+      computedPath: computedRootPath,
+    };
 
     // Pre-index documents by folderId for O(1) lookup per folder
     const docsByFolderId = new Map<string, typeof allDocuments>();
@@ -353,6 +367,7 @@ export default async function handler(
           fileKey,
           version.type ?? undefined,
           version.numPages ?? undefined,
+          version.fileSize ? Number(version.fileSize) : undefined,
         );
       }
     }
@@ -418,7 +433,9 @@ export default async function handler(
           documentCount: allDocuments.length,
           isFolderDownload: true,
         },
-      }).catch((err) => console.error("Error sending Slack notification:", err));
+      }).catch((err) =>
+        console.error("Error sending Slack notification:", err),
+      );
     }
 
     const teamId = view.link.teamId!;
@@ -446,7 +463,7 @@ export default async function handler(
       viewerId: view.viewerId ?? undefined,
       viewerEmail: view.viewerEmail ?? undefined,
       emailNotification: sendEmail,
-      emailAddress: sendEmail ? view.viewerEmail ?? undefined : undefined,
+      emailAddress: sendEmail ? (view.viewerEmail ?? undefined) : undefined,
     });
 
     const handle = await bulkDownloadTask.trigger(
@@ -480,12 +497,17 @@ export default async function handler(
         viewerEmail: view.viewerEmail ?? undefined,
         linkId,
         emailNotification: sendEmail,
-        emailAddress: sendEmail ? view.viewerEmail ?? undefined : undefined,
+        emailAddress: sendEmail ? (view.viewerEmail ?? undefined) : undefined,
         folderName: rootFolder.name,
       },
       {
         idempotencyKey: job.id,
-        tags: [`team_${teamId}`, `dataroom_${dataroomId}`, `job_${job.id}`, `link_${linkId}`],
+        tags: [
+          `team_${teamId}`,
+          `dataroom_${dataroomId}`,
+          `job_${job.id}`,
+          `link_${linkId}`,
+        ],
       },
     );
 

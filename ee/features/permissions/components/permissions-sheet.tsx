@@ -1094,7 +1094,7 @@ export function PermissionsSheet({
                   : Object.keys(pendingChanges).length === 0
               }
             >
-              Save Permissions
+              Save & Share
             </Button>
             <Button
               type="button"

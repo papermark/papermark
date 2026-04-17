@@ -193,7 +193,7 @@ export default function ViewDurationSummary({
             By clicking continue, you acknowledge that you have read and agree
             to Papermark&apos;s{" "}
             <Link
-              href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/terms`}
+              href="https://www.papermark.com/terms"
               target="_blank"
               className="underline hover:text-gray-900"
             >
@@ -201,7 +201,7 @@ export default function ViewDurationSummary({
             </Link>{" "}
             and{" "}
             <Link
-              href={`${process.env.NEXT_PUBLIC_MARKETING_URL}/privacy`}
+              href="https://www.papermark.com/privacy"
               target="_blank"
               className="underline hover:text-gray-900"
             >

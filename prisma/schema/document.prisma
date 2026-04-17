@@ -27,8 +27,8 @@ model Document {
   folderId String? // Optional Folder ID for documents in folders
   folder   Folder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
-  datarooms DataroomDocument[] // Datarooms associated with this document
-  tags      TagItem[]
+  datarooms   DataroomDocument[] // Datarooms associated with this document
+  tags        TagItem[]
   annotations DocumentAnnotation[] // Annotations for this document
 
   // upload external documents
@@ -44,26 +44,26 @@ model Document {
 }
 
 model DocumentVersion {
-  id            String              @id @default(cuid())
-  versionNumber Int // e.g., 1, 2, 3 for version control
-  document      Document            @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  documentId    String
-  file          String // This should be a reference to where the file is stored (S3, Google Cloud Storage, etc.)
-  originalFile  String? // This should be a reference to the original file like pptx, xlsx, etc. (S3, Google Cloud Storage, etc.)
-  type          String? // This should be a reference to the file type (pdf, docx, etc.)
-  contentType   String? // This should be the actual contentType of the file like application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, etc.
-  fileSize      BigInt? // This should be the size of the file in bytes
-  storageType   DocumentStorageType @default(VERCEL_BLOB)
-  numPages      Int? // This should be a reference to the number of pages in the document
-  isPrimary        Boolean @default(false) // Indicates if this is the primary version
-  isVertical       Boolean @default(false) // Indicates if the document is vertical (portrait) or not (landscape)
-  fileId           String? // This is the file ID of the OpenAI File API
+  id                String              @id @default(cuid())
+  versionNumber     Int // e.g., 1, 2, 3 for version control
+  document          Document            @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId        String
+  file              String // This should be a reference to where the file is stored (S3, Google Cloud Storage, etc.)
+  originalFile      String? // This should be a reference to the original file like pptx, xlsx, etc. (S3, Google Cloud Storage, etc.)
+  type              String? // This should be a reference to the file type (pdf, docx, etc.)
+  contentType       String? // This should be the actual contentType of the file like application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, etc.
+  fileSize          BigInt? // This should be the size of the file in bytes
+  storageType       DocumentStorageType @default(VERCEL_BLOB)
+  numPages          Int? // This should be a reference to the number of pages in the document
+  isPrimary         Boolean             @default(false) // Indicates if this is the primary version
+  isVertical        Boolean             @default(false) // Indicates if the document is vertical (portrait) or not (landscape)
+  fileId            String? // This is the file ID of the OpenAI File API
   vectorStoreFileId String? // OpenAI vector store file ID for AI search
-  pages            DocumentPage[]
-  hasPages         Boolean @default(false) // Indicates if the document has pages
-  length        Int? // This is the length of the video in seconds
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  pages             DocumentPage[]
+  hasPages          Boolean             @default(false) // Indicates if the document has pages
+  length            Int? // This is the length of the video in seconds
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
   @@unique([versionNumber, documentId])
   @@index([documentId])
