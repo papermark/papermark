@@ -36,17 +36,32 @@ export default async function handle(
   }
 
   try {
-    const team = await prisma.team.findUnique({
+    const teamAccess = await prisma.userTeam.findUnique({
       where: {
-        id: teamId,
-        users: {
-          some: { userId },
+        userId_teamId: {
+          userId,
+          teamId,
         },
       },
     });
 
-    if (!team) {
+    if (!teamAccess) {
       return res.status(401).end("Unauthorized");
+    }
+
+    const dataroom = await prisma.dataroom.findUnique({
+      where: {
+        id: dataroomId,
+        teamId,
+      },
+      select: { id: true },
+    });
+
+    if (!dataroom) {
+      return res.status(404).json({
+        error: "Not Found",
+        message: "The requested dataroom does not exist",
+      });
     }
 
     const [documents, folders] = await Promise.all([
