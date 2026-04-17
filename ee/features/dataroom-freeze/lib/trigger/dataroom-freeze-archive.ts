@@ -16,11 +16,8 @@ import {
   getTeamStorageConfigById,
 } from "@/ee/features/storage/config";
 import { InvocationType, InvokeCommand } from "@aws-sdk/client-lambda";
-import {
-  GetObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from "@aws-sdk/client-s3";
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import { logger, metadata, task } from "@trigger.dev/sdk";
 import archiver from "archiver";
 import Bottleneck from "bottleneck";
@@ -330,17 +327,17 @@ export const dataroomFreezeArchiveTask = task({
         },
       });
 
-      await s3Client.send(
-        new PutObjectCommand({
+      const upload = new Upload({
+        client: s3Client,
+        params: {
           Bucket: archiveConfig.bucket,
           Key: s3Key,
           Body: createReadStream(archivePath),
           ContentType: "application/zip",
-          ContentLength: archiveSize,
           ContentDisposition: `attachment; filename="${safeName}-freeze-archive.zip"`,
-          ChecksumSHA256: Buffer.from(archiveHash, "hex").toString("base64"),
-        }),
-      );
+        },
+      });
+      await upload.done();
 
       logger.info("Archive uploaded to S3", {
         bucket: archiveConfig.bucket,
