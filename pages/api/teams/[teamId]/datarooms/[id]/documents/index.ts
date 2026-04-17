@@ -163,7 +163,10 @@ export default async function handle(
         where: { id: dataroomId, teamId },
         select: { isFrozen: true },
       });
-      if (dataroom?.isFrozen) {
+      if (!dataroom) {
+        return res.status(404).json({ error: "Data room not found" });
+      }
+      if (dataroom.isFrozen) {
         return res.status(403).json({
           error:
             "This data room is frozen. You cannot add documents to a frozen data room.",

@@ -227,7 +227,9 @@ export default async function handle(
         },
         select: {
           id: true,
+          linkType: true,
           dataroomId: true,
+          documentId: true,
           dataroom: { select: { isFrozen: true } },
         },
       });
@@ -243,6 +245,30 @@ export default async function handle(
           error:
             "This data room is frozen. You cannot modify links for a frozen data room.",
         });
+      }
+
+      // If the PUT retargets the link (different targetId or linkType),
+      // ensure the destination dataroom is not frozen.
+      if (dataroomLink && targetId) {
+        const existingTargetId =
+          existingLink.linkType === "DATAROOM_LINK"
+            ? existingLink.dataroomId
+            : existingLink.documentId;
+        const isRetargeting =
+          existingLink.linkType !== linkType || existingTargetId !== targetId;
+
+        if (isRetargeting) {
+          const destinationDataroom = await prisma.dataroom.findUnique({
+            where: { id: targetId, teamId },
+            select: { isFrozen: true },
+          });
+          if (destinationDataroom?.isFrozen) {
+            return res.status(403).json({
+              error:
+                "This data room is frozen. You cannot modify links for a frozen data room.",
+            });
+          }
+        }
       }
     } catch (error) {
       return res.status(500).json({

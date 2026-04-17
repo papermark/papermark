@@ -81,7 +81,12 @@ export default async function handler(
           where: { id: targetId, teamId },
           select: { isFrozen: true },
         });
-        if (dataroom?.isFrozen) {
+        if (!dataroom) {
+          return res.status(400).json({
+            error: "Invalid data room.",
+          });
+        }
+        if (dataroom.isFrozen) {
           return res.status(403).json({
             error:
               "This data room is frozen. You cannot create new links for a frozen data room.",
