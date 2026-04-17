@@ -737,6 +737,7 @@ export default function LinksTable({
         },
         body: JSON.stringify({
           isArchived: !isArchived,
+          teamId: currentTeamId,
         }),
       });
 
