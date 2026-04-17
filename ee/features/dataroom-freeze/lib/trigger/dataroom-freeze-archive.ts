@@ -721,57 +721,28 @@ function splitFilesIntoBatches(
     }
   }
 
-  const filesWithSize = filesWithInfo.filter((f) => f.size > 0);
-  const hasSizeInfo = filesWithSize.length > filesWithInfo.length * 0.5;
+  let currentBatch: FileInfo[] = [];
+  let currentBatchSize = 0;
 
-  if (hasSizeInfo) {
-    let currentBatch: FileInfo[] = [];
-    let currentBatchSize = 0;
+  for (const fileInfo of filesWithInfo) {
+    const fileSize = fileInfo.size || 10 * 1024 * 1024;
 
-    for (const fileInfo of filesWithInfo) {
-      const fileSize = fileInfo.size || 10 * 1024 * 1024;
-
-      if (
-        currentBatch.length > 0 &&
-        (currentBatchSize + fileSize > MAX_ZIP_SIZE_BYTES ||
-          currentBatch.length >= MAX_FILES_PER_BATCH)
-      ) {
-        batches.push(buildBatchFromFiles(currentBatch, folderStructure));
-        currentBatch = [];
-        currentBatchSize = 0;
-      }
-
-      currentBatch.push(fileInfo);
-      currentBatchSize += fileSize;
-    }
-
-    if (currentBatch.length > 0) {
+    if (
+      currentBatch.length > 0 &&
+      (currentBatchSize + fileSize > MAX_ZIP_SIZE_BYTES ||
+        currentBatch.length >= MAX_FILES_PER_BATCH)
+    ) {
       batches.push(buildBatchFromFiles(currentBatch, folderStructure));
-    }
-  } else {
-    let currentBatch: FileInfo[] = [];
-    let currentBatchSize = 0;
-
-    for (const fileInfo of filesWithInfo) {
-      const fileSize = fileInfo.size || 10 * 1024 * 1024;
-
-      if (
-        currentBatch.length > 0 &&
-        (currentBatchSize + fileSize > MAX_ZIP_SIZE_BYTES ||
-          currentBatch.length >= MAX_FILES_PER_BATCH)
-      ) {
-        batches.push(buildBatchFromFiles(currentBatch, folderStructure));
-        currentBatch = [];
-        currentBatchSize = 0;
-      }
-
-      currentBatch.push(fileInfo);
-      currentBatchSize += fileSize;
+      currentBatch = [];
+      currentBatchSize = 0;
     }
 
-    if (currentBatch.length > 0) {
-      batches.push(buildBatchFromFiles(currentBatch, folderStructure));
-    }
+    currentBatch.push(fileInfo);
+    currentBatchSize += fileSize;
+  }
+
+  if (currentBatch.length > 0) {
+    batches.push(buildBatchFromFiles(currentBatch, folderStructure));
   }
 
   return batches;
