@@ -37,6 +37,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   SidebarContent,
   SidebarGroup,
@@ -347,7 +348,9 @@ export function DataroomSidebarContent() {
         </SidebarGroup>
 
         <SidebarGroup>
-          {dataroom?.isFrozen ? (
+          {!dataroom ? (
+            <Skeleton className="h-8 w-full group-data-[collapsible=icon]:!size-8" />
+          ) : dataroom.isFrozen ? (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
