@@ -393,6 +393,9 @@ export const dataroomFreezeArchiveTask = task({
               abortErr instanceof Error ? abortErr.message : String(abortErr),
           });
         }
+        // Ensure uploadPromise's rejection (triggered by abort() above) is
+        // observed so it doesn't surface as an unhandled rejection.
+        uploadPromise.catch(() => {});
         throw err;
       }
 
