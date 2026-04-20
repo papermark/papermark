@@ -1,10 +1,4 @@
-import { createHash } from "node:crypto";
-import { Readable, Transform } from "node:stream";
-
-import {
-  getFreezeArchiveConfig,
-  getTeamStorageConfigById,
-} from "@/ee/features/storage/config";
+import { getTeamStorageConfigById } from "@/ee/features/storage/config";
 import { InvocationType, InvokeCommand } from "@aws-sdk/client-lambda";
 import {
   DeleteObjectsCommand,
@@ -15,6 +9,8 @@ import { Upload } from "@aws-sdk/lib-storage";
 import { logger, metadata, task } from "@trigger.dev/sdk";
 import archiver from "archiver";
 import Bottleneck from "bottleneck";
+import { createHash } from "node:crypto";
+import { Readable, Transform } from "node:stream";
 
 import { getLambdaClientForTeam } from "@/lib/files/aws-client";
 import { parseS3PresignedUrl } from "@/lib/files/bulk-download-presign";
@@ -33,7 +29,12 @@ const tinybirdLimiter = new Bottleneck({
 function escapeCsvField(field: string | number | null | undefined): string {
   if (field === null || field === undefined) return "";
   const s = String(field);
-  if (s.includes(",") || s.includes("\n") || s.includes("\r") || s.includes('"')) {
+  if (
+    s.includes(",") ||
+    s.includes("\n") ||
+    s.includes("\r") ||
+    s.includes('"')
+  ) {
     return `"${s.replace(/"/g, '""')}"`;
   }
   return s;
@@ -111,315 +112,324 @@ export const dataroomFreezeArchiveTask = task({
     metadata.set("text", "Collecting documents...");
 
     // Step 1: Create the documents zip(s) via Lambda (direct invocation)
-    const documentsZipS3Keys: { bucket: string; key: string; region: string }[] =
-      [];
+    const documentsZipS3Keys: {
+      bucket: string;
+      key: string;
+      region: string;
+    }[] = [];
     let archiveCompleted = false;
+    const storageConfigPromise = getTeamStorageConfigById(teamId);
     try {
-    if (fileKeys.length > 0) {
-      metadata.set("progress", 0.1);
-      metadata.set("text", "Creating document archive...");
+      if (fileKeys.length > 0) {
+        metadata.set("progress", 0.1);
+        metadata.set("text", "Creating document archive...");
 
-      const timestamp = new Date()
-        .toISOString()
-        .replace(/[-:]/g, "")
-        .replace(/\.\d{3}/, "");
+        const timestamp = new Date()
+          .toISOString()
+          .replace(/[-:]/g, "")
+          .replace(/\.\d{3}/, "");
 
-      const [lambdaClient, storageConfig] = await Promise.all([
-        getLambdaClientForTeam(teamId),
-        getTeamStorageConfigById(teamId),
-      ]);
+        const [lambdaClient, storageConfig] = await Promise.all([
+          getLambdaClientForTeam(teamId),
+          storageConfigPromise,
+        ]);
 
-      const batches = splitFilesIntoBatches(folderStructure, fileKeys);
-      const totalBatches = batches.length;
+        const batches = splitFilesIntoBatches(folderStructure, fileKeys);
+        const totalBatches = batches.length;
 
-      logger.info("Document archive batches created", {
-        totalBatches,
-        batchDetails: batches.map((b, i) => ({
-          batch: i + 1,
-          files: b.fileKeys.length,
-          sizeMB: Math.round(b.totalSize / (1024 * 1024)),
-        })),
-      });
-
-      for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i];
-        const batchNumber = i + 1;
-        const isSingleBatch = totalBatches === 1;
-
-        metadata.set(
-          "text",
-          isSingleBatch
-            ? "Creating document archive..."
-            : `Creating document archive (${batchNumber}/${totalBatches})...`,
-        );
-
-        const zipFileName = isSingleBatch
-          ? `${dataroomName}-freeze-${timestamp}`
-          : `${dataroomName}-freeze-${timestamp}-${String(batchNumber).padStart(3, "0")}`;
-
-        const command = new InvokeCommand({
-          FunctionName: storageConfig.lambdaFunctionName,
-          InvocationType: InvocationType.RequestResponse,
-          Payload: JSON.stringify({
-            sourceBucket,
-            fileKeys: batch.fileKeys,
-            folderStructure: batch.folderStructure,
-            watermarkConfig: { enabled: false },
-            zipPartNumber: batchNumber,
-            totalParts: totalBatches,
-            dataroomName,
-            zipFileName,
-            expirationHours: 24,
-          }),
+        logger.info("Document archive batches created", {
+          totalBatches,
+          batchDetails: batches.map((b, i) => ({
+            batch: i + 1,
+            files: b.fileKeys.length,
+            sizeMB: Math.round(b.totalSize / (1024 * 1024)),
+          })),
         });
 
-        const response = await lambdaClient.send(command);
+        for (let i = 0; i < batches.length; i++) {
+          const batch = batches[i];
+          const batchNumber = i + 1;
+          const isSingleBatch = totalBatches === 1;
 
-        if (!response.Payload) {
-          throw new Error(
-            `Lambda response payload is undefined (batch ${batchNumber})`,
+          metadata.set(
+            "text",
+            isSingleBatch
+              ? "Creating document archive..."
+              : `Creating document archive (${batchNumber}/${totalBatches})...`,
+          );
+
+          const zipFileName = isSingleBatch
+            ? `${dataroomName}-freeze-${timestamp}`
+            : `${dataroomName}-freeze-${timestamp}-${String(batchNumber).padStart(3, "0")}`;
+
+          const command = new InvokeCommand({
+            FunctionName: storageConfig.lambdaFunctionName,
+            InvocationType: InvocationType.RequestResponse,
+            Payload: JSON.stringify({
+              sourceBucket,
+              fileKeys: batch.fileKeys,
+              folderStructure: batch.folderStructure,
+              watermarkConfig: { enabled: false },
+              zipPartNumber: batchNumber,
+              totalParts: totalBatches,
+              dataroomName,
+              zipFileName,
+              expirationHours: 24,
+            }),
+          });
+
+          const response = await lambdaClient.send(command);
+
+          if (!response.Payload) {
+            throw new Error(
+              `Lambda response payload is undefined (batch ${batchNumber})`,
+            );
+          }
+
+          const decodedPayload = new TextDecoder().decode(response.Payload);
+          const lambdaResult = JSON.parse(decodedPayload);
+
+          if (lambdaResult.errorMessage) {
+            throw new Error(
+              `Lambda error (batch ${batchNumber}): ${lambdaResult.errorMessage}`,
+            );
+          }
+
+          const body = JSON.parse(lambdaResult.body);
+          const s3KeyInfo = parseS3PresignedUrl(body.downloadUrl);
+          documentsZipS3Keys.push(s3KeyInfo);
+
+          const batchProgress = 0.1 + (0.3 * batchNumber) / totalBatches;
+          metadata.set("progress", batchProgress);
+
+          logger.info(
+            `Document batch ${batchNumber}/${totalBatches} completed`,
+            {
+              s3Key: s3KeyInfo.key,
+              bucket: s3KeyInfo.bucket,
+            },
           );
         }
-
-        const decodedPayload = new TextDecoder().decode(response.Payload);
-        const lambdaResult = JSON.parse(decodedPayload);
-
-        if (lambdaResult.errorMessage) {
-          throw new Error(
-            `Lambda error (batch ${batchNumber}): ${lambdaResult.errorMessage}`,
-          );
-        }
-
-        const body = JSON.parse(lambdaResult.body);
-        const s3KeyInfo = parseS3PresignedUrl(body.downloadUrl);
-        documentsZipS3Keys.push(s3KeyInfo);
-
-        const batchProgress = 0.1 + (0.3 * batchNumber) / totalBatches;
-        metadata.set("progress", batchProgress);
-
-        logger.info(`Document batch ${batchNumber}/${totalBatches} completed`, {
-          s3Key: s3KeyInfo.key,
-          bucket: s3KeyInfo.bucket,
-        });
       }
-    }
 
-    metadata.set("progress", 0.4);
-    metadata.set("text", "Generating audit logs...");
+      metadata.set("progress", 0.4);
+      metadata.set("text", "Generating audit logs...");
 
-    // Step 2: Generate audit logs CSV
-    const auditCsv = await generateAuditLogsCsv(dataroomId, teamId);
-    logger.info("Audit logs CSV generated", {
-      rows: auditCsv.split("\n").length,
-    });
-
-    metadata.set("progress", 0.6);
-    metadata.set("text", "Generating Q&A data...");
-
-    // Step 3: Generate Q&A CSV
-    const qaCsv = await generateQACsv(dataroomId);
-    logger.info("Q&A CSV generated", { rows: qaCsv.split("\n").length });
-
-    metadata.set("progress", 0.7);
-    metadata.set("text", "Building final archive...");
-
-    // Step 4-7: Stream documents + CSVs + MANIFEST through archiver → SHA-256 tap → multipart S3 upload.
-    // No disk I/O: the final archive is never materialized locally, so size is bounded by S3 limits
-    // (partSize × 10,000 parts), not the Trigger.dev machine's 10 GB disk.
-    const safeName = dataroomName.replace(/[^a-zA-Z0-9]/g, "_");
-    const uploadTimestamp = new Date().toISOString().split("T")[0];
-    const s3Key = `freeze-archives/${safeName}-${nanoid()}-${uploadTimestamp}.zip`;
-
-    const archiveConfig = getFreezeArchiveConfig();
-    const s3Client = new S3Client({
-      region: archiveConfig.region,
-      credentials: {
-        accessKeyId: archiveConfig.accessKeyId,
-        secretAccessKey: archiveConfig.secretAccessKey,
-      },
-    });
-
-    // zlib.level 0 (store) because every entry is either already-compressed (inner zips)
-    // or tiny text (CSVs / MANIFEST); deflate would waste CPU without shrinking the output.
-    const archive = archiver("zip", { zlib: { level: 0 } });
-    const archiveHasher = createHash("sha256");
-    const hashTap = new Transform({
-      transform(chunk, _enc, cb) {
-        archiveHasher.update(chunk);
-        cb(null, chunk);
-      },
-    });
-    archive.pipe(hashTap);
-
-    // 32 MiB parts → supports ~320 GiB before hitting the 10,000-part ceiling.
-    // Bump to 128–256 MiB if multi-TB archives become routine.
-    const upload = new Upload({
-      client: s3Client,
-      partSize: 32 * 1024 * 1024,
-      queueSize: 4,
-      params: {
-        Bucket: archiveConfig.bucket,
-        Key: s3Key,
-        Body: hashTap,
-        ContentType: "application/zip",
-        ContentDisposition: `attachment; filename="${safeName}-freeze-archive.zip"`,
-      },
-    });
-
-    // Registered after `upload` exists so archiver failures can also abort
-    // any in-flight multipart parts rather than leaving them in S3.
-    archive.on("error", (err) => {
-      logger.error("Archiver error", { error: err.message });
-      hashTap.destroy(err);
-      upload.abort().catch((abortErr) => {
-        logger.error("Failed to abort multipart upload after archiver error", {
-          error:
-            abortErr instanceof Error ? abortErr.message : String(abortErr),
-        });
+      // Step 2: Generate audit logs CSV
+      const auditCsv = await generateAuditLogsCsv(dataroomId, teamId);
+      logger.info("Audit logs CSV generated", {
+        rows: auditCsv.split("\n").length,
       });
-    });
 
-    let uploadedBytes = 0;
-    upload.on("httpUploadProgress", (p) => {
-      if (typeof p.loaded === "number") uploadedBytes = p.loaded;
-    });
+      metadata.set("progress", 0.6);
+      metadata.set("text", "Generating Q&A data...");
 
-    const uploadPromise = upload.done().catch((err) => {
-      archive.destroy(err as Error);
-      throw err;
-    });
+      // Step 3: Generate Q&A CSV
+      const qaCsv = await generateQACsv(dataroomId);
+      logger.info("Q&A CSV generated", { rows: qaCsv.split("\n").length });
 
-    try {
-    const manifestEntries: { hash: string; path: string }[] = [];
-    const teamStorageConfig = await getTeamStorageConfigById(teamId);
+      metadata.set("progress", 0.7);
+      metadata.set("text", "Building final archive...");
 
-    for (let i = 0; i < documentsZipS3Keys.length; i++) {
-      const srcKey = documentsZipS3Keys[i];
-      const downloadClient = new S3Client({
-        region: srcKey.region,
+      // Step 4-7: Stream documents + CSVs + MANIFEST through archiver → SHA-256 tap → multipart S3 upload.
+      // No disk I/O: the final archive is never materialized locally, so size is bounded by S3 limits
+      // (partSize × 10,000 parts), not the Trigger.dev machine's 10 GB disk.
+      const safeName = dataroomName.replace(/[^a-zA-Z0-9]/g, "_");
+      const uploadTimestamp = new Date().toISOString().split("T")[0];
+      const s3Key = `freeze-archives/${safeName}-${nanoid()}-${uploadTimestamp}.zip`;
+
+      const storageConfig = await storageConfigPromise;
+      const s3Client = new S3Client({
+        region: storageConfig.region,
         credentials: {
-          accessKeyId: teamStorageConfig.accessKeyId,
-          secretAccessKey: teamStorageConfig.secretAccessKey,
+          accessKeyId: storageConfig.accessKeyId,
+          secretAccessKey: storageConfig.secretAccessKey,
         },
       });
 
-      const getResponse = await downloadClient.send(
-        new GetObjectCommand({ Bucket: srcKey.bucket, Key: srcKey.key }),
-      );
-
-      if (!getResponse.Body) {
-        throw new Error(
-          `Empty S3 response body for documents zip (part ${i + 1})`,
-        );
-      }
-
-      const name =
-        documentsZipS3Keys.length === 1
-          ? "documents.zip"
-          : `documents-${String(i + 1).padStart(3, "0")}.zip`;
-
-      const entryHasher = createHash("sha256");
-      const entryTap = new Transform({
+      // zlib.level 0 (store) because every entry is either already-compressed (inner zips)
+      // or tiny text (CSVs / MANIFEST); deflate would waste CPU without shrinking the output.
+      const archive = archiver("zip", { zlib: { level: 0 } });
+      const archiveHasher = createHash("sha256");
+      const hashTap = new Transform({
         transform(chunk, _enc, cb) {
-          entryHasher.update(chunk);
+          archiveHasher.update(chunk);
           cb(null, chunk);
         },
       });
-      const source = (getResponse.Body as Readable).pipe(entryTap);
+      archive.pipe(hashTap);
 
-      await appendStreamEntry(archive, source, name);
-      manifestEntries.push({ hash: entryHasher.digest("hex"), path: name });
-
-      const batchProgress =
-        0.7 + (0.2 * (i + 1)) / documentsZipS3Keys.length;
-      metadata.set("progress", batchProgress);
-      metadata.set(
-        "text",
-        documentsZipS3Keys.length === 1
-          ? "Uploading archive..."
-          : `Uploading archive (${i + 1}/${documentsZipS3Keys.length})...`,
-      );
-      logger.info(`Documents zip streamed into archive (part ${i + 1})`, {
-        name,
+      // 32 MiB parts → supports ~320 GiB before hitting the 10,000-part ceiling.
+      // Bump to 128–256 MiB if multi-TB archives become routine.
+      const upload = new Upload({
+        client: s3Client,
+        partSize: 32 * 1024 * 1024,
+        queueSize: 4,
+        params: {
+          Bucket: storageConfig.archiveBucket,
+          Key: s3Key,
+          Body: hashTap,
+          ContentType: "application/zip",
+          ContentDisposition: `attachment; filename="${safeName}-freeze-archive.zip"`,
+        },
       });
-    }
 
-    const auditBuffer = Buffer.from(auditCsv, "utf-8");
-    archive.append(auditBuffer, { name: "audit-log.csv" });
-    manifestEntries.push({
-      hash: createHash("sha256").update(auditBuffer).digest("hex"),
-      path: "audit-log.csv",
-    });
+      // Registered after `upload` exists so archiver failures can also abort
+      // any in-flight multipart parts rather than leaving them in S3.
+      archive.on("error", (err: Error) => {
+        logger.error("Archiver error", { error: err.message });
+        hashTap.destroy(err);
+        upload.abort().catch((abortErr) => {
+          logger.error(
+            "Failed to abort multipart upload after archiver error",
+            {
+              error:
+                abortErr instanceof Error ? abortErr.message : String(abortErr),
+            },
+          );
+        });
+      });
 
-    const qaBuffer = Buffer.from(qaCsv, "utf-8");
-    archive.append(qaBuffer, { name: "qa-pairs.csv" });
-    manifestEntries.push({
-      hash: createHash("sha256").update(qaBuffer).digest("hex"),
-      path: "qa-pairs.csv",
-    });
+      let uploadedBytes = 0;
+      upload.on("httpUploadProgress", (p) => {
+        if (typeof p.loaded === "number") uploadedBytes = p.loaded;
+      });
 
-    const manifestContent = manifestEntries
-      .map((e) => `${e.hash}  ${e.path}`)
-      .join("\n");
-    archive.append(Buffer.from(manifestContent, "utf-8"), {
-      name: "MANIFEST.sha256",
-    });
+      const uploadPromise = upload.done().catch((err) => {
+        archive.destroy(err as Error);
+        throw err;
+      });
 
-    metadata.set("progress", 0.9);
-    metadata.set("text", "Finalizing upload...");
-
-    await archive.finalize();
-    await uploadPromise;
-    } catch (err) {
       try {
-        await upload.abort();
-        logger.info("Aborted multipart S3 upload after error", {
-          bucket: archiveConfig.bucket,
-          key: s3Key,
+        const manifestEntries: { hash: string; path: string }[] = [];
+
+        for (let i = 0; i < documentsZipS3Keys.length; i++) {
+          const srcKey = documentsZipS3Keys[i];
+          const downloadClient = new S3Client({
+            region: srcKey.region,
+            credentials: {
+              accessKeyId: storageConfig.accessKeyId,
+              secretAccessKey: storageConfig.secretAccessKey,
+            },
+          });
+
+          const getResponse = await downloadClient.send(
+            new GetObjectCommand({ Bucket: srcKey.bucket, Key: srcKey.key }),
+          );
+
+          if (!getResponse.Body) {
+            throw new Error(
+              `Empty S3 response body for documents zip (part ${i + 1})`,
+            );
+          }
+
+          const name =
+            documentsZipS3Keys.length === 1
+              ? "documents.zip"
+              : `documents-${String(i + 1).padStart(3, "0")}.zip`;
+
+          const entryHasher = createHash("sha256");
+          const entryTap = new Transform({
+            transform(chunk, _enc, cb) {
+              entryHasher.update(chunk);
+              cb(null, chunk);
+            },
+          });
+          const source = (getResponse.Body as Readable).pipe(entryTap);
+
+          await appendStreamEntry(archive, source, name);
+          manifestEntries.push({ hash: entryHasher.digest("hex"), path: name });
+
+          const batchProgress =
+            0.7 + (0.2 * (i + 1)) / documentsZipS3Keys.length;
+          metadata.set("progress", batchProgress);
+          metadata.set(
+            "text",
+            documentsZipS3Keys.length === 1
+              ? "Uploading archive..."
+              : `Uploading archive (${i + 1}/${documentsZipS3Keys.length})...`,
+          );
+          logger.info(`Documents zip streamed into archive (part ${i + 1})`, {
+            name,
+          });
+        }
+
+        const auditBuffer = Buffer.from(auditCsv, "utf-8");
+        archive.append(auditBuffer, { name: "audit-log.csv" });
+        manifestEntries.push({
+          hash: createHash("sha256").update(auditBuffer).digest("hex"),
+          path: "audit-log.csv",
         });
-      } catch (abortErr) {
-        logger.error("Failed to abort multipart upload", {
-          error:
-            abortErr instanceof Error ? abortErr.message : String(abortErr),
+
+        const qaBuffer = Buffer.from(qaCsv, "utf-8");
+        archive.append(qaBuffer, { name: "qa-pairs.csv" });
+        manifestEntries.push({
+          hash: createHash("sha256").update(qaBuffer).digest("hex"),
+          path: "qa-pairs.csv",
         });
+
+        const manifestContent = manifestEntries
+          .map((e) => `${e.hash}  ${e.path}`)
+          .join("\n");
+        archive.append(Buffer.from(manifestContent, "utf-8"), {
+          name: "MANIFEST.sha256",
+        });
+
+        metadata.set("progress", 0.9);
+        metadata.set("text", "Finalizing upload...");
+
+        await archive.finalize();
+        await uploadPromise;
+      } catch (err) {
+        try {
+          await upload.abort();
+          logger.info("Aborted multipart S3 upload after error", {
+            bucket: storageConfig.archiveBucket,
+            key: s3Key,
+          });
+        } catch (abortErr) {
+          logger.error("Failed to abort multipart upload", {
+            error:
+              abortErr instanceof Error ? abortErr.message : String(abortErr),
+          });
+        }
+        throw err;
       }
-      throw err;
-    }
 
-    const archiveHash = archiveHasher.digest("hex");
+      const archiveHash = archiveHasher.digest("hex");
 
-    logger.info("Archive uploaded to S3", {
-      bucket: archiveConfig.bucket,
-      key: s3Key,
-      size: uploadedBytes,
-    });
+      logger.info("Archive uploaded to S3", {
+        bucket: storageConfig.archiveBucket,
+        key: s3Key,
+        size: uploadedBytes,
+      });
 
-    await prisma.dataroom.update({
-      where: { id: dataroomId, teamId },
-      data: {
-        freezeArchiveUrl: s3Key,
-        freezeArchiveHash: archiveHash,
-      },
-    });
+      await prisma.dataroom.update({
+        where: { id: dataroomId, teamId },
+        data: {
+          freezeArchiveUrl: s3Key,
+          freezeArchiveHash: archiveHash,
+        },
+      });
 
-    metadata.set("progress", 1.0);
-    metadata.set("text", "Archive ready");
-    metadata.set("archiveReady", true);
-    metadata.set("archiveHash", archiveHash);
+      metadata.set("progress", 1.0);
+      metadata.set("text", "Archive ready");
+      metadata.set("archiveReady", true);
+      metadata.set("archiveHash", archiveHash);
 
-    logger.info("Dataroom freeze archive completed", {
-      dataroomId,
-      archiveHash,
-      s3Key,
-    });
+      logger.info("Dataroom freeze archive completed", {
+        dataroomId,
+        archiveHash,
+        s3Key,
+      });
 
-    archiveCompleted = true;
+      archiveCompleted = true;
 
-    return {
-      success: true,
-      s3Key,
-      archiveHash,
-    };
+      return {
+        success: true,
+        s3Key,
+        archiveHash,
+      };
     } finally {
       if (!archiveCompleted && documentsZipS3Keys.length > 0) {
         await cleanupIntermediateZipParts(teamId, documentsZipS3Keys);

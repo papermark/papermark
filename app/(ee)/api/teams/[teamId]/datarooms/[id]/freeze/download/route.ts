@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getFreezeArchiveConfig } from "@/ee/features/storage/config";
+import { getTeamStorageConfigById } from "@/ee/features/storage/config";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getServerSession } from "next-auth";
@@ -62,7 +62,7 @@ export async function GET(
       );
     }
 
-    const archiveConfig = getFreezeArchiveConfig();
+    const archiveConfig = await getTeamStorageConfigById(teamId);
     const s3Client = new S3Client({
       region: archiveConfig.region,
       credentials: {
@@ -74,7 +74,7 @@ export async function GET(
     const url = await getSignedUrl(
       s3Client,
       new GetObjectCommand({
-        Bucket: archiveConfig.bucket,
+        Bucket: archiveConfig.archiveBucket,
         Key: dataroom.freezeArchiveUrl,
       }),
       { expiresIn: FIVE_MINUTES / ONE_SECOND },

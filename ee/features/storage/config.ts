@@ -3,6 +3,7 @@ import { getFeatureFlags } from "@/lib/featureFlags";
 export interface StorageConfig {
   bucket: string;
   advancedBucket?: string;
+  archiveBucket: string;
   region: string;
   accessKeyId: string;
   secretAccessKey: string;
@@ -60,9 +61,19 @@ export function getStorageConfig(storageRegion?: string): StorageConfig {
     return process.env[regionVar] || (isUS ? "us-east-2" : "eu-central-1");
   };
 
+  const getArchiveBucket = () => {
+    const archiveBucketVar = `NEXT_PRIVATE_ARCHIVE_BUCKET${suffix}`;
+    const archiveBucket = process.env[archiveBucketVar];
+    if (!archiveBucket) {
+      throw new Error(`Missing environment variable: ${archiveBucketVar}`);
+    }
+    return archiveBucket;
+  };
+
   return {
     bucket: getBucket(),
     advancedBucket: process.env[`NEXT_PRIVATE_ADVANCED_UPLOAD_BUCKET${suffix}`],
+    archiveBucket: getArchiveBucket(),
     region: getRegion(),
     accessKeyId: getAccessKeyId(),
     secretAccessKey: getSecretAccessKey(),
@@ -87,32 +98,6 @@ export function getStorageConfig(storageRegion?: string): StorageConfig {
  * @param teamId - The team ID to get storage configuration for
  * @returns Promise<StorageConfig> - The storage configuration for the team
  */
-export interface FreezeArchiveStorageConfig {
-  bucket: string;
-  region: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-}
-
-export function getFreezeArchiveConfig(): FreezeArchiveStorageConfig {
-  const bucket = process.env.NEXT_PRIVATE_ARCHIVE_BUCKET;
-  if (!bucket) {
-    throw new Error(
-      "Missing environment variable: NEXT_PRIVATE_ARCHIVE_BUCKET",
-    );
-  }
-
-  const baseConfig = getStorageConfig();
-
-  return {
-    bucket,
-    region:
-      process.env.NEXT_PRIVATE_ARCHIVE_REGION || baseConfig.region,
-    accessKeyId: baseConfig.accessKeyId,
-    secretAccessKey: baseConfig.secretAccessKey,
-  };
-}
-
 export async function getTeamStorageConfigById(
   teamId: string,
 ): Promise<StorageConfig> {
