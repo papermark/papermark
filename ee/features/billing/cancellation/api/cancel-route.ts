@@ -4,6 +4,7 @@ import { isTeamPaused } from "@/ee/features/billing/cancellation/lib/is-team-pau
 import { stripeInstance } from "@/ee/stripe";
 import { isOldAccount } from "@/ee/stripe/utils";
 import { authOptions } from "@/lib/auth/auth-options";
+import { runs } from "@trigger.dev/sdk";
 import { waitUntil } from "@vercel/functions";
 import { getServerSession } from "next-auth/next";
 
@@ -95,6 +96,12 @@ export async function handleRoute(req: NextApiRequest, res: NextApiResponse) {
               cancelledAt: new Date(),
             },
           }),
+          // When cancelling a paused subscription, also cancel any scheduled
+          // automatic unpause / reminder tasks so they don't race with the
+          // Stripe-driven cancellation at pauseEndsAt.
+          teamIsPaused
+            ? cancelScheduledUnpauseRuns(teamId)
+            : Promise.resolve(),
           log({
             message: `Team ${teamId} cancelled their subscription${
               teamIsPaused ? " (paused – will end at pauseEndsAt)" : ""
@@ -120,5 +127,27 @@ export async function handleRoute(req: NextApiRequest, res: NextApiResponse) {
   } else {
     res.setHeader("Allow", ["POST"]);
     res.status(405).end(`Method ${req.method} Not Allowed`);
+  }
+}
+
+async function cancelScheduledUnpauseRuns(teamId: string) {
+  try {
+    const scheduled = await runs.list({
+      taskIdentifier: [
+        "send-pause-resume-notification",
+        "automatic-unpause-subscription",
+      ],
+      tag: [`team_${teamId}`],
+      status: ["DELAYED", "QUEUED"],
+      period: "90d",
+    });
+
+    await Promise.all(scheduled.data.map((run) => runs.cancel(run.id)));
+  } catch (error) {
+    // Best-effort – do not fail cancellation if we can't clean up trigger runs.
+    await log({
+      message: `Failed to cancel scheduled unpause runs for team ${teamId}: ${error}`,
+      type: "error",
+    });
   }
 }
