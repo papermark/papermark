@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { isTeamPaused } from "@/ee/features/billing/cancellation/lib/is-team-paused";
 import { stripeInstance } from "@/ee/stripe";
 import { isOldAccount } from "@/ee/stripe/utils";
 import { authOptions } from "@/lib/auth/auth-options";
@@ -40,6 +41,9 @@ export async function handleRoute(req: NextApiRequest, res: NextApiResponse) {
           stripeId: true,
           subscriptionId: true,
           plan: true,
+          pausedAt: true,
+          pauseStartsAt: true,
+          pauseEndsAt: true,
         },
       });
 
@@ -61,14 +65,22 @@ export async function handleRoute(req: NextApiRequest, res: NextApiResponse) {
         team.subscriptionId,
         {
           cancel_at_period_end: false,
+          // Clear any scheduled cancellation (e.g. cancellation scheduled
+          // during a paused period).
+          cancel_at: null,
         },
       );
+
+      // Preserve the pause state if the team is still within a paused period.
+      // Reactivating a cancellation scheduled during a pause should only
+      // remove the scheduled cancellation, not end the pause early.
+      const teamIsPaused = isTeamPaused(team);
 
       await prisma.team.update({
         where: { id: teamId },
         data: {
           cancelledAt: null,
-          pauseStartsAt: null,
+          ...(teamIsPaused ? {} : { pauseStartsAt: null }),
         },
       });
 

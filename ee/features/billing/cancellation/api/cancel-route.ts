@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { isTeamPaused } from "@/ee/features/billing/cancellation/lib/is-team-paused";
 import { stripeInstance } from "@/ee/stripe";
 import { isOldAccount } from "@/ee/stripe/utils";
 import { authOptions } from "@/lib/auth/auth-options";
@@ -40,6 +41,9 @@ export async function handleRoute(req: NextApiRequest, res: NextApiResponse) {
           stripeId: true,
           subscriptionId: true,
           plan: true,
+          pausedAt: true,
+          pauseStartsAt: true,
+          pauseEndsAt: true,
         },
       });
 
@@ -57,15 +61,34 @@ export async function handleRoute(req: NextApiRequest, res: NextApiResponse) {
 
       const stripe = stripeInstance(isOldAccount(team.plan));
 
+      // If the team is currently paused, schedule cancellation at the end of
+      // the pause period (so the pause is honored in full) and keep the pause
+      // coupon intact. Otherwise fall back to standard period-end cancellation.
+      const teamIsPaused = isTeamPaused(team);
+      const effectiveEndsAt =
+        teamIsPaused && team.pauseEndsAt
+          ? new Date(team.pauseEndsAt)
+          : undefined;
+
       waitUntil(
         Promise.all([
-          stripe.subscriptions.update(team.subscriptionId, {
-            cancel_at_period_end: true,
-          }),
-          // Delete discount if one exists - catch errors since subscription may not have a discount
-          stripe.subscriptions.deleteDiscount(team.subscriptionId).catch(() => {
-            // Ignore error - subscription may not have a discount applied
-          }),
+          teamIsPaused && effectiveEndsAt
+            ? stripe.subscriptions.update(team.subscriptionId, {
+                cancel_at: Math.floor(effectiveEndsAt.getTime() / 1000),
+              })
+            : Promise.all([
+                stripe.subscriptions.update(team.subscriptionId, {
+                  cancel_at_period_end: true,
+                }),
+                // Only delete discounts for non-paused subscriptions. Paused
+                // subscriptions rely on the pause coupon to remain at $0 for
+                // the remainder of the pause period.
+                stripe.subscriptions
+                  .deleteDiscount(team.subscriptionId)
+                  .catch(() => {
+                    // Ignore – subscription may not have a discount applied
+                  }),
+              ]),
           prisma.team.update({
             where: { id: teamId },
             data: {
@@ -73,13 +96,19 @@ export async function handleRoute(req: NextApiRequest, res: NextApiResponse) {
             },
           }),
           log({
-            message: `Team ${teamId} cancelled their subscription.`,
+            message: `Team ${teamId} cancelled their subscription${
+              teamIsPaused ? " (paused – will end at pauseEndsAt)" : ""
+            }.`,
             type: "info",
           }),
         ]),
       );
 
-      return res.status(200).json({ success: true });
+      return res.status(200).json({
+        success: true,
+        cancelAt: (effectiveEndsAt ?? null)?.toISOString() ?? null,
+        isPaused: teamIsPaused,
+      });
     } catch (error) {
       console.error("Error cancelling subscription:", error);
       await log({

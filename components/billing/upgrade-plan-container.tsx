@@ -18,6 +18,16 @@ import { mutate } from "swr";
 import { useAnalytics } from "@/lib/analytics";
 import { usePlan } from "@/lib/swr/use-billing";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,6 +50,12 @@ export default function UpgradePlanContainer() {
   const [loading, setLoading] = useState<boolean>(false);
   const [unpauseLoading, setUnpauseLoading] = useState<boolean>(false);
   const [cancellationModalOpen, setCancellationModalOpen] =
+    useState<boolean>(false);
+  const [
+    pausedCancellationConfirmOpen,
+    setPausedCancellationConfirmOpen,
+  ] = useState<boolean>(false);
+  const [cancelPausedLoading, setCancelPausedLoading] =
     useState<boolean>(false);
   const { currentTeamId } = useTeam();
   const {
@@ -135,6 +151,43 @@ export default function UpgradePlanContainer() {
     }
   };
 
+  const handleCancelPausedSubscription = async () => {
+    if (!currentTeamId) return;
+    setCancelPausedLoading(true);
+
+    try {
+      const response = await fetch(
+        `/api/teams/${currentTeamId}/billing/cancel`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to cancel subscription");
+      }
+
+      analytics.capture("Subscription Cancelled", {
+        teamId: currentTeamId,
+        plan: plan,
+        fromPausedState: true,
+      });
+
+      toast.success("Subscription cancelled.");
+      setPausedCancellationConfirmOpen(false);
+      mutate(`/api/teams/${currentTeamId}/billing/plan`);
+      mutate(`/api/teams/${currentTeamId}/billing/plan?withDiscount=true`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to cancel subscription. Please try again.");
+    } finally {
+      setCancelPausedLoading(false);
+    }
+  };
+
   const handleReactivateSubscription = async () => {
     if (!currentTeamId) return;
     setUnpauseLoading(true);
@@ -212,7 +265,7 @@ export default function UpgradePlanContainer() {
     } else if (isCancelled) {
       return (
         <Button onClick={handleReactivateSubscription} loading={unpauseLoading}>
-          Reactivate subscription
+          {isPaused ? "Undo cancellation" : "Reactivate subscription"}
         </Button>
       );
     } else {
@@ -235,7 +288,7 @@ export default function UpgradePlanContainer() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
-                    onClick={() => manageSubscription({ type: "cancellation" })}
+                    onClick={() => setPausedCancellationConfirmOpen(true)}
                     className="text-red-500"
                   >
                     <BanIcon className="h-4 w-4" />
@@ -338,20 +391,33 @@ export default function UpgradePlanContainer() {
                 </span>
               </CardDescription>
             )}
-            {isCancelled && endsAt && (
-              <CardDescription>
-                <span className="font-medium text-foreground">
-                  Subscription cancels on:{" "}
-                </span>
-                <span className="text-foreground">
-                  {new Date(endsAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
-              </CardDescription>
-            )}
+            {isCancelled &&
+              (() => {
+                // When the subscription is cancelled while paused, the
+                // cancellation takes effect at the end of the pause period
+                // (pauseEndsAt) rather than at the end of the current billing
+                // cycle (endsAt).
+                const effectiveCancelDate =
+                  isPaused && pauseEndsAt ? pauseEndsAt : endsAt;
+                if (!effectiveCancelDate) return null;
+                return (
+                  <CardDescription>
+                    <span className="font-medium text-foreground">
+                      Subscription cancels on:{" "}
+                    </span>
+                    <span className="text-foreground">
+                      {new Date(effectiveCancelDate).toLocaleDateString(
+                        "en-US",
+                        {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        },
+                      )}
+                    </span>
+                  </CardDescription>
+                );
+              })()}
             {discount && discount.valid && getDiscountText() && (
               <CardDescription>
                 <div className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-400/10 dark:text-green-400 dark:ring-green-400/30">
@@ -371,6 +437,54 @@ export default function UpgradePlanContainer() {
         open={cancellationModalOpen}
         onOpenChange={setCancellationModalOpen}
       />
+
+      <AlertDialog
+        open={pausedCancellationConfirmOpen}
+        onOpenChange={setPausedCancellationConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel subscription?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pauseEndsAt ? (
+                <>
+                  Your subscription is currently paused and will remain active
+                  until{" "}
+                  <span className="font-medium text-foreground">
+                    {new Date(pauseEndsAt).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </span>
+                  . After that date, your plan will end and you will lose access
+                  to premium features. You can undo this any time before then.
+                </>
+              ) : (
+                <>
+                  Your plan will end at the end of your current period. You can
+                  undo this at any time before then.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelPausedLoading}>
+              Keep subscription
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void handleCancelPausedSubscription();
+              }}
+              disabled={cancelPausedLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {cancelPausedLoading ? "Cancelling…" : "Cancel subscription"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
