@@ -52,7 +52,7 @@ export function Form({
   const [value, setValue] = useState(defaultValue);
 
   useEffect(() => {
-    if (defaultValue) setValue(defaultValue);
+    if (typeof defaultValue === "string") setValue(defaultValue);
   }, [defaultValue]);
 
   const saveDisabled = useMemo(() => {
