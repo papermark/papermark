@@ -21,11 +21,60 @@ async function applyFolderPermissions(
   }
 }
 
+/**
+ * Given a list of access control entries (itemId + itemType), batch-queries
+ * the referenced DataroomFolders and DataroomDocuments to find which ones
+ * are non-root (folder.parentId !== null or document.folderId !== null).
+ * Returns the set of non-root itemIds.
+ */
+async function getNonRootItemIds(
+  accessControls: { itemId: string; itemType: ItemType }[],
+): Promise<Set<string>> {
+  if (accessControls.length === 0) return new Set();
+
+  const folderItemIds = [
+    ...new Set(
+      accessControls
+        .filter((ac) => ac.itemType === ItemType.DATAROOM_FOLDER)
+        .map((ac) => ac.itemId),
+    ),
+  ];
+  const documentItemIds = [
+    ...new Set(
+      accessControls
+        .filter((ac) => ac.itemType === ItemType.DATAROOM_DOCUMENT)
+        .map((ac) => ac.itemId),
+    ),
+  ];
+
+  const [nonRootFolders, nonRootDocuments] = await Promise.all([
+    folderItemIds.length > 0
+      ? prisma.dataroomFolder.findMany({
+          where: { id: { in: folderItemIds }, parentId: { not: null } },
+          select: { id: true },
+        })
+      : Promise.resolve([]),
+    documentItemIds.length > 0
+      ? prisma.dataroomDocument.findMany({
+          where: { id: { in: documentItemIds }, folderId: { not: null } },
+          select: { id: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  return new Set([
+    ...nonRootFolders.map((f) => f.id),
+    ...nonRootDocuments.map((d) => d.id),
+  ]);
+}
+
 async function applyDefaultFolderPermissions(
   dataroomId: string,
   folderId: string,
   folderPath?: string,
 ) {
+  // Fetch groups with their access controls so we can distinguish
+  // admin-curated groups from groups with only auto-granted root permissions.
   const [dataroom, viewerGroups, permissionGroups] = await Promise.all([
     prisma.dataroom.findUnique({
       where: { id: dataroomId },
@@ -38,6 +87,9 @@ async function applyDefaultFolderPermissions(
       where: { dataroomId },
       select: {
         id: true,
+        accessControls: {
+          select: { itemId: true, itemType: true },
+        },
       },
     }),
     prisma.permissionGroup.findMany({
@@ -45,6 +97,9 @@ async function applyDefaultFolderPermissions(
       select: {
         id: true,
         name: true,
+        accessControls: {
+          select: { itemId: true, itemType: true },
+        },
       },
     }),
   ]);
@@ -61,7 +116,23 @@ async function applyDefaultFolderPermissions(
     return;
   }
 
-  // Fallback to default behavior (for root folders or non-inherit strategies)
+  // Resolve which existing access-control items are non-root so we can tell
+  // apart admin-curated groups from groups that only received prior
+  // auto-granted root-level permissions.
+  const allAccessControls = [
+    ...viewerGroups.flatMap((g) => g.accessControls),
+    ...permissionGroups.flatMap((g) => g.accessControls),
+  ];
+  const nonRootItemIds = await getNonRootItemIds(allAccessControls);
+
+  const hasCuratedPermissions = (
+    acs: { itemId: string; itemType: ItemType }[],
+  ) => acs.some((ac) => nonRootItemIds.has(ac.itemId));
+
+  // Fallback to default behavior (for root folders or non-inherit strategies).
+  // Groups with admin-curated non-root permissions are excluded – new root
+  // folders should not be auto-granted to groups the admin intentionally
+  // restricted to specific subfolders.
   const allPermissionGroupData: {
     groupId: string;
     itemId: string;
@@ -76,29 +147,34 @@ async function applyDefaultFolderPermissions(
       dataroom.defaultPermissionStrategy ===
       DefaultPermissionStrategy.INHERIT_FROM_PARENT
     ) {
-      permissionGroups.forEach((group) => {
-        allPermissionGroupData.push({
-          groupId: group.id,
-          itemId: folderId,
-          itemType: ItemType.DATAROOM_FOLDER,
-          canView: true, // Root folders get view permissions by default
-          canDownload: false,
-          canDownloadOriginal: false,
+      permissionGroups
+        .filter((group) => !hasCuratedPermissions(group.accessControls))
+        .forEach((group) => {
+          allPermissionGroupData.push({
+            groupId: group.id,
+            itemId: folderId,
+            itemType: ItemType.DATAROOM_FOLDER,
+            canView: true, // Root folders get view permissions by default
+            canDownload: false,
+            canDownloadOriginal: false,
+          });
         });
-      });
     }
     // For other strategies (ASK_EVERY_TIME, HIDDEN_BY_DEFAULT), don't auto-create permissions
   }
 
-  const viewerGroupData = viewerGroups.map((group) => ({
-    groupId: group.id,
-    itemId: folderId,
-    itemType: ItemType.DATAROOM_FOLDER,
-    canView:
-      dataroom.defaultPermissionStrategy ===
-      DefaultPermissionStrategy.INHERIT_FROM_PARENT,
-    canDownload: false,
-  }));
+  // Only auto-grant root folder access to viewer groups without curated non-root permissions
+  const viewerGroupData = viewerGroups
+    .filter((group) => !hasCuratedPermissions(group.accessControls))
+    .map((group) => ({
+      groupId: group.id,
+      itemId: folderId,
+      itemType: ItemType.DATAROOM_FOLDER,
+      canView:
+        dataroom.defaultPermissionStrategy ===
+        DefaultPermissionStrategy.INHERIT_FROM_PARENT,
+      canDownload: false,
+    }));
 
   await Promise.all([
     viewerGroupData.length > 0 &&

@@ -185,6 +185,53 @@ async function applyPermissionStrategy(
   }
 }
 
+/**
+ * Given a list of access control entries (itemId + itemType), batch-queries
+ * the referenced DataroomFolders and DataroomDocuments to find which ones
+ * are non-root (folder.parentId !== null or document.folderId !== null).
+ * Returns the set of non-root itemIds.
+ */
+async function getNonRootItemIds(
+  accessControls: { itemId: string; itemType: ItemType }[],
+): Promise<Set<string>> {
+  if (accessControls.length === 0) return new Set();
+
+  const folderItemIds = [
+    ...new Set(
+      accessControls
+        .filter((ac) => ac.itemType === ItemType.DATAROOM_FOLDER)
+        .map((ac) => ac.itemId),
+    ),
+  ];
+  const documentItemIds = [
+    ...new Set(
+      accessControls
+        .filter((ac) => ac.itemType === ItemType.DATAROOM_DOCUMENT)
+        .map((ac) => ac.itemId),
+    ),
+  ];
+
+  const [nonRootFolders, nonRootDocuments] = await Promise.all([
+    folderItemIds.length > 0
+      ? prisma.dataroomFolder.findMany({
+          where: { id: { in: folderItemIds }, parentId: { not: null } },
+          select: { id: true },
+        })
+      : Promise.resolve([]),
+    documentItemIds.length > 0
+      ? prisma.dataroomDocument.findMany({
+          where: { id: { in: documentItemIds }, folderId: { not: null } },
+          select: { id: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  return new Set([
+    ...nonRootFolders.map((f) => f.id),
+    ...nonRootDocuments.map((d) => d.id),
+  ]);
+}
+
 async function applyRootLevelPermissions(
   dataroomId: string,
   dataroomDocuments: {
@@ -193,51 +240,82 @@ async function applyRootLevelPermissions(
     folderId: string | null;
   }[],
 ) {
-  // Get both ViewerGroups and PermissionGroups
+  // Fetch groups together with their existing access controls so we can
+  // distinguish "admin-curated granular" groups from groups that only have
+  // previously auto-granted root-level permissions.
   const [viewerGroups, permissionGroups] = await Promise.all([
     prisma.viewerGroup.findMany({
       where: { dataroomId },
-      select: { id: true },
+      select: {
+        id: true,
+        accessControls: {
+          select: { itemId: true, itemType: true },
+        },
+      },
     }),
     prisma.permissionGroup.findMany({
       where: { dataroomId },
-      select: { id: true },
+      select: {
+        id: true,
+        accessControls: {
+          select: { itemId: true, itemType: true },
+        },
+      },
     }),
   ]);
+
+  // Collect every access-control entry across all groups and resolve which
+  // referenced items live inside a subfolder (non-root).
+  const allAccessControls = [
+    ...viewerGroups.flatMap((g) => g.accessControls),
+    ...permissionGroups.flatMap((g) => g.accessControls),
+  ];
+  const nonRootItemIds = await getNonRootItemIds(allAccessControls);
+
+  // A group is considered admin-curated when it has at least one access
+  // control pointing at a non-root item (subfolder or document inside a
+  // folder). Groups that only have root-level access controls were
+  // auto-granted and should continue to receive new root auto-grants.
+  const hasCuratedPermissions = (
+    acs: { itemId: string; itemType: ItemType }[],
+  ) => acs.some((ac) => nonRootItemIds.has(ac.itemId));
 
   const viewerGroupPermissionsToCreate: any[] = [];
   const permissionGroupPermissionsToCreate: any[] = [];
 
-  // ViewerGroup permissions - all get view-only access
-  viewerGroups.forEach((group) => {
-    dataroomDocuments.forEach((doc) => {
-      viewerGroupPermissionsToCreate.push({
-        groupId: group.id,
-        itemId: doc.id,
-        itemType: ItemType.DATAROOM_DOCUMENT,
-        canView: true,
-        canDownload: false,
+  // ViewerGroup permissions – skip groups with admin-curated non-root access
+  viewerGroups
+    .filter((group) => !hasCuratedPermissions(group.accessControls))
+    .forEach((group) => {
+      dataroomDocuments.forEach((doc) => {
+        viewerGroupPermissionsToCreate.push({
+          groupId: group.id,
+          itemId: doc.id,
+          itemType: ItemType.DATAROOM_DOCUMENT,
+          canView: true,
+          canDownload: false,
+        });
       });
     });
-  });
 
-  // PermissionGroup permissions - all get view-only access
-  permissionGroups.forEach((group) => {
-    dataroomDocuments.forEach((doc) => {
-      permissionGroupPermissionsToCreate.push({
-        groupId: group.id,
-        itemId: doc.id,
-        itemType: ItemType.DATAROOM_DOCUMENT,
-        canView: true,
-        canDownload: false,
-        canDownloadOriginal: false,
+  // PermissionGroup permissions – skip groups with admin-curated non-root access
+  permissionGroups
+    .filter((group) => !hasCuratedPermissions(group.accessControls))
+    .forEach((group) => {
+      dataroomDocuments.forEach((doc) => {
+        permissionGroupPermissionsToCreate.push({
+          groupId: group.id,
+          itemId: doc.id,
+          itemType: ItemType.DATAROOM_DOCUMENT,
+          canView: true,
+          canDownload: false,
+          canDownloadOriginal: false,
+        });
       });
     });
-  });
 
   // Apply permissions in a transaction
   await prisma.$transaction(async (tx) => {
-    // Create new permissions
     if (viewerGroupPermissionsToCreate.length > 0) {
       await tx.viewerGroupAccessControls.createMany({
         data: viewerGroupPermissionsToCreate,
