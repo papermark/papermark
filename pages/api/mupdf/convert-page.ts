@@ -8,6 +8,10 @@ import * as mupdf from "mupdf";
 import { putFileServer } from "@/lib/files/put-file-server";
 import prisma from "@/lib/prisma";
 import { log } from "@/lib/utils";
+import {
+  extractAnnotatedPdfLinks,
+  mergePdfEmbeddedLinks,
+} from "@/ee/features/conversions/pdf/extract-pdf-widget-links";
 
 // This function can run for a maximum of 120 seconds
 export const config = {
@@ -143,7 +147,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
 
     // get links
     const links = page.getLinks();
-    const embeddedLinks = links.map((link) => {
+    let embeddedLinks = links.map((link) => {
       const coords = link.getBounds().join(",");
 
       // Check if this is an internal link (GoTo action for TOC, etc.)
@@ -169,6 +173,13 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
       // External URI link
       return { href: link.getURI(), coords, isInternal: false };
     });
+
+    if (page.isPDF()) {
+      embeddedLinks = mergePdfEmbeddedLinks(
+        embeddedLinks,
+        extractAnnotatedPdfLinks(doc, page),
+      );
+    }
 
     // Check embedded links for blocked keywords (skip for trusted teams)
     if (embeddedLinks.length > 0 && !trustedTeam) {

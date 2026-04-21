@@ -1,9 +1,12 @@
 import { AbortTaskRunError, logger, metadata, task } from "@trigger.dev/sdk";
 import { get } from "@vercel/edge-config";
-
 import { putFileServer } from "@/lib/files/put-file-server";
 import prisma from "@/lib/prisma";
 import { log } from "@/lib/utils";
+import {
+  extractAnnotatedPdfLinks,
+  mergePdfEmbeddedLinks,
+} from "@/ee/features/conversions/pdf/extract-pdf-widget-links";
 
 type ConvertPdfDirectPayload = {
   documentVersionId: string;
@@ -153,7 +156,7 @@ export const convertPdfDirectTask = task({
 
         // Extract links
         const links = page.getLinks();
-        const embeddedLinks = links.map((link) => {
+        let embeddedLinks = links.map((link) => {
           const coords = link.getBounds().join(",");
 
           if (!link.isExternal()) {
@@ -175,6 +178,13 @@ export const convertPdfDirectTask = task({
 
           return { href: link.getURI(), coords, isInternal: false };
         });
+
+        if (page.isPDF()) {
+          embeddedLinks = mergePdfEmbeddedLinks(
+            embeddedLinks,
+            extractAnnotatedPdfLinks(doc, page),
+          );
+        }
 
         // Check for blocked keywords in links
         if (embeddedLinks.length > 0 && blockedKeywords.length > 0) {
