@@ -43,6 +43,14 @@ export type DEFAULT_DATAROOM_VIEW_TYPE = {
   viewerId?: string;
   conversationsEnabled?: boolean;
   enableVisitorUpload?: boolean;
+  /**
+   * When the link restricts uploads to specific folders this is the ordered
+   * allow-list. `null`/`undefined` means "no restriction — visitor may upload
+   * into whichever folder they're currently browsing".
+   */
+  uploadFolderAllowList?:
+    | { id: string; name: string; path: string }[]
+    | null;
   isTeamMember?: boolean;
   agentsEnabled?: boolean;
   dataroomName?: string;
@@ -163,6 +171,7 @@ export default function DataroomView({
           viewerId,
           conversationsEnabled,
           enableVisitorUpload,
+          uploadFolderAllowList,
           isTeamMember,
           agentsEnabled,
           dataroomName,
@@ -200,6 +209,7 @@ export default function DataroomView({
           viewerId,
           conversationsEnabled,
           enableVisitorUpload,
+          uploadFolderAllowList,
           isTeamMember,
           agentsEnabled,
           dataroomName,

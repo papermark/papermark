@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   CheckCircle2,
@@ -14,28 +14,92 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ViewerUploadComponent } from "@/components/viewer-upload-component";
 
+type AllowedFolder = {
+  id: string;
+  name: string;
+  path?: string | null;
+};
+
+/**
+ * "Upload Document" entry-point for dataroom visitors.
+ *
+ * Destination selection rules:
+ *   - If the admin restricted uploads to a single folder, that folder is shown
+ *     read-only.
+ *   - If the admin restricted uploads to multiple folders, the visitor picks
+ *     one via a select. If the folder they're currently browsing is on the
+ *     allow-list, it is pre-selected.
+ *   - If the admin didn't restrict uploads, we fall back to the folder the
+ *     visitor is currently in (original behaviour).
+ */
 export function DocumentUploadModal({
   linkId,
   dataroomId,
   viewerId,
   folderId,
   folderName,
+  allowedFolders,
 }: {
   linkId: string;
   dataroomId: string;
   viewerId: string;
+  /** Folder the viewer is currently browsing (undefined = root/home). */
   folderId?: string;
-  /** Display name of the current folder (undefined = root) */
+  /** Display name of the current folder (undefined = root). */
   folderName?: string;
+  /**
+   * Restricted allow-list of folders this link may upload into. `null` or
+   * `undefined` means "no restriction".
+   */
+  allowedFolders?: AllowedFolder[] | null;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
+  const hasRestriction = !!allowedFolders && allowedFolders.length > 0;
+
+  // Decide the default destination.
+  // When restricted, prefer the current folder if it's allowed, otherwise the
+  // first folder in the admin-defined allow-list. Without a restriction, we
+  // default to the folder the viewer is currently in.
+  const defaultDestination = useMemo<string | undefined>(() => {
+    if (hasRestriction) {
+      if (folderId && allowedFolders!.some((f) => f.id === folderId)) {
+        return folderId;
+      }
+      return allowedFolders![0]?.id;
+    }
+    return folderId;
+  }, [hasRestriction, allowedFolders, folderId]);
+
+  const [destinationId, setDestinationId] = useState<string | undefined>(
+    defaultDestination,
+  );
+
+  // Keep the picker in sync when the viewer navigates between folders while
+  // the modal is closed.
+  useEffect(() => {
+    setDestinationId(defaultDestination);
+  }, [defaultDestination]);
+
+  const destinationName = useMemo(() => {
+    if (hasRestriction) {
+      return allowedFolders!.find((f) => f.id === destinationId)?.name;
+    }
+    return folderName;
+  }, [hasRestriction, allowedFolders, destinationId, folderName]);
+
   const handleUploadSuccess = () => {
     setUploadSuccess(true);
-    // Auto-close the dialog after a short delay to show success message
     setTimeout(() => {
       setIsOpen(false);
       setUploadSuccess(false);
@@ -48,6 +112,9 @@ export function DocumentUploadModal({
       setUploadSuccess(false);
     }
   };
+
+  const showSelect = hasRestriction && allowedFolders!.length > 1;
+  const showReadOnlyRestriction = hasRestriction && allowedFolders!.length === 1;
 
   return (
     <>
@@ -73,17 +140,52 @@ export function DocumentUploadModal({
               Your document will appear immediately in the dataroom and will be
               processed in the background.
             </p>
-            {folderName && (
+
+            {showSelect ? (
+              <div className="mt-3 space-y-1.5">
+                <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <FolderIcon className="h-3.5 w-3.5" />
+                  Destination folder
+                </label>
+                <Select
+                  value={destinationId}
+                  onValueChange={(value) => setDestinationId(value)}
+                >
+                  <SelectTrigger className="h-9 w-full">
+                    <SelectValue placeholder="Select destination folder" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allowedFolders!.map((folder) => (
+                      <SelectItem key={folder.id} value={folder.id}>
+                        <span className="flex items-center gap-2">
+                          <FolderIcon className="h-3.5 w-3.5" />
+                          <span className="max-w-[320px] truncate">
+                            {folder.path && folder.path !== "/"
+                              ? folder.path
+                              : folder.name}
+                          </span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : destinationName ? (
               <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <FolderIcon className="h-3.5 w-3.5" />
                 <span>
                   Uploading to:{" "}
                   <span className="font-medium text-foreground">
-                    {folderName}
+                    {destinationName}
                   </span>
+                  {showReadOnlyRestriction ? (
+                    <span className="ml-1 text-muted-foreground">
+                      (set by the dataroom owner)
+                    </span>
+                  ) : null}
                 </span>
               </div>
-            )}
+            ) : null}
           </DialogHeader>
 
           <div className="min-w-0 px-6 py-5">
@@ -105,7 +207,7 @@ export function DocumentUploadModal({
                   dataroomId,
                 }}
                 teamId="visitor-upload"
-                folderId={folderId}
+                folderId={destinationId}
                 onUploadSuccess={handleUploadSuccess}
               />
             )}

@@ -87,17 +87,34 @@ export default async function handle(
             if (link.password !== null) {
               link.password = decryptEncrpytedPassword(link.password);
             }
-            // Get the upload folder name if it exists
-            if (link.enableUpload && link.uploadFolderId !== null) {
-              const folder = await prisma.dataroomFolder.findUnique({
-                where: {
-                  id: link.uploadFolderId,
-                },
-                select: {
-                  name: true,
-                },
-              });
-              link.uploadFolderName = folder?.name;
+            // Get the upload folder name(s) if any folder is restricted
+            if (link.enableUpload) {
+              const allowedIds: string[] = Array.from(
+                new Set(
+                  [
+                    ...(Array.isArray(link.uploadFolderIds)
+                      ? link.uploadFolderIds
+                      : []),
+                    ...(link.uploadFolderId ? [link.uploadFolderId] : []),
+                  ].filter((id): id is string => !!id),
+                ),
+              );
+
+              if (allowedIds.length > 0) {
+                const folders = await prisma.dataroomFolder.findMany({
+                  where: {
+                    id: { in: allowedIds },
+                    dataroomId,
+                  },
+                  select: { id: true, name: true, path: true },
+                });
+                const byId = new Map(folders.map((f) => [f.id, f]));
+                const ordered = allowedIds
+                  .map((id) => byId.get(id))
+                  .filter((f): f is (typeof folders)[number] => !!f);
+                link.uploadFolders = ordered;
+                link.uploadFolderName = ordered[0]?.name;
+              }
             }
             // Get the tags for the link
             const tags = await prisma.tag.findMany({

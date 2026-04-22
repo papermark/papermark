@@ -93,6 +93,8 @@ export const DEFAULT_LINK_PROPS = (
   isFileRequestOnly: false,
   uploadFolderId: null,
   uploadFolderName: "Home",
+  uploadFolderIds: [],
+  uploadFolders: [],
   enableIndexFile: false,
   permissions: {},
   permissionGroupId: null,
@@ -138,6 +140,8 @@ export type DEFAULT_LINK_TYPE = {
   isFileRequestOnly: boolean;
   uploadFolderId: string | null;
   uploadFolderName: string;
+  uploadFolderIds: string[];
+  uploadFolders: { id: string; name: string; path?: string | null }[];
   enableIndexFile: boolean;
   permissions?: ItemPermission | null; // For dataroom links file permissions
   permissionGroupId?: string | null;
@@ -477,6 +481,7 @@ export default function LinkSheet({
         "enableUpload",
         "isFileRequestOnly",
         "uploadFolderId",
+        "uploadFolderIds",
         "enableIndexFile",
         "permissionGroupId",
         "tags",

@@ -67,6 +67,7 @@ export interface LinkWithViews extends Link {
   customFields: CustomField[];
   tags: TagProps[];
   uploadFolderName: string | undefined;
+  uploadFolders?: { id: string; name: string; path: string | null }[];
   visitorGroups?: { visitorGroupId: string }[];
 }
 

@@ -145,6 +145,8 @@ export async function POST(request: NextRequest) {
           },
         },
         enableUpload: true,
+        uploadFolderId: true,
+        uploadFolderIds: true,
         dataroom: {
           select: {
             agentsEnabled: true,
@@ -745,6 +747,40 @@ export async function POST(request: NextRequest) {
         const dataroomViewId =
           newDataroomView?.id ?? dataroomSession?.viewId ?? undefined;
 
+        // Resolve the upload-destination allow-list so the visitor UI can
+        // surface exactly which folders they may target. Null/empty = no
+        // restriction (visitor may upload into any folder they're in).
+        let uploadFolderAllowList:
+          | { id: string; name: string; path: string }[]
+          | null = null;
+        if (link.enableUpload) {
+          const allowedIds = Array.from(
+            new Set(
+              [
+                ...(Array.isArray(link.uploadFolderIds)
+                  ? link.uploadFolderIds
+                  : []),
+                ...(link.uploadFolderId ? [link.uploadFolderId] : []),
+              ].filter((id): id is string => !!id),
+            ),
+          );
+          if (allowedIds.length > 0) {
+            const folders = await prisma.dataroomFolder.findMany({
+              where: {
+                id: { in: allowedIds },
+                dataroomId: link.dataroomId!,
+              },
+              select: { id: true, name: true, path: true },
+            });
+            const byId = new Map(folders.map((f) => [f.id, f]));
+            uploadFolderAllowList = allowedIds
+              .map((id) => byId.get(id))
+              .filter(
+                (f): f is { id: string; name: string; path: string } => !!f,
+              );
+          }
+        }
+
         const returnObject = {
           message: "Dataroom View recorded",
           viewId: dataroomViewId,
@@ -756,6 +792,7 @@ export async function POST(request: NextRequest) {
           viewerId: viewer?.id,
           conversationsEnabled: link.enableConversation,
           enableVisitorUpload: link.enableUpload,
+          uploadFolderAllowList,
           agentsEnabled: link.dataroom?.agentsEnabled ?? false,
           dataroomName: link.dataroom?.name,
           ...(isTeamMember && { isTeamMember: true }),

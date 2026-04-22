@@ -26,6 +26,43 @@ export interface DomainObject {
   slug: string;
 }
 
+/**
+ * Normalize the list of allowed upload folder ids from the incoming payload.
+ * Accepts the new `uploadFolderIds` array as well as the legacy single
+ * `uploadFolderId` field, and deduplicates the result while dropping falsy
+ * entries. An empty array represents "visitor may upload anywhere".
+ */
+function normalizeUploadFolderIds(linkData: {
+  uploadFolderIds?: unknown;
+  uploadFolderId?: unknown;
+}): string[] {
+  const ids: string[] = [];
+  if (Array.isArray(linkData.uploadFolderIds)) {
+    for (const id of linkData.uploadFolderIds) {
+      if (typeof id === "string" && id.length > 0) ids.push(id);
+    }
+  }
+  if (
+    typeof linkData.uploadFolderId === "string" &&
+    linkData.uploadFolderId.length > 0
+  ) {
+    ids.push(linkData.uploadFolderId);
+  }
+  return Array.from(new Set(ids));
+}
+
+/**
+ * Legacy single-folder column mirrors the first entry of the allow-list so
+ * callers still reading the old column keep working.
+ */
+function primaryUploadFolderId(linkData: {
+  uploadFolderIds?: unknown;
+  uploadFolderId?: unknown;
+}): string | null {
+  const ids = normalizeUploadFolderIds(linkData);
+  return ids[0] ?? null;
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -252,7 +289,8 @@ export default async function handler(
             ...(linkData.enableUpload && {
               enableUpload: linkData.enableUpload,
               isFileRequestOnly: linkData.isFileRequestOnly,
-              uploadFolderId: linkData.uploadFolderId,
+              uploadFolderIds: normalizeUploadFolderIds(linkData),
+              uploadFolderId: primaryUploadFolderId(linkData),
             }),
             enableAIAgents: linkData.enableAIAgents || false,
             enableConversation: linkData.enableConversation || false,

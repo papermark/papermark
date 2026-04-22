@@ -83,16 +83,37 @@ export default async function handle(
             if (link.password !== null) {
               link.password = decryptEncrpytedPassword(link.password);
             }
-            if (link.enableUpload && link.uploadFolderId !== null) {
-              const folder = await prisma.dataroomFolder.findUnique({
-                where: {
-                  id: link.uploadFolderId,
-                },
-                select: {
-                  name: true,
-                },
-              });
-              link.uploadFolderName = folder?.name;
+            if (link.enableUpload) {
+              // Prefer the new multi-folder allow-list, but fall back to the
+              // legacy single folder id so links created before the migration
+              // keep rendering correctly in the link sheet.
+              const allowedIds: string[] = Array.from(
+                new Set(
+                  [
+                    ...(Array.isArray(link.uploadFolderIds)
+                      ? link.uploadFolderIds
+                      : []),
+                    ...(link.uploadFolderId ? [link.uploadFolderId] : []),
+                  ].filter((id): id is string => !!id),
+                ),
+              );
+
+              if (allowedIds.length > 0) {
+                const folders = await prisma.dataroomFolder.findMany({
+                  where: {
+                    id: { in: allowedIds },
+                    dataroomId,
+                  },
+                  select: { id: true, name: true, path: true },
+                });
+                // Preserve the admin-selected order when possible.
+                const byId = new Map(folders.map((f) => [f.id, f]));
+                const ordered = allowedIds
+                  .map((id) => byId.get(id))
+                  .filter((f): f is (typeof folders)[number] => !!f);
+                link.uploadFolders = ordered;
+                link.uploadFolderName = ordered[0]?.name;
+              }
             }
             const tags = await prisma.tag.findMany({
               where: {

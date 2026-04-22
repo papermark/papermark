@@ -153,6 +153,7 @@ export async function POST(
         enableUpload: true,
         enableNotification: true,
         uploadFolderId: true,
+        uploadFolderIds: true,
         dataroomId: true,
         teamId: true,
         team: {
@@ -239,22 +240,56 @@ export async function POST(
       isExternalUpload: true,
     });
 
-    // 2. Create the dataroom document
-    // If folderId is provided and link has no uploadFolderId, use folderId as the dataroomFolderId
-    // Otherwise, use the link's uploadFolderId
-    // or null if it doesn't exist
-    let dataroomFolderId: string | null = folderId ?? null;
-    if (link.uploadFolderId) {
-      const dataroomFolder = await prisma.dataroomFolder.findUnique({
+    // 2. Resolve the target dataroom folder.
+    //
+    // Semantics:
+    //   - Admin selected 0 folders  → visitor can upload anywhere (use folderId
+    //     from the request, validated against the dataroom).
+    //   - Admin selected 1+ folders → the visitor-supplied folderId must be
+    //     inside that allow-list. If it isn't (e.g. the visitor is currently
+    //     browsing another folder), fall back to the first allowed folder so
+    //     uploads never silently escape the allow-list.
+    const allowedUploadFolderIds: string[] = Array.from(
+      new Set(
+        [
+          ...(Array.isArray(link.uploadFolderIds) ? link.uploadFolderIds : []),
+          ...(link.uploadFolderId ? [link.uploadFolderId] : []),
+        ].filter((id): id is string => !!id),
+      ),
+    );
+
+    let dataroomFolderId: string | null = null;
+
+    if (allowedUploadFolderIds.length === 0) {
+      // No restriction: validate the visitor-chosen folder belongs to this
+      // dataroom before using it.
+      if (folderId) {
+        const dataroomFolder = await prisma.dataroomFolder.findUnique({
+          where: { id: folderId, dataroomId },
+          select: { id: true },
+        });
+        dataroomFolderId = dataroomFolder?.id ?? null;
+      }
+    } else {
+      // Restricted: look up all allowed folders in one query and prefer the
+      // one the visitor is currently in if it's on the list.
+      const allowedFolders = await prisma.dataroomFolder.findMany({
         where: {
-          id: link.uploadFolderId,
+          id: { in: allowedUploadFolderIds },
           dataroomId,
         },
-        select: {
-          id: true,
-        },
+        select: { id: true },
       });
-      dataroomFolderId = dataroomFolder?.id ?? null;
+      const allowedSet = new Set(allowedFolders.map((f) => f.id));
+
+      if (folderId && allowedSet.has(folderId)) {
+        dataroomFolderId = folderId;
+      } else {
+        // Preserve admin-selected ordering so the "primary" allowed folder
+        // (historically `uploadFolderId`) wins when multiple are allowed.
+        dataroomFolderId =
+          allowedUploadFolderIds.find((id) => allowedSet.has(id)) ?? null;
+      }
     }
 
     const newDataroomDocument = await prisma.dataroomDocument.create({

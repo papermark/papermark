@@ -637,6 +637,7 @@ export function DataroomLinkSheet({
         "enableUpload",
         "isFileRequestOnly",
         "uploadFolderId",
+        "uploadFolderIds",
         "enableIndexFile",
         "permissionGroupId",
         "tags",

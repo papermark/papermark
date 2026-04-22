@@ -19,6 +19,34 @@ import { checkGlobalBlockList } from "@/lib/utils/global-block-list";
 import { DomainObject } from "..";
 import { authOptions } from "../../auth/[...nextauth]";
 
+/** See pages/api/links/index.ts — same semantics. */
+function normalizeUploadFolderIds(linkData: {
+  uploadFolderIds?: unknown;
+  uploadFolderId?: unknown;
+}): string[] {
+  const ids: string[] = [];
+  if (Array.isArray(linkData.uploadFolderIds)) {
+    for (const id of linkData.uploadFolderIds) {
+      if (typeof id === "string" && id.length > 0) ids.push(id);
+    }
+  }
+  if (
+    typeof linkData.uploadFolderId === "string" &&
+    linkData.uploadFolderId.length > 0
+  ) {
+    ids.push(linkData.uploadFolderId);
+  }
+  return Array.from(new Set(ids));
+}
+
+function primaryUploadFolderId(linkData: {
+  uploadFolderIds?: unknown;
+  uploadFolderId?: unknown;
+}): string | null {
+  const ids = normalizeUploadFolderIds(linkData);
+  return ids[0] ?? null;
+}
+
 export default async function handle(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -457,7 +485,12 @@ export default async function handle(
           enableAIAgents: linkData.enableAIAgents || false,
           enableUpload: linkData.enableUpload || false,
           isFileRequestOnly: linkData.isFileRequestOnly || false,
-          uploadFolderId: linkData.uploadFolderId || null,
+          uploadFolderIds: linkData.enableUpload
+            ? normalizeUploadFolderIds(linkData)
+            : [],
+          uploadFolderId: linkData.enableUpload
+            ? primaryUploadFolderId(linkData)
+            : null,
         },
         include: {
           customFields: true,
