@@ -160,9 +160,7 @@ export function DocumentUploadModal({
                         <span className="flex items-center gap-2">
                           <FolderIcon className="h-3.5 w-3.5" />
                           <span className="max-w-[320px] truncate">
-                            {folder.path && folder.path !== "/"
-                              ? folder.path
-                              : folder.name}
+                            {folder.name}
                           </span>
                         </span>
                       </SelectItem>
