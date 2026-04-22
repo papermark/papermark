@@ -528,7 +528,7 @@ export default function DataroomViewer({
             >
             {/* Tree view */}
             <div
-              className="hidden h-full w-1/4 space-y-8 overflow-auto px-3 pb-4 pt-4 md:flex md:px-6 md:pt-6 lg:px-8 lg:pt-9 xl:px-14"
+              className="hidden h-full w-1/4 space-y-8 overflow-auto px-3 pb-4 pt-4 md:flex md:pl-6 md:pr-2 md:pt-6 lg:pl-8 lg:pr-3 lg:pt-9 xl:pl-14 xl:pr-4"
             >
               <ScrollArea showScrollbar className="w-full">
                 <ViewFolderTree
@@ -549,7 +549,7 @@ export default function DataroomViewer({
               className="h-full flex-grow overflow-auto"
             >
               <div
-                className="h-full px-3 pb-4 pt-4 md:px-6 md:pt-6 lg:px-8 lg:pt-9 xl:px-14"
+                className="h-full px-3 pb-4 pt-4 md:pl-2 md:pr-6 md:pt-6 lg:pl-3 lg:pr-8 lg:pt-9 xl:pl-4 xl:pr-14"
               >
                 <div className="flex items-center gap-x-2">
                   {/* sidebar for mobile */}
