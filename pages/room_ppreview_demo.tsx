@@ -94,7 +94,8 @@ export default function ViewPage() {
         <div style={{ height: "calc(100vh - 64px)" }} className="relative flex">
           {/* Tree view */}
           <div
-            className="hidden h-full w-1/4 space-y-8 overflow-auto px-3 pb-4 pt-4 md:flex md:px-6 md:pt-6 lg:px-8 lg:pt-9 xl:px-14"
+            className="hidden h-full shrink-0 overflow-y-auto overflow-x-hidden px-3 pb-4 pt-4 md:block md:px-4 md:pt-6 lg:px-6 lg:pt-9 xl:px-8"
+            style={{ width: "clamp(260px, 28vw, 440px)" }}
           >
             <ViewFolderTree
               folders={[

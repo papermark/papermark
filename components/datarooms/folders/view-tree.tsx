@@ -221,14 +221,14 @@ const HomeLink = memo(
         }
       >
         <span
-          className="inline-flex w-full cursor-pointer items-center"
+          className="flex w-full min-w-0 cursor-pointer items-center"
           onClick={(e) => {
             e.preventDefault();
             setFolderId(null);
           }}
         >
           <HomeIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
-          <span className="ml-2 w-fit truncate" title="Home">
+          <span className="ml-2 min-w-0 flex-1 truncate" title="Dataroom Home">
             Dataroom Home
           </span>
         </span>
