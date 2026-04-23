@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-
 import { z } from "zod";
-
 import { verifyDataroomSession } from "@/lib/auth/dataroom-auth";
 import prisma from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
 
 // Validation schema for query parameters
 const visitorFAQParamsSchema = z.object({
   linkId: z.string().cuid("Invalid link ID format"),
   dataroomId: z.string().cuid("Invalid dataroom ID format"),
-  documentId: z.string().cuid("Invalid document ID format").nullish(), // This is actually dataroomDocumentId
+  documentId: z.string().cuid("Invalid document ID format").nullish(),
 });
 
 export interface VisitorFAQResponse {
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     const paramValidation = visitorFAQParamsSchema.safeParse({
       linkId: searchParams.get("linkId"),
       dataroomId: searchParams.get("dataroomId"),
-      documentId: searchParams.get("documentId"), // This is actually dataroomDocumentId
+      documentId: searchParams.get("documentId"),
     });
 
     if (!paramValidation.success) {
@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
 
     // Apply visibility filters
     const visibilityFilters: any[] = [
-      { visibilityMode: "PUBLIC_DATAROOM" }, // Always include dataroom-wide FAQs
+      { visibilityMode: "PUBLIC_DATAROOM" },
     ];
 
     if (linkId) {
