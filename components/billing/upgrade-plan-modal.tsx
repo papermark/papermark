@@ -214,10 +214,21 @@ export function UpgradePlanModal({
         trigger: trigger,
         teamId,
       });
+
+      // Track upgrade click for email scheduling (with trigger info for personalization)
+      if (teamId) {
+        fetch(`/api/teams/${teamId}/billing/track-upgrade-click`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ trigger }),
+        }).catch(() => {
+          // Silently fail - this is just for tracking
+        });
+      }
     } else {
       setDataRoomsPlanSelection("base");
     }
-  }, [open, trigger]);
+  }, [open, trigger, teamId]);
 
   const handleUpgradeClick = () => {
     analytics.capture("Upgrade Button Clicked", {

@@ -1,10 +1,13 @@
 import { logger, task } from "@trigger.dev/sdk";
 
+import { sendAbandonedCheckoutEmail } from "@/lib/emails/send-abandoned-checkout";
 import { sendDataroomInfoEmail } from "@/lib/emails/send-dataroom-info";
 import { sendDataroomTrial24hReminderEmail } from "@/lib/emails/send-dataroom-trial-24h";
 import { sendDataroomTrialEndEmail } from "@/lib/emails/send-dataroom-trial-end";
+import { sendUpgradeIntentEmail } from "@/lib/emails/send-upgrade-intent";
 import { sendUpgradeOneMonthCheckinEmail } from "@/lib/emails/send-upgrade-month-checkin";
 import prisma from "@/lib/prisma";
+import { redis } from "@/lib/redis";
 
 export const sendDataroomTrialInfoEmailTask = task({
   id: "send-dataroom-trial-info-email",
@@ -168,6 +171,124 @@ export const sendUpgradeOneMonthCheckinEmailTask = task({
       logger.info("Email sent", { to: payload.to });
     } catch (error) {
       logger.error("Error sending upgrade one month checkin email", { error });
+      return;
+    }
+  },
+});
+
+export const sendAbandonedCheckoutEmailTask = task({
+  id: "send-abandoned-checkout-email",
+  retry: { maxAttempts: 3 },
+  run: async (payload: { to: string; name: string; teamId: string }) => {
+    try {
+      const team = await prisma.team.findUnique({
+        where: { id: payload.teamId },
+        select: {
+          plan: true,
+        },
+      });
+
+      if (!team) {
+        logger.error("Team not found", { teamId: payload.teamId });
+        return;
+      }
+
+      // If team already upgraded to a paid plan, don't send abandoned checkout email
+      const paidPlans = [
+        "pro",
+        "business",
+        "datarooms",
+        "datarooms-plus",
+        "datarooms-premium",
+      ];
+      const isPaidPlan = paidPlans.some((plan) => team.plan.includes(plan));
+
+      if (isPaidPlan) {
+        logger.info("Team already on paid plan - no abandoned checkout email needed", {
+          teamId: payload.teamId,
+          plan: team.plan,
+        });
+        return;
+      }
+
+      await sendAbandonedCheckoutEmail({
+        user: { email: payload.to, name: payload.name },
+      });
+      logger.info("Abandoned checkout email sent", { to: payload.to });
+    } catch (error) {
+      logger.error("Error sending abandoned checkout email", { error });
+      return;
+    }
+  },
+});
+
+export const sendUpgradeIntentEmailTask = task({
+  id: "send-upgrade-intent-email",
+  retry: { maxAttempts: 3 },
+  run: async (payload: {
+    to: string;
+    name: string;
+    teamId: string;
+    triggers?: string[];
+  }) => {
+    try {
+      const team = await prisma.team.findUnique({
+        where: { id: payload.teamId },
+        select: {
+          plan: true,
+        },
+      });
+
+      if (!team) {
+        logger.error("Team not found", { teamId: payload.teamId });
+        return;
+      }
+
+      // If team already upgraded to a paid plan or proceeded to checkout, don't send email
+      const paidPlans = [
+        "pro",
+        "business",
+        "datarooms",
+        "datarooms-plus",
+        "datarooms-premium",
+      ];
+      const isPaidPlan = paidPlans.some((plan) => team.plan.includes(plan));
+
+      if (isPaidPlan) {
+        logger.info("Team already on paid plan - no upgrade intent email needed", {
+          teamId: payload.teamId,
+          plan: team.plan,
+        });
+        return;
+      }
+
+      // Check if user proceeded to checkout (by checking if they have checkout session started)
+      const checkoutKey = `checkout:started:${payload.teamId}`;
+      const checkoutStarted = await redis.get(checkoutKey);
+
+      if (checkoutStarted) {
+        logger.info("User already proceeded to checkout - no upgrade intent email needed", {
+          teamId: payload.teamId,
+        });
+        return;
+      }
+
+      await sendUpgradeIntentEmail({
+        user: { email: payload.to, name: payload.name },
+        triggers: payload.triggers,
+      });
+      logger.info("Upgrade intent email sent", {
+        to: payload.to,
+        triggers: payload.triggers,
+      });
+
+      // Clear the upgrade clicks and triggers after sending email
+      const upgradeClicksKey = `upgrade:clicks:${payload.teamId}`;
+      const upgradeTriggersKey = `upgrade:triggers:${payload.teamId}`;
+      await redis.del(upgradeClicksKey);
+      await redis.del(upgradeTriggersKey);
+    } catch (error) {
+      logger.error("Error sending upgrade intent email", { error });
       return;
     }
   },

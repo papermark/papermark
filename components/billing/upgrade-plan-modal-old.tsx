@@ -106,8 +106,19 @@ export function UpgradePlanModal({
         trigger: trigger,
         teamId: teamInfo?.currentTeam?.id,
       });
+
+      // Track upgrade click for email scheduling (with trigger info for personalization)
+      if (teamInfo?.currentTeam?.id) {
+        fetch(`/api/teams/${teamInfo.currentTeam.id}/billing/track-upgrade-click`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ trigger }),
+        }).catch(() => {
+          // Silently fail - this is just for tracking
+        });
+      }
     }
-  }, [open, trigger]);
+  }, [open, trigger, teamInfo?.currentTeam?.id]);
 
   // Track analytics event when child button is present
   const handleUpgradeClick = () => {

@@ -10,6 +10,8 @@ import { getServerSession } from "next-auth/next";
 import { identifyUser, trackAnalytics } from "@/lib/analytics";
 import { getDubDiscountForExternalUserId } from "@/lib/dub";
 import prisma from "@/lib/prisma";
+import { redis } from "@/lib/redis";
+import { sendAbandonedCheckoutEmailTask } from "@/lib/trigger/send-scheduled-email";
 import { CustomUser } from "@/lib/types";
 import { getIpAddress } from "@/lib/utils/ip";
 
@@ -52,7 +54,7 @@ export default async function handle(
       applyYearlyDiscount?: string;
     };
 
-    const { id: userId, email: userEmail } = session.user as CustomUser;
+    const { id: userId, email: userEmail, name: userName } = session.user as CustomUser;
 
     const team = await prisma.team.findUnique({
       where: {
@@ -167,6 +169,10 @@ export default async function handle(
       });
     }
 
+    // Mark that user proceeded to checkout (for upgrade intent email check)
+    const checkoutStartedKey = `checkout:started:${teamId}`;
+    await redis.set(checkoutStartedKey, "1", { ex: 3 * 24 * 60 * 60 }); // Expires in 3 days
+
     waitUntil(
       Promise.all([
         identifyUser(userEmail ?? userId),
@@ -176,6 +182,21 @@ export default async function handle(
           priceId: priceId,
         }),
       ]),
+    );
+
+    // Schedule abandoned checkout email to be sent in 1 hour
+    // The task will check if the team has already upgraded before sending
+    waitUntil(
+      sendAbandonedCheckoutEmailTask.trigger(
+        {
+          to: userEmail as string,
+          name: userName as string,
+          teamId,
+        },
+        {
+          delay: "1h",
+        },
+      ),
     );
 
     return res.status(200).json(stripeSession);
