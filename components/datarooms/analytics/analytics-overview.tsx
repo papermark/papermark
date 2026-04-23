@@ -1,11 +1,14 @@
+import Link from "next/link";
+
 import { useMemo } from "react";
 
-import { useDataroom } from "@/lib/swr/use-dataroom";
+import { FileIcon } from "lucide-react";
+
 import { useDataroomDocumentStats } from "@/lib/swr/use-dataroom-document-stats";
 import { useDataroomStats } from "@/lib/swr/use-dataroom-stats";
 
 import StatsChart from "@/components/documents/stats-chart";
-import { Gauge } from "@/components/ui/gauge";
+import ChevronRight from "@/components/shared/icons/chevron-right";
 
 interface DataroomAnalyticsOverviewProps {
   selectedDocument: {
@@ -100,9 +103,21 @@ export default function DataroomAnalyticsOverview({
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-6">
         <div>
-          <h3 className="mb-4 text-lg font-medium">
-            {displayName ? displayName : "Document Engagement"}
-          </h3>
+          <div className="mb-4 flex flex-col justify-between gap-2">
+            <h3 className="text-lg font-medium">
+              {displayName ? displayName : "Document Engagement"}
+            </h3>
+            {documentId && (
+              <Link
+                href={`/documents/${documentId}`}
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <ChevronRight className="h-4 w-4 transition-transform duration-200" />
+                <FileIcon className="h-4 w-4 text-[#fb7a00]" />{" "}
+                <span>To full document analytics</span>
+              </Link>
+            )}
+          </div>
           {documentStats && (
             <StatsChart
               documentId={documentId || ""}
