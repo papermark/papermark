@@ -1,11 +1,11 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
-import fontkit from "@pdf-lib/fontkit";
-import { PDFDocument, PDFFont, StandardFonts, degrees, rgb } from "pdf-lib";
+import { PDF, rgb } from "@libpdf/core";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
 import {
   getFileNameWithPdfExtension,
-  hexToRgb,
   log,
   safeTemplateReplace,
 } from "@/lib/utils";
@@ -15,6 +15,73 @@ export const config = {
   maxDuration: 300,
 };
 
+type AnnotateDocumentErrorType =
+  | "Request timeout"
+  | "Document too large"
+  | "Failed to fetch document"
+  | "Invalid request"
+  | "Failed to apply watermark";
+
+class AnnotateDocumentError extends Error {
+  readonly statusCode: number;
+  readonly errorType: AnnotateDocumentErrorType;
+
+  constructor({
+    message,
+    statusCode,
+    errorType,
+  }: {
+    message: string;
+    statusCode: number;
+    errorType: AnnotateDocumentErrorType;
+  }) {
+    super(message);
+    this.name = "AnnotateDocumentError";
+    this.statusCode = statusCode;
+    this.errorType = errorType;
+  }
+}
+
+const toAnnotateDocumentError = (error: unknown): AnnotateDocumentError => {
+  if (error instanceof AnnotateDocumentError) {
+    return error;
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  return new AnnotateDocumentError({
+    message,
+    statusCode: 500,
+    errorType: "Failed to apply watermark",
+  });
+};
+
+const NOTO_SANS_FONT_PATH = path.join(
+  process.cwd(),
+  "public",
+  "fonts",
+  "NotoSans-Regular.ttf",
+);
+
+let notoSansFontBytesPromise: Promise<Uint8Array> | null = null;
+
+const getNotoSansFontBytes = async () => {
+  if (!notoSansFontBytesPromise) {
+    notoSansFontBytesPromise = readFile(NOTO_SANS_FONT_PATH)
+      .then((fontBuffer) => new Uint8Array(fontBuffer))
+      .catch((error) => {
+        notoSansFontBytesPromise = null;
+        const message = error instanceof Error ? error.message : String(error);
+        throw new AnnotateDocumentError({
+          message: `Failed to load Noto Sans font: ${message}`,
+          statusCode: 400,
+          errorType: "Invalid request",
+        });
+      });
+  }
+
+  return notoSansFontBytesPromise;
+};
+
 /**
  * Validates a URL to prevent SSRF attacks.
  * Only allows HTTPS requests to the configured distribution hosts.
@@ -22,19 +89,16 @@ export const config = {
 function validateUrl(urlString: string): URL {
   let parsedUrl: URL;
 
-  // Parse the URL
   try {
     parsedUrl = new URL(urlString);
-  } catch (error) {
+  } catch {
     throw new Error("Invalid URL format");
   }
 
-  // Validate protocol - only HTTPS allowed
   if (parsedUrl.protocol !== "https:") {
     throw new Error("Only HTTPS URLs are allowed");
   }
 
-  // Get allowed distribution hosts from environment
   const allowedHosts = [
     process.env.NEXT_PRIVATE_UPLOAD_DISTRIBUTION_HOST,
     process.env.NEXT_PRIVATE_UPLOAD_DISTRIBUTION_HOST_US,
@@ -44,7 +108,6 @@ function validateUrl(urlString: string): URL {
     throw new Error("No distribution hosts configured");
   }
 
-  // Validate hostname against allow-list
   const hostname = parsedUrl.hostname.toLowerCase();
   const isAllowedHost = allowedHosts.some(
     (allowedHost) => hostname === allowedHost.toLowerCase(),
@@ -59,7 +122,7 @@ function validateUrl(urlString: string): URL {
   return parsedUrl;
 }
 
-interface WatermarkConfig {
+export interface WatermarkConfig {
   text: string;
   isTiled: boolean;
   position:
@@ -78,7 +141,7 @@ interface WatermarkConfig {
   opacity: number; // 0 to 0.8
 }
 
-interface ViewerData {
+export interface ViewerData {
   email: string;
   date: string;
   ipAddress: string;
@@ -92,8 +155,8 @@ function getPositionCoordinates(
   height: number,
   textWidth: number,
   textHeight: number,
-): number[] {
-  const positions = {
+): [number, number] {
+  const positions: Record<WatermarkConfig["position"], [number, number]> = {
     "top-left": [10, height - textHeight],
     "top-center": [(width - textWidth) / 2, height - textHeight],
     "top-right": [width - textWidth - 10, height - textHeight],
@@ -104,197 +167,257 @@ function getPositionCoordinates(
     "bottom-center": [(width - textWidth) / 2, 20],
     "bottom-right": [width - textWidth - 10, 20],
   };
+
   return positions[position];
 }
 
-async function insertWatermark(
-  pdfDoc: PDFDocument,
-  config: WatermarkConfig,
-  viewerData: ViewerData,
-  pageIndex: number,
-  font: PDFFont, // Pre-embedded font passed in
-): Promise<void> {
-  const pages = pdfDoc.getPages();
-  const page = pages[pageIndex];
-  const { width, height } = page.getSize();
+function calculateResponsiveFontSize(
+  pageWidth: number,
+  pageHeight: number,
+  configuredFontSize: number,
+) {
+  const baseFontSize =
+    Math.min(pageWidth, pageHeight) * (configuredFontSize / 1000);
+  return Math.max(8, Math.min(baseFontSize, configuredFontSize));
+}
 
-  // Safely replace template variables with whitelisted values only
-  const rawWatermarkText = safeTemplateReplace(config.text, viewerData);
+function parseHexColor(hex: string) {
+  const normalized = hex.trim();
+  const match = normalized.match(/^#?([0-9a-fA-F]{6})$/);
 
-  // Handle Unicode characters that can't be encoded in WinAnsi
-  const sanitizeText = (text: string): string => {
-    // Common character replacements for WinAnsi compatibility
-    const replacements: { [key: string]: string } = {
-      // Turkish characters
-      İ: "I",
-      ı: "i",
-      ğ: "g",
-      Ğ: "G",
-      ü: "u",
-      Ü: "U",
-      ş: "s",
-      Ş: "S",
-      ç: "c",
-      Ç: "C",
-      ö: "o",
-      Ö: "O",
-      // German characters
-      ß: "ss",
-      ä: "a",
-      Ä: "A",
-      ë: "e",
-      Ë: "E",
-      // French characters
-      à: "a",
-      À: "A",
-      é: "e",
-      É: "E",
-      è: "e",
-      È: "E",
-      ê: "e",
-      Ê: "E",
-      ù: "u",
-      Ù: "U",
-      ô: "o",
-      Ô: "O",
-      // Spanish characters
-      ñ: "n",
-      Ñ: "N",
-      á: "a",
-      Á: "A",
-      í: "i",
-      Í: "I",
-      ó: "o",
-      Ó: "O",
-      ú: "u",
-      Ú: "U",
-      // Common symbols
-      "€": "EUR",
-      "£": "GBP",
-      "¥": "JPY",
-      "©": "(c)",
-      "®": "(R)",
-      "™": "TM",
-      "…": "...",
-      "–": "-",
-      "—": "-",
-      "\u201C": '"',
-      "\u201D": '"',
-      "\u2018": "'",
-      "\u2019": "'",
-      "•": "*",
-    };
+  if (!match) {
+    return rgb(0, 0, 0);
+  }
 
-    let sanitized = text;
+  const value = match[1];
+  const red = parseInt(value.slice(0, 2), 16) / 255;
+  const green = parseInt(value.slice(2, 4), 16) / 255;
+  const blue = parseInt(value.slice(4, 6), 16) / 255;
 
-    // Apply character replacements
-    for (const [original, replacement] of Object.entries(replacements)) {
-      sanitized = sanitized.replace(new RegExp(original, "g"), replacement);
-    }
+  return rgb(red, green, blue);
+}
 
-    // Replace any remaining non-WinAnsi characters (outside Latin-1 range)
-    sanitized = sanitized.replace(/[^\u0000-\u00FF]/g, "?");
+async function createEmbeddedWatermarkPage(
+  targetPdf: PDF,
+  watermarkConfig: WatermarkConfig,
+  watermarkText: string,
+  fontBytes: Uint8Array,
+  pageWidth: number,
+  pageHeight: number,
+) {
+  const watermarkPdf = PDF.create();
+  const watermarkPage = watermarkPdf.addPage({
+    width: pageWidth,
+    height: pageHeight,
+  });
 
-    return sanitized;
-  };
+  const font = watermarkPdf.embedFont(fontBytes);
+  const fontSize = calculateResponsiveFontSize(
+    pageWidth,
+    pageHeight,
+    watermarkConfig.fontSize,
+  );
 
-  const watermarkText = sanitizeText(rawWatermarkText);
-
-  // Calculate a responsive font size
-  const calculateFontSize = () => {
-    const baseFontSize = Math.min(width, height) * (config.fontSize / 1000);
-    return Math.max(8, Math.min(baseFontSize, config.fontSize));
-  };
-  const fontSize = calculateFontSize();
-
-  // Calculate text dimensions with error handling
   let textWidth: number;
   let textHeight: number;
 
   try {
     textWidth = font.widthOfTextAtSize(watermarkText, fontSize);
     textHeight = font.heightAtSize(fontSize);
-  } catch (error) {
-    // If there are still encoding issues, provide fallback values
-    console.warn("Font encoding error:", error);
-    textWidth = watermarkText.length * fontSize * 0.6; // Approximate width
-    textHeight = fontSize * 1.2; // Approximate height
+  } catch {
+    textWidth = watermarkText.length * fontSize * 0.6;
+    textHeight = fontSize * 1.2;
   }
 
-  if (config.isTiled) {
-    const patternWidth = textWidth / 1.1;
-    const patternHeight = textHeight * 15;
+  const drawOptions = {
+    size: fontSize,
+    font,
+    color: parseHexColor(watermarkConfig.color),
+    opacity: Math.max(0, Math.min(watermarkConfig.opacity, 1)),
+  };
 
-    // Calculate the offset to center the pattern
+  const getRotateOptions = (x: number, y: number) => ({
+    angle: watermarkConfig.rotation,
+    origin: {
+      x: x + textWidth / 2,
+      y: y + textHeight / 2,
+    },
+  });
+
+  if (watermarkConfig.isTiled) {
+    const safeTextWidth = Math.max(textWidth, 1);
+    const safeTextHeight = Math.max(textHeight, 1);
+
+    const patternWidth = safeTextWidth / 1.1;
+    const patternHeight = safeTextHeight * 15;
+
     const offsetX = -patternWidth / 4;
     const offsetY = -patternHeight / 4;
 
-    const maxTilesPerRow = Math.ceil(width / patternWidth) + 1;
-    const maxTilesPerColumn = Math.ceil(height / patternHeight) + 1;
+    const maxTilesPerRow = Math.ceil(pageWidth / patternWidth) + 1;
+    const maxTilesPerColumn = Math.ceil(pageHeight / patternHeight) + 1;
 
-    for (let i = 0; i < maxTilesPerRow; i++) {
-      for (let j = 0; j < maxTilesPerColumn; j++) {
-        const x = i * patternWidth + offsetX;
-        const y = j * patternHeight + offsetY;
+    for (let row = 0; row < maxTilesPerRow; row++) {
+      for (let col = 0; col < maxTilesPerColumn; col++) {
+        const x = row * patternWidth + offsetX;
+        const y = col * patternHeight + offsetY;
 
-        try {
-          page.drawText(watermarkText, {
-            x,
-            y,
-            size: fontSize,
-            font,
-            color: hexToRgb(config.color) ?? rgb(0, 0, 0),
-            opacity: config.opacity,
-            rotate: degrees(config.rotation),
-          });
-        } catch (error) {
-          console.error("Error drawing tiled watermark text:", error);
-          throw new Error(
-            `Failed to apply watermark to page ${pageIndex + 1}: ${error}`,
-          );
-        }
+        watermarkPage.drawText(watermarkText, {
+          ...drawOptions,
+          x,
+          y,
+          rotate: getRotateOptions(x, y),
+        });
       }
     }
   } else {
     const [x, y] = getPositionCoordinates(
-      config.position,
-      width,
-      height,
+      watermarkConfig.position,
+      pageWidth,
+      pageHeight,
       textWidth,
       textHeight,
     );
 
-    try {
-      page.drawText(watermarkText, {
-        x,
-        y,
-        size: fontSize,
-        font,
-        color: hexToRgb(config.color) ?? rgb(0, 0, 0),
-        opacity: config.opacity,
-        rotate: degrees(config.rotation),
-      });
-    } catch (error) {
-      console.error("Error drawing positioned watermark text:", error);
-      throw new Error(
-        `Failed to apply watermark to page ${pageIndex + 1}: ${error}`,
+    watermarkPage.drawText(watermarkText, {
+      ...drawOptions,
+      x,
+      y,
+      rotate: getRotateOptions(x, y),
+    });
+  }
+
+  const serializedWatermarkPdf = await watermarkPdf.save();
+  const normalizedWatermarkPdf = await PDF.load(serializedWatermarkPdf);
+
+  return targetPdf.embedPage(normalizedWatermarkPdf, 0);
+}
+
+export const annotatePdfWithEmbeddedWatermark = async ({
+  pdfBytes,
+  watermarkConfig,
+  viewerData,
+  numPages,
+  fontBytes,
+}: {
+  pdfBytes: Uint8Array;
+  watermarkConfig: WatermarkConfig;
+  viewerData: ViewerData;
+  numPages: number;
+  fontBytes?: Uint8Array;
+}) => {
+  const loadStart = Date.now();
+  const pdfDoc = await PDF.load(pdfBytes);
+  console.log(`PDF load took ${Date.now() - loadStart}ms`);
+
+  const sourcePageCount = pdfDoc.getPageCount();
+  if (numPages > sourcePageCount) {
+    throw new AnnotateDocumentError({
+      message: `Invalid page count: requested ${numPages}, document has ${sourcePageCount}`,
+      statusCode: 400,
+      errorType: "Invalid request",
+    });
+  }
+
+  const pagesToProcess = Math.min(numPages, sourcePageCount);
+
+  const fontLoadStart = Date.now();
+  const notoSansFontBytes = fontBytes ?? (await getNotoSansFontBytes());
+  console.log(`Noto Sans load took ${Date.now() - fontLoadStart}ms`);
+
+  const rawWatermarkText = safeTemplateReplace(
+    watermarkConfig.text,
+    viewerData,
+  );
+  const watermarkText = rawWatermarkText;
+  if (!watermarkText.trim()) {
+    throw new AnnotateDocumentError({
+      message: "Watermark text is empty",
+      statusCode: 400,
+      errorType: "Invalid request",
+    });
+  }
+
+  const embeddedWatermarksBySize = new Map<
+    string,
+    ReturnType<typeof createEmbeddedWatermarkPage>
+  >();
+
+  const getEmbeddedWatermarkForSize = (
+    pageWidth: number,
+    pageHeight: number,
+  ) => {
+    const sizeKey = `${pageWidth}x${pageHeight}`;
+
+    if (!embeddedWatermarksBySize.has(sizeKey)) {
+      embeddedWatermarksBySize.set(
+        sizeKey,
+        createEmbeddedWatermarkPage(
+          pdfDoc,
+          watermarkConfig,
+          watermarkText,
+          notoSansFontBytes,
+          pageWidth,
+          pageHeight,
+        ),
+      );
+    }
+
+    return embeddedWatermarksBySize.get(sizeKey)!;
+  };
+
+  const watermarkStart = Date.now();
+  console.log(
+    `Watermarking ${pagesToProcess} pages using embedded XObject templates`,
+  );
+
+  for (let pageIndex = 0; pageIndex < pagesToProcess; pageIndex++) {
+    const page = pdfDoc.getPage(pageIndex);
+    if (!page) {
+      throw new Error(`Failed to load page ${pageIndex + 1}`);
+    }
+
+    const embeddedWatermark = await getEmbeddedWatermarkForSize(
+      page.width,
+      page.height,
+    );
+
+    page.drawPage(embeddedWatermark, {
+      x: 0,
+      y: 0,
+      width: page.width,
+      height: page.height,
+    });
+
+    if ((pageIndex + 1) % 25 === 0 || pageIndex === pagesToProcess - 1) {
+      const progress = (((pageIndex + 1) / pagesToProcess) * 100).toFixed(1);
+      console.log(
+        `Processed ${pageIndex + 1}/${pagesToProcess} pages (${progress}%)`,
       );
     }
   }
-}
 
-export default async (req: NextApiRequest, res: NextApiResponse) => {
-  // check if post method
+  console.log(`All watermarking took ${Date.now() - watermarkStart}ms`);
+
+  const saveStart = Date.now();
+  const annotatedPdf = await pdfDoc.save();
+  const finalSizeMB = annotatedPdf.length / 1024 / 1024;
+  console.log(
+    `PDF save took ${Date.now() - saveStart}ms, final size: ${finalSizeMB.toFixed(2)}MB`,
+  );
+
+  return annotatedPdf;
+};
+
+const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method Not Allowed" });
     return;
   }
 
-  // Extract the API Key from the Authorization header
   const authHeader = req.headers.authorization;
-  const token = authHeader?.split(" ")[1]; // Assuming the format is "Bearer [token]"
+  const token = authHeader?.split(" ")[1];
 
-  // Check if the API Key matches
   if (token !== process.env.INTERNAL_API_KEY) {
     res.status(401).json({ message: "Unauthorized" });
     return;
@@ -309,7 +432,6 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
       originalFileName?: string;
     };
 
-  // Validate required fields
   if (!url || typeof url !== "string") {
     return res.status(400).json({ error: "Invalid or missing URL" });
   }
@@ -333,7 +455,6 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
 
   const startTime = Date.now();
 
-  // Validate URL to prevent SSRF attacks
   let validatedUrl: URL;
   try {
     validatedUrl = validateUrl(url);
@@ -351,14 +472,12 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   try {
-    // Fetch the PDF data with timeout
     let response: Response;
     try {
       const fetchStart = Date.now();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for fetch
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-      // Use the validated URL string for the fetch
       response = await fetch(validatedUrl.toString(), {
         signal: controller.signal,
         headers: {
@@ -369,7 +488,11 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new AnnotateDocumentError({
+          message: `HTTP ${response.status}: ${response.statusText}`,
+          statusCode: 502,
+          errorType: "Failed to fetch document",
+        });
       }
 
       console.log(`PDF fetch took ${Date.now() - fetchStart}ms`);
@@ -382,12 +505,20 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
       });
 
       if (errorMsg.includes("aborted")) {
-        throw new Error(`Timeout fetching PDF (exceeded 60s)`);
+        throw new AnnotateDocumentError({
+          message: "Timeout fetching PDF (exceeded 60s)",
+          statusCode: 504,
+          errorType: "Request timeout",
+        });
       }
-      throw new Error(`Failed to fetch PDF: ${errorMsg}`);
+
+      throw new AnnotateDocumentError({
+        message: `Failed to fetch PDF: ${errorMsg}`,
+        statusCode: 502,
+        errorType: "Failed to fetch document",
+      });
     }
 
-    // Convert the response to a buffer
     const bufferStart = Date.now();
     const pdfBuffer = await response.arrayBuffer();
     const sizeInMB = pdfBuffer.byteLength / 1024 / 1024;
@@ -395,125 +526,43 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
       `Buffer conversion took ${Date.now() - bufferStart}ms, size: ${sizeInMB.toFixed(2)}MB`,
     );
 
-    // Load the PDF document with optimizations
-    const loadStart = Date.now();
-    const pdfDoc = await PDFDocument.load(pdfBuffer, {
-      updateMetadata: false, // Skip metadata updates for performance
-      ignoreEncryption: false, // Respect encryption
+    const annotatedPdf = await annotatePdfWithEmbeddedWatermark({
+      pdfBytes: new Uint8Array(pdfBuffer),
+      watermarkConfig,
+      viewerData,
+      numPages,
     });
-    console.log(`PDF load took ${Date.now() - loadStart}ms`);
-
-    // Register fontkit and embed font ONCE
-    pdfDoc.registerFontkit(fontkit);
-    const fontStart = Date.now();
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    console.log(`Font embedding took ${Date.now() - fontStart}ms`);
-
-    // Calculate optimal batch size based on document size and page count
-    // Larger documents = smaller batches to prevent memory spikes
-    const calculateBatchSize = (pages: number, sizeMB: number): number => {
-      if (sizeMB > 50 || pages > 200) return 5; // Large docs: 5 pages at a time
-      if (sizeMB > 20 || pages > 100) return 10; // Medium docs: 10 pages
-      return 20; // Smaller docs: 20 pages at a time
-    };
-
-    const BATCH_SIZE = calculateBatchSize(numPages, sizeInMB);
-    const watermarkStart = Date.now();
-
-    console.log(`Processing ${numPages} pages in batches of ${BATCH_SIZE}`);
-
-    for (let batchStart = 0; batchStart < numPages; batchStart += BATCH_SIZE) {
-      const batchEnd = Math.min(batchStart + BATCH_SIZE, numPages);
-      const batchPromises = [];
-
-      for (let i = batchStart; i < batchEnd; i++) {
-        batchPromises.push(
-          insertWatermark(pdfDoc, watermarkConfig, viewerData, i, font).catch(
-            (error) => {
-              const errMsg =
-                error instanceof Error ? error.message : String(error);
-              console.error(`Error watermarking page ${i + 1}:`, errMsg);
-              throw new Error(`Failed to watermark page ${i + 1}: ${errMsg}`);
-            },
-          ),
-        );
-      }
-
-      await Promise.all(batchPromises);
-      const progress = ((batchEnd / numPages) * 100).toFixed(1);
-      console.log(
-        `Processed pages ${batchStart + 1}-${batchEnd} of ${numPages} (${progress}%)`,
-      );
-    }
-
-    console.log(`All watermarking took ${Date.now() - watermarkStart}ms`);
-
-    // Save the modified PDF with optimizations
-    const saveStart = Date.now();
-    const pdfBytes = await pdfDoc.save({
-      useObjectStreams: false, // Better compatibility, slight size increase
-      addDefaultPage: false, // Don't add default page
-      objectsPerTick: 50, // Process objects in smaller chunks for better memory management
-    });
-    const finalSizeMB = pdfBytes.length / 1024 / 1024;
-    console.log(
-      `PDF save took ${Date.now() - saveStart}ms, final size: ${finalSizeMB.toFixed(2)}MB`,
-    );
+    const pagesToProcess = numPages;
 
     console.log(
-      `Total processing time: ${Date.now() - startTime}ms for ${numPages} pages`,
+      `Total processing time: ${Date.now() - startTime}ms for ${pagesToProcess} pages`,
     );
 
-    // Set appropriate headers
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="${encodeURIComponent(getFileNameWithPdfExtension(originalFileName))}"`,
     );
 
-    res.status(200).send(Buffer.from(pdfBytes));
-
+    res.status(200).send(Buffer.from(annotatedPdf));
     return;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const annotateError = toAnnotateDocumentError(error);
     const elapsedTime = Date.now() - startTime;
 
-    // Determine appropriate status code based on error type
-    let statusCode = 500;
-    let errorType = "Failed to apply watermark";
-
-    if (errorMessage.includes("Timeout") || errorMessage.includes("timeout")) {
-      statusCode = 504;
-      errorType = "Request timeout";
-    } else if (
-      errorMessage.includes("too large") ||
-      errorMessage.includes("Maximum")
-    ) {
-      statusCode = 413;
-      errorType = "Document too large";
-    } else if (
-      errorMessage.includes("fetch") ||
-      errorMessage.includes("HTTP")
-    ) {
-      statusCode = 502;
-      errorType = "Failed to fetch document";
-    } else if (errorMessage.includes("Failed to watermark page")) {
-      statusCode = 500;
-      errorType = "Watermarking error";
-    }
-
     log({
-      message: `${errorType} after ${elapsedTime}ms: ${errorMessage}\n\nDocument: ${originalFileName || "unknown"}\nPages: ${numPages}\nURL: ${url?.substring(0, 100)}...`,
+      message: `${annotateError.errorType} after ${elapsedTime}ms: ${annotateError.message}\n\nDocument: ${originalFileName || "unknown"}\nPages: ${numPages}\nURL: ${url?.substring(0, 100)}...`,
       type: "error",
-      mention: elapsedTime > 120000, // Only mention if it took more than 2 minutes
+      mention: elapsedTime > 120000,
     });
 
-    // Return proper error response
-    res.status(statusCode).json({
-      error: errorType,
-      details: errorMessage,
+    res.status(annotateError.statusCode).json({
+      error: annotateError.errorType,
+      details: annotateError.message,
       processingTime: elapsedTime,
     });
     return;
   }
 };
+
+export default handler;
