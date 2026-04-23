@@ -51,9 +51,6 @@ function DeleteItemsModal({
       setIsValid(false);
     }
   };
-  const parentFolderPath = folderPathName
-    ?.join("/")
-    ?.substring(0, folderPathName?.lastIndexOf("/"));
 
   async function deleteDocumentsAndFolders(
     documentIds: string[],
@@ -131,11 +128,12 @@ function DeleteItemsModal({
           `/api/teams/${teamInfo?.currentTeam?.id}/folders?root=true`,
         );
         await mutate(`/api/teams/${teamInfo?.currentTeam?.id}/folders`);
-        await mutate(
-          `/api/teams/${teamInfo?.currentTeam?.id}/folders${parentFolderPath}`,
-        );
-
         if (folderPathName && folderPathName.length > 0) {
+          await mutate(
+            `/api/teams/${
+              teamInfo?.currentTeam?.id
+            }/folders/${folderPathName.join("/")}`,
+          );
           await mutate(
             `/api/teams/${
               teamInfo?.currentTeam?.id
