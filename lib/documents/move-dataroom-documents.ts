@@ -21,7 +21,7 @@ export const moveDataroomDocumentToFolder = async ({
     return;
   }
 
-  console.log("moving documents to folder", documentIds, folderId);
+
   const key = `/api/teams/${teamId}/datarooms/${dataroomId}${folderPathName ? `/folders/documents/${folderPathName.join("/")}` : "/documents"}`;
   // Optimistically update the UI by removing the documents from current folder
   mutate(
