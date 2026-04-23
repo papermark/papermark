@@ -7,6 +7,8 @@
   },
   "scripts": {
     "dev": "next dev",
+    "dev:docker": "npm run prisma:migrate && next dev",
+    "prisma:migrate": "prisma migrate deploy",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
