@@ -6,6 +6,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "docker-dev":"npx prisma migrate deploy && next dev",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
