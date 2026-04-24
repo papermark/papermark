@@ -24,19 +24,22 @@ function normalizeUploadFolderIds(linkData: {
   uploadFolderIds?: unknown;
   uploadFolderId?: unknown;
 }): string[] {
-  const ids: string[] = [];
   if (Array.isArray(linkData.uploadFolderIds)) {
+    const ids: string[] = [];
     for (const id of linkData.uploadFolderIds) {
       if (typeof id === "string" && id.length > 0) ids.push(id);
+    }
+    if (ids.length > 0) {
+      return Array.from(new Set(ids));
     }
   }
   if (
     typeof linkData.uploadFolderId === "string" &&
     linkData.uploadFolderId.length > 0
   ) {
-    ids.push(linkData.uploadFolderId);
+    return Array.from(new Set([linkData.uploadFolderId]));
   }
-  return Array.from(new Set(ids));
+  return [];
 }
 
 function primaryUploadFolderId(linkData: {
