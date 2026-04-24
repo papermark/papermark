@@ -363,6 +363,34 @@ export function safeSlugify(input: string): string {
   return slugify(transliterate(input)) || nanoid();
 }
 
+/**
+ * RFC 5987 percent-encoder for Content-Disposition `filename*` values.
+ *
+ * `encodeURIComponent` leaves `! * ' ( ) ~` unencoded, but RFC 5987's
+ * `attr-char` set does not allow any of those, and strict parsers
+ * (e.g. Go's `mime.ParseMediaType` used by Gotenberg) reject them with
+ * `mime: invalid media parameter`.
+ */
+export function encodeRFC5987(value: string): string {
+  return encodeURIComponent(value).replace(
+    /['()*!~]/g,
+    (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase(),
+  );
+}
+
+/**
+ * Build a strictly RFC 5987-compliant Content-Disposition header so downstream
+ * tooling (Gotenberg/LibreOffice, etc.) can parse it without errors. The
+ * `filename` fallback uses the slugified ASCII name; `filename*` carries the
+ * original (possibly Unicode) name, percent-encoded per RFC 5987.
+ */
+export function buildContentDisposition(
+  originalFileName: string,
+  slugifiedName: string,
+): string {
+  return `attachment; filename="${slugifiedName}"; filename*=UTF-8''${encodeRFC5987(originalFileName)}`;
+}
+
 export const daysLeft = (
   accountCreationDate: Date,
   maxDays: number,
