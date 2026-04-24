@@ -249,14 +249,19 @@ export async function POST(
     //     inside that allow-list. If it isn't (e.g. the visitor is currently
     //     browsing another folder), fall back to the first allowed folder so
     //     uploads never silently escape the allow-list.
-    const allowedUploadFolderIds: string[] = Array.from(
-      new Set(
-        [
-          ...(Array.isArray(link.uploadFolderIds) ? link.uploadFolderIds : []),
-          ...(link.uploadFolderId ? [link.uploadFolderId] : []),
-        ].filter((id): id is string => !!id),
-      ),
-    );
+    //
+    // `uploadFolderIds` is the new source of truth, but until the legacy
+    // `uploadFolderId` column has been backfilled into it we fall back to
+    // `[uploadFolderId]` for rows where the array is still empty. The
+    // fallback becomes inert post-backfill.
+    const allowedUploadFolderIds: string[] =
+      Array.isArray(link.uploadFolderIds) && link.uploadFolderIds.length > 0
+        ? link.uploadFolderIds.filter(
+            (id): id is string => typeof id === "string" && !!id,
+          )
+        : link.uploadFolderId
+          ? [link.uploadFolderId]
+          : [];
 
     let dataroomFolderId: string | null = null;
 

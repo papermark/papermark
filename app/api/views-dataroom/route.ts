@@ -754,16 +754,19 @@ export async function POST(request: NextRequest) {
           | { id: string; name: string; path: string }[]
           | null = null;
         if (link.enableUpload) {
-          const allowedIds = Array.from(
-            new Set(
-              [
-                ...(Array.isArray(link.uploadFolderIds)
-                  ? link.uploadFolderIds
-                  : []),
-                ...(link.uploadFolderId ? [link.uploadFolderId] : []),
-              ].filter((id): id is string => !!id),
-            ),
-          );
+          // `uploadFolderIds` is the new source of truth, but until the
+          // legacy `uploadFolderId` column has been backfilled into it we
+          // fall back to `[uploadFolderId]` for rows where the array is
+          // still empty. The fallback becomes inert post-backfill.
+          const allowedIds: string[] =
+            Array.isArray(link.uploadFolderIds) &&
+            link.uploadFolderIds.length > 0
+              ? link.uploadFolderIds.filter(
+                  (id): id is string => typeof id === "string" && !!id,
+                )
+              : link.uploadFolderId
+                ? [link.uploadFolderId]
+                : [];
           if (allowedIds.length > 0) {
             const folders = await prisma.dataroomFolder.findMany({
               where: {

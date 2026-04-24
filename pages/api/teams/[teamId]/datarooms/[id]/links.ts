@@ -84,19 +84,19 @@ export default async function handle(
               link.password = decryptEncrpytedPassword(link.password);
             }
             if (link.enableUpload) {
-              // Prefer the new multi-folder allow-list, but fall back to the
-              // legacy single folder id so links created before the migration
-              // keep rendering correctly in the link sheet.
-              const allowedIds: string[] = Array.from(
-                new Set(
-                  [
-                    ...(Array.isArray(link.uploadFolderIds)
-                      ? link.uploadFolderIds
-                      : []),
-                    ...(link.uploadFolderId ? [link.uploadFolderId] : []),
-                  ].filter((id): id is string => !!id),
-                ),
-              );
+              // `uploadFolderIds` is the new source of truth, but until the
+              // legacy `uploadFolderId` column has been backfilled into it we
+              // fall back to `[uploadFolderId]` for rows where the array is
+              // still empty. The fallback becomes inert post-backfill.
+              const allowedIds: string[] =
+                Array.isArray(link.uploadFolderIds) &&
+                link.uploadFolderIds.length > 0
+                  ? link.uploadFolderIds.filter(
+                      (id): id is string => typeof id === "string" && !!id,
+                    )
+                  : link.uploadFolderId
+                    ? [link.uploadFolderId]
+                    : [];
 
               if (allowedIds.length > 0) {
                 const folders = await prisma.dataroomFolder.findMany({
