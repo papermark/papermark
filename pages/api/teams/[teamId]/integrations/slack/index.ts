@@ -230,9 +230,10 @@ async function handleDelete(
     if (!uninstallResult.ok) {
       return res.status(200).json({
         message:
-          "Slack integration disconnected locally. The remote app token was already invalid, so no remote uninstall was performed.",
+          "Slack integration disconnected locally. Remote uninstall could not be completed, but no further remote action is required.",
         slackError: uninstallResult.error,
       });
+    }
     }
 
     return res
