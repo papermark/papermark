@@ -27,7 +27,18 @@ export const uninstallSlackIntegration = async ({
 }: {
   installation: InstalledIntegration;
 }): Promise<SlackUninstallResult> => {
-  const env = getSlackEnv();
+  let env: ReturnType<typeof getSlackEnv>;
+  try {
+    env = getSlackEnv();
+  } catch (e) {
+    console.error("[Slack App] Failed to load Slack env for uninstall:", e);
+    return {
+      ok: false,
+      error: "config_error",
+      recoverable: false,
+    };
+  }
+
   const credentials = installation.credentials as SlackCredential;
 
   let decryptedToken: string;
