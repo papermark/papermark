@@ -202,10 +202,22 @@ async function handleDelete(
       return res.status(404).json({ error: "Slack integration not found" });
     }
 
-    // Uninstall the Slack integration from the Slack workspace
-    await uninstallSlackIntegration({ installation: integration });
+    // Best-effort remote uninstall. If the stored token is already invalid /
+    // revoked (e.g. after rotating SLACK_CLIENT_SECRET or reinstalling the app
+    // in Slack), we still want the user to be able to disconnect locally so
+    // they can reconnect with fresh credentials.
+    const uninstallResult = await uninstallSlackIntegration({
+      installation: integration,
+    });
 
-    // Delete the Slack integration from the database
+    if (!uninstallResult.ok && !uninstallResult.recoverable) {
+      return res.status(502).json({
+        error:
+          "Failed to uninstall Slack app from the workspace. Please try again.",
+        slackError: uninstallResult.error,
+      });
+    }
+
     await prisma.installedIntegration.delete({
       where: {
         teamId_integrationId: {
@@ -214,6 +226,14 @@ async function handleDelete(
         },
       },
     });
+
+    if (!uninstallResult.ok) {
+      return res.status(200).json({
+        message:
+          "Slack integration disconnected locally. The remote app token was already invalid, so no remote uninstall was performed.",
+        slackError: uninstallResult.error,
+      });
+    }
 
     return res
       .status(200)
