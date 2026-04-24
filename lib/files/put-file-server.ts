@@ -5,7 +5,7 @@ import path from "node:path";
 import { match } from "ts-pattern";
 
 import { newId } from "@/lib/id-helper";
-import { safeSlugify } from "@/lib/utils";
+import { buildContentDisposition, safeSlugify } from "@/lib/utils";
 
 import { SUPPORTED_DOCUMENT_MIME_TYPES } from "../constants";
 import { getTeamS3ClientAndConfig } from "./aws-client";
@@ -102,7 +102,10 @@ const putFileInS3Server = async ({
     Key: key,
     Body: file.buffer,
     ContentType: file.type,
-    ContentDisposition: `attachment; filename="${slugifiedName}"; filename*=UTF-8''${encodeURIComponent(originalFileName)}`,
+    ContentDisposition: buildContentDisposition(
+      originalFileName,
+      slugifiedName,
+    ),
   };
 
   // Create a new instance of the PutObjectCommand with the parameters

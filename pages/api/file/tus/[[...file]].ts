@@ -14,7 +14,7 @@ import { newId } from "@/lib/id-helper";
 import prisma from "@/lib/prisma";
 import { lockerRedisClient } from "@/lib/redis";
 import { CustomUser } from "@/lib/types";
-import { log, safeSlugify } from "@/lib/utils";
+import { buildContentDisposition, log, safeSlugify } from "@/lib/utils";
 import {
   getFileSizeLimit,
   getFileSizeLimits,
@@ -229,7 +229,10 @@ const tusServer = new Server({
       const contentType = metadata.contentType || "application/octet-stream";
       const { name, ext } = path.parse(metadata.fileName!);
       const originalFileName = `${name}${ext}`;
-      const contentDisposition = `attachment; filename="${safeSlugify(name)}${ext}"; filename*=UTF-8''${encodeURIComponent(originalFileName)}`;
+      const contentDisposition = buildContentDisposition(
+        originalFileName,
+        `${safeSlugify(name)}${ext}`,
+      );
 
       // The Key (object path) where the file was uploaded
       const objectKey = upload.id;

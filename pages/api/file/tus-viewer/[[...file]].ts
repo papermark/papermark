@@ -7,7 +7,7 @@ import path from "node:path";
 
 import { verifyDataroomSessionInPagesRouter } from "@/lib/auth/dataroom-auth";
 import { getTeamS3ClientAndConfig } from "@/lib/files/aws-client";
-import { safeSlugify } from "@/lib/utils";
+import { buildContentDisposition, safeSlugify } from "@/lib/utils";
 import { RedisLocker } from "@/lib/files/tus-redis-locker";
 import { newId } from "@/lib/id-helper";
 import prisma from "@/lib/prisma";
@@ -148,7 +148,10 @@ const tusServer = new Server({
       const contentType = metadata.contentType || "application/octet-stream";
       const { name, ext } = path.parse(metadata.fileName!);
       const originalFileName = `${name}${ext}`;
-      const contentDisposition = `attachment; filename="${safeSlugify(name)}${ext}"; filename*=UTF-8''${encodeURIComponent(originalFileName)}`;
+      const contentDisposition = buildContentDisposition(
+        originalFileName,
+        `${safeSlugify(name)}${ext}`,
+      );
 
       // The Key (object path) where the file was uploaded
       const objectKey = upload.id;

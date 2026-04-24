@@ -12,7 +12,7 @@ import path from "node:path";
 
 import { ONE_HOUR, ONE_SECOND } from "@/lib/constants";
 import { getTeamS3ClientAndConfig } from "@/lib/files/aws-client";
-import { safeSlugify } from "@/lib/utils";
+import { buildContentDisposition, safeSlugify } from "@/lib/utils";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 import { MultipartUploadSchema } from "@/lib/zod/schemas/multipart";
@@ -81,7 +81,10 @@ export default async function handler(
           Bucket: config.bucket,
           Key: key,
           ContentType: contentType,
-          ContentDisposition: `attachment; filename="${slugifiedName}"; filename*=UTF-8''${encodeURIComponent(originalFileName)}`,
+          ContentDisposition: buildContentDisposition(
+            originalFileName,
+            slugifiedName,
+          ),
         });
 
         const createResponse = await client.send(createCommand);
