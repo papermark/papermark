@@ -405,6 +405,46 @@ export default async function handle(
       }
     }
 
+    // Validate upload folder IDs belong to the target dataroom. Without this
+    // check, a tampered payload could persist arbitrary folder cuids (including
+    // ones from other datarooms/teams) into the link.
+    let validatedUploadFolderIds: string[] = [];
+    let validatedPrimaryUploadFolderId: string | null = null;
+    if (linkData.enableUpload) {
+      const normalizedIds = normalizeUploadFolderIds(linkData);
+      const primaryId = primaryUploadFolderId(linkData);
+
+      if (normalizedIds.length > 0) {
+        if (!dataroomLink || !targetId) {
+          return res.status(400).json({
+            error: "Upload folders can only be assigned to dataroom links.",
+          });
+        }
+
+        const validFolders = await prisma.dataroomFolder.findMany({
+          where: {
+            id: { in: normalizedIds },
+            dataroomId: targetId,
+          },
+          select: { id: true },
+        });
+        const validIdSet = new Set(validFolders.map((f) => f.id));
+
+        if (validIdSet.size !== normalizedIds.length) {
+          return res.status(400).json({
+            error:
+              "One or more upload folders do not belong to this data room.",
+          });
+        }
+
+        validatedUploadFolderIds = normalizedIds.filter((id) =>
+          validIdSet.has(id),
+        );
+        validatedPrimaryUploadFolderId =
+          primaryId && validIdSet.has(primaryId) ? primaryId : null;
+      }
+    }
+
     const updatedLink = await prisma.$transaction(async (tx) => {
       const link = await tx.link.update({
         where: { id, teamId },
@@ -486,10 +526,10 @@ export default async function handle(
           enableUpload: linkData.enableUpload || false,
           isFileRequestOnly: linkData.isFileRequestOnly || false,
           uploadFolderIds: linkData.enableUpload
-            ? normalizeUploadFolderIds(linkData)
+            ? validatedUploadFolderIds
             : [],
           uploadFolderId: linkData.enableUpload
-            ? primaryUploadFolderId(linkData)
+            ? validatedPrimaryUploadFolderId
             : null,
         },
         include: {
