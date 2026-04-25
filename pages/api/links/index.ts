@@ -29,12 +29,22 @@ export interface DomainObject {
 /**
  * Normalize the list of allowed upload folder ids from the incoming payload,
  * deduplicating and dropping falsy entries. An empty array represents
- * "visitor may upload anywhere".
+ * "visitor may upload anywhere". An omitted/undefined property is treated as
+ * an empty array; any other non-array shape is rejected so the caller can
+ * surface a 400 instead of silently dropping malformed input.
  */
 function normalizeUploadFolderIds(linkData: {
   uploadFolderIds?: unknown;
 }): string[] {
-  if (!Array.isArray(linkData.uploadFolderIds)) return [];
+  if (
+    !Object.prototype.hasOwnProperty.call(linkData, "uploadFolderIds") ||
+    linkData.uploadFolderIds === undefined
+  ) {
+    return [];
+  }
+  if (!Array.isArray(linkData.uploadFolderIds)) {
+    throw new TypeError("uploadFolderIds must be an array.");
+  }
   const ids: string[] = [];
   for (const id of linkData.uploadFolderIds) {
     if (typeof id === "string" && id.length > 0) ids.push(id);
@@ -215,7 +225,15 @@ export default async function handler(
       let validatedUploadFolders: { id: string; name: string; path: string }[] =
         [];
       if (linkData.enableUpload) {
-        const normalizedIds = normalizeUploadFolderIds(linkData);
+        let normalizedIds: string[];
+        try {
+          normalizedIds = normalizeUploadFolderIds(linkData);
+        } catch (err) {
+          if (err instanceof TypeError) {
+            return res.status(400).json({ error: err.message });
+          }
+          throw err;
+        }
 
         if (normalizedIds.length > 0) {
           if (!dataroomLink || !targetId) {
