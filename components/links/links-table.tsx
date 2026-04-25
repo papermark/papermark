@@ -427,16 +427,10 @@ export default function LinksTable({
       enableConversation: link.enableConversation ?? false,
       enableUpload: link.enableUpload ?? false,
       isFileRequestOnly: link.isFileRequestOnly ?? false,
-      uploadFolderIds: Array.isArray((link as any).uploadFolderIds)
-        ? ((link as any).uploadFolderIds as string[])
+      uploadFolderIds: Array.isArray(link.uploadFolderIds)
+        ? link.uploadFolderIds
         : [],
-      uploadFolders: Array.isArray((link as any).uploadFolders)
-        ? ((link as any).uploadFolders as {
-            id: string;
-            name: string;
-            path?: string | null;
-          }[])
-        : [],
+      uploadFolders: Array.isArray(link.uploadFolders) ? link.uploadFolders : [],
       enableIndexFile: link.enableIndexFile ?? false,
       permissionGroupId: link.permissionGroupId ?? null,
       welcomeMessage: link.welcomeMessage ?? null,
