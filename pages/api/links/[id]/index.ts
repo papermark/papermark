@@ -23,7 +23,15 @@ import { authOptions } from "../../auth/[...nextauth]";
 function normalizeUploadFolderIds(linkData: {
   uploadFolderIds?: unknown;
 }): string[] {
-  if (!Array.isArray(linkData.uploadFolderIds)) return [];
+  if (
+    !Object.prototype.hasOwnProperty.call(linkData, "uploadFolderIds") ||
+    linkData.uploadFolderIds === undefined
+  ) {
+    return [];
+  }
+  if (!Array.isArray(linkData.uploadFolderIds)) {
+    throw new TypeError("uploadFolderIds must be an array.");
+  }
   const ids: string[] = [];
   for (const id of linkData.uploadFolderIds) {
     if (typeof id === "string" && id.length > 0) ids.push(id);
@@ -396,7 +404,15 @@ export default async function handle(
     let validatedUploadFolders: { id: string; name: string; path: string }[] =
       [];
     if (linkData.enableUpload) {
-      const normalizedIds = normalizeUploadFolderIds(linkData);
+      let normalizedIds: string[];
+      try {
+        normalizedIds = normalizeUploadFolderIds(linkData);
+      } catch (err) {
+        if (err instanceof TypeError) {
+          return res.status(400).json({ error: err.message });
+        }
+        throw err;
+      }
 
       if (normalizedIds.length > 0) {
         if (!dataroomLink || !targetId) {
