@@ -22,32 +22,13 @@ import { authOptions } from "../../auth/[...nextauth]";
 /** See pages/api/links/index.ts — same semantics. */
 function normalizeUploadFolderIds(linkData: {
   uploadFolderIds?: unknown;
-  uploadFolderId?: unknown;
 }): string[] {
-  if (Array.isArray(linkData.uploadFolderIds)) {
-    const ids: string[] = [];
-    for (const id of linkData.uploadFolderIds) {
-      if (typeof id === "string" && id.length > 0) ids.push(id);
-    }
-    if (ids.length > 0) {
-      return Array.from(new Set(ids));
-    }
+  if (!Array.isArray(linkData.uploadFolderIds)) return [];
+  const ids: string[] = [];
+  for (const id of linkData.uploadFolderIds) {
+    if (typeof id === "string" && id.length > 0) ids.push(id);
   }
-  if (
-    typeof linkData.uploadFolderId === "string" &&
-    linkData.uploadFolderId.length > 0
-  ) {
-    return Array.from(new Set([linkData.uploadFolderId]));
-  }
-  return [];
-}
-
-function primaryUploadFolderId(linkData: {
-  uploadFolderIds?: unknown;
-  uploadFolderId?: unknown;
-}): string | null {
-  const ids = normalizeUploadFolderIds(linkData);
-  return ids[0] ?? null;
+  return Array.from(new Set(ids));
 }
 
 export default async function handle(
@@ -412,10 +393,10 @@ export default async function handle(
     // check, a tampered payload could persist arbitrary folder cuids (including
     // ones from other datarooms/teams) into the link.
     let validatedUploadFolderIds: string[] = [];
-    let validatedPrimaryUploadFolderId: string | null = null;
+    let validatedUploadFolders: { id: string; name: string; path: string }[] =
+      [];
     if (linkData.enableUpload) {
       const normalizedIds = normalizeUploadFolderIds(linkData);
-      const primaryId = primaryUploadFolderId(linkData);
 
       if (normalizedIds.length > 0) {
         if (!dataroomLink || !targetId) {
@@ -429,22 +410,21 @@ export default async function handle(
             id: { in: normalizedIds },
             dataroomId: targetId,
           },
-          select: { id: true },
+          select: { id: true, name: true, path: true },
         });
-        const validIdSet = new Set(validFolders.map((f) => f.id));
+        const byId = new Map(validFolders.map((f) => [f.id, f]));
 
-        if (validIdSet.size !== normalizedIds.length) {
+        if (byId.size !== normalizedIds.length) {
           return res.status(400).json({
             error:
               "One or more upload folders do not belong to this data room.",
           });
         }
 
-        validatedUploadFolderIds = normalizedIds.filter((id) =>
-          validIdSet.has(id),
-        );
-        validatedPrimaryUploadFolderId =
-          primaryId && validIdSet.has(primaryId) ? primaryId : null;
+        validatedUploadFolderIds = normalizedIds.filter((id) => byId.has(id));
+        validatedUploadFolders = validatedUploadFolderIds
+          .map((id) => byId.get(id))
+          .filter((f): f is { id: string; name: string; path: string } => !!f);
       }
     }
 
@@ -531,9 +511,6 @@ export default async function handle(
           uploadFolderIds: linkData.enableUpload
             ? validatedUploadFolderIds
             : [],
-          uploadFolderId: linkData.enableUpload
-            ? validatedPrimaryUploadFolderId
-            : null,
         },
         include: {
           customFields: true,
@@ -647,7 +624,14 @@ export default async function handle(
       updatedLink.password = decryptEncrpytedPassword(updatedLink.password);
     }
 
-    return res.status(200).json(updatedLink);
+    // Echo the resolved folder allow-list so the client can render chips with
+    // the correct folder names without an extra round-trip.
+    const responseLink = {
+      ...updatedLink,
+      uploadFolders: validatedUploadFolders,
+    };
+
+    return res.status(200).json(responseLink);
   } else if (req.method == "DELETE") {
     // DELETE /api/links/:id
     const session = await getServerSession(req, res, authOptions);

@@ -80,7 +80,9 @@ model Link {
   // upload
   enableUpload      Boolean? @default(false) // Optional give user a option to enable the upload document function
   isFileRequestOnly Boolean? @default(false) // Optional give user a option to enable the file request only
-  uploadFolderId    String? // Deprecated: first entry of `uploadFolderIds`; kept for backward compatibility. Nullable = no restriction.
+  /// Deprecated: replaced by `uploadFolderIds`. Retained in the DB only so old
+  /// rows can be inspected; no application code reads or writes this column.
+  uploadFolderId    String?
   uploadFolderIds   String[] @default([]) // Allow-list of dataroom folder ids where visitors may upload. Empty = no restriction (visitor chooses).
   enableIndexFile   Boolean? @default(false)
 

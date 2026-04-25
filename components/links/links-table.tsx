@@ -427,33 +427,16 @@ export default function LinksTable({
       enableConversation: link.enableConversation ?? false,
       enableUpload: link.enableUpload ?? false,
       isFileRequestOnly: link.isFileRequestOnly ?? false,
-      uploadFolderId: link.uploadFolderId ?? null,
-      uploadFolderName: link.uploadFolderName ?? "Home",
-      uploadFolderIds: (() => {
-        const ids = Array.isArray((link as any).uploadFolderIds)
-          ? ((link as any).uploadFolderIds as string[])
-          : [];
-        if (ids.length > 0) return ids;
-        return link.uploadFolderId ? [link.uploadFolderId] : [];
-      })(),
-      uploadFolders: (() => {
-        const folders = Array.isArray((link as any).uploadFolders)
-          ? ((link as any).uploadFolders as {
-              id: string;
-              name: string;
-              path?: string | null;
-            }[])
-          : [];
-        if (folders.length > 0) return folders;
-        return link.uploadFolderId
-          ? [
-              {
-                id: link.uploadFolderId,
-                name: link.uploadFolderName ?? "Folder",
-              },
-            ]
-          : [];
-      })(),
+      uploadFolderIds: Array.isArray((link as any).uploadFolderIds)
+        ? ((link as any).uploadFolderIds as string[])
+        : [],
+      uploadFolders: Array.isArray((link as any).uploadFolders)
+        ? ((link as any).uploadFolders as {
+            id: string;
+            name: string;
+            path?: string | null;
+          }[])
+        : [],
       enableIndexFile: link.enableIndexFile ?? false,
       permissionGroupId: link.permissionGroupId ?? null,
       welcomeMessage: link.welcomeMessage ?? null,

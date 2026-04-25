@@ -152,7 +152,6 @@ export async function POST(
         name: true,
         enableUpload: true,
         enableNotification: true,
-        uploadFolderId: true,
         uploadFolderIds: true,
         dataroomId: true,
         teamId: true,
@@ -249,19 +248,11 @@ export async function POST(
     //     inside that allow-list. If it isn't (e.g. the visitor is currently
     //     browsing another folder), fall back to the first allowed folder so
     //     uploads never silently escape the allow-list.
-    //
-    // `uploadFolderIds` is the new source of truth, but until the legacy
-    // `uploadFolderId` column has been backfilled into it we fall back to
-    // `[uploadFolderId]` for rows where the array is still empty. The
-    // fallback becomes inert post-backfill.
-    const allowedUploadFolderIds: string[] =
-      Array.isArray(link.uploadFolderIds) && link.uploadFolderIds.length > 0
-        ? link.uploadFolderIds.filter(
-            (id): id is string => typeof id === "string" && !!id,
-          )
-        : link.uploadFolderId
-          ? [link.uploadFolderId]
-          : [];
+    const allowedUploadFolderIds = Array.isArray(link.uploadFolderIds)
+      ? link.uploadFolderIds.filter(
+          (id): id is string => typeof id === "string" && !!id,
+        )
+      : [];
 
     let dataroomFolderId: string | null = null;
 
@@ -290,8 +281,8 @@ export async function POST(
       if (folderId && allowedSet.has(folderId)) {
         dataroomFolderId = folderId;
       } else {
-        // Preserve admin-selected ordering so the "primary" allowed folder
-        // (historically `uploadFolderId`) wins when multiple are allowed.
+        // Preserve admin-selected ordering so the first allowed folder wins
+        // when the visitor isn't currently inside one of the allowed folders.
         dataroomFolderId =
           allowedUploadFolderIds.find((id) => allowedSet.has(id)) ?? null;
       }

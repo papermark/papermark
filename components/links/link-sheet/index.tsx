@@ -91,8 +91,6 @@ export const DEFAULT_LINK_PROPS = (
   enableAIAgents: false,
   enableUpload: false,
   isFileRequestOnly: false,
-  uploadFolderId: null,
-  uploadFolderName: "Home",
   uploadFolderIds: [],
   uploadFolders: [],
   enableIndexFile: false,
@@ -138,8 +136,6 @@ export type DEFAULT_LINK_TYPE = {
   enableAIAgents: boolean;
   enableUpload: boolean;
   isFileRequestOnly: boolean;
-  uploadFolderId: string | null;
-  uploadFolderName: string;
   uploadFolderIds: string[];
   uploadFolders: { id: string; name: string; path?: string | null }[];
   enableIndexFile: boolean;
@@ -480,7 +476,6 @@ export default function LinkSheet({
         "enableAIAgents",
         "enableUpload",
         "isFileRequestOnly",
-        "uploadFolderId",
         "uploadFolderIds",
         "enableIndexFile",
         "permissionGroupId",

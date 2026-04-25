@@ -84,19 +84,11 @@ export default async function handle(
               link.password = decryptEncrpytedPassword(link.password);
             }
             if (link.enableUpload) {
-              // `uploadFolderIds` is the new source of truth, but until the
-              // legacy `uploadFolderId` column has been backfilled into it we
-              // fall back to `[uploadFolderId]` for rows where the array is
-              // still empty. The fallback becomes inert post-backfill.
-              const allowedIds: string[] =
-                Array.isArray(link.uploadFolderIds) &&
-                link.uploadFolderIds.length > 0
-                  ? link.uploadFolderIds.filter(
-                      (id): id is string => typeof id === "string" && !!id,
-                    )
-                  : link.uploadFolderId
-                    ? [link.uploadFolderId]
-                    : [];
+              const allowedIds = Array.isArray(link.uploadFolderIds)
+                ? link.uploadFolderIds.filter(
+                    (id): id is string => typeof id === "string" && !!id,
+                  )
+                : [];
 
               if (allowedIds.length > 0) {
                 const folders = await prisma.dataroomFolder.findMany({
@@ -108,11 +100,9 @@ export default async function handle(
                 });
                 // Preserve the admin-selected order when possible.
                 const byId = new Map(folders.map((f) => [f.id, f]));
-                const ordered = allowedIds
+                link.uploadFolders = allowedIds
                   .map((id) => byId.get(id))
                   .filter((f): f is (typeof folders)[number] => !!f);
-                link.uploadFolders = ordered;
-                link.uploadFolderName = ordered[0]?.name;
               }
             }
             const tags = await prisma.tag.findMany({

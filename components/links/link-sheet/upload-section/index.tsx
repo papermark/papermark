@@ -288,13 +288,7 @@ export default function UploadSection({
   }: LinkUpgradeOptions) => void;
   targetId: string;
 }) {
-  const {
-    enableUpload,
-    uploadFolderId,
-    uploadFolderName,
-    uploadFolderIds,
-    uploadFolders,
-  } = data;
+  const { enableUpload, uploadFolderIds, uploadFolders } = data;
   const [enabled, setEnabled] = useState<boolean>(false);
   // Legacy single-folder selection kept for document links / all-documents.
   const [legacyFolder, setLegacyFolder] = useState<TSelectedFolder | null>(
@@ -308,12 +302,16 @@ export default function UploadSection({
     setEnabled(enableUpload!);
   }, [enableUpload]);
 
-  // Hydrate the legacy single-folder selection for the all-documents picker.
+  // Hydrate the legacy single-folder selection for the all-documents picker
+  // from the (single-entry) allow-list.
   useEffect(() => {
-    if (uploadFolderId) {
-      setLegacyFolder({ id: uploadFolderId, name: uploadFolderName });
+    const first = uploadFolders?.[0];
+    if (first) {
+      setLegacyFolder({ id: first.id, name: first.name });
+    } else {
+      setLegacyFolder(null);
     }
-  }, [uploadFolderId, uploadFolderName]);
+  }, [uploadFolders]);
 
   // Normalise the allow-list of folders shown as chips for dataroom links.
   const selectedFolders = useMemo<UploadFolderSummary[]>(() => {
@@ -324,27 +322,13 @@ export default function UploadSection({
         path: f.path ?? null,
       }));
     }
-    // Server didn't enrich folder metadata; synthesise names from the id list
-    // using the legacy fields so the chip still has a meaningful label.
+    // Server didn't enrich folder metadata (rare race condition for stale
+    // cache entries); show ids so the chip is still removable.
     if (Array.isArray(uploadFolderIds) && uploadFolderIds.length > 0) {
-      return uploadFolderIds.map((id) => ({
-        id,
-        name:
-          id === uploadFolderId && uploadFolderName
-            ? uploadFolderName
-            : "Folder",
-      }));
-    }
-    if (uploadFolderId) {
-      return [
-        {
-          id: uploadFolderId,
-          name: uploadFolderName || "Folder",
-        },
-      ];
+      return uploadFolderIds.map((id) => ({ id, name: "Folder" }));
     }
     return [];
-  }, [uploadFolders, uploadFolderIds, uploadFolderId, uploadFolderName]);
+  }, [uploadFolders, uploadFolderIds]);
 
   const handleUpload = async () => {
     const updatedUpload = !enabled;
@@ -361,8 +345,6 @@ export default function UploadSection({
     setLegacyFolder(selectedFolder);
     setData({
       ...data,
-      uploadFolderId: selectedFolder?.id ?? null,
-      uploadFolderName: selectedFolder?.name || "Home",
       uploadFolderIds: selectedFolder?.id ? [selectedFolder.id] : [],
       uploadFolders: selectedFolder?.id
         ? [{ id: selectedFolder.id, name: selectedFolder.name }]
@@ -375,9 +357,6 @@ export default function UploadSection({
       ...data,
       uploadFolderIds: folders.map((f) => f.id),
       uploadFolders: folders,
-      // Keep the legacy columns in sync so existing consumers keep working.
-      uploadFolderId: folders[0]?.id ?? null,
-      uploadFolderName: folders[0]?.name ?? "Home",
     });
   };
 
