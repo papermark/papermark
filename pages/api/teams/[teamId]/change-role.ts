@@ -46,21 +46,27 @@ export default async function handle(
         return res.status(401).json("Unauthorized");
       }
 
-      // Only ADMINs can change roles
-      if (role === "ADMIN" && userTeam.role !== "ADMIN") {
-        return res.status(403).json("Only admins can change user roles");
+      const targetMembership = await prisma.userTeam.findUnique({
+        where: {
+          userId_teamId: {
+            userId: userToBeChanged,
+            teamId,
+          },
+        },
+        select: { role: true },
+      });
+
+      if (!targetMembership) {
+        return res.status(404).json("Team member not found");
       }
 
-      // Managing the dataroom-scoped role (and its room assignments) is an
-      // ADMIN/MANAGER-only operation.
-      if (
+      const canManagerAssignDatarooms =
         role === "DATAROOM_MEMBER" &&
-        userTeam.role !== "ADMIN" &&
-        userTeam.role !== "MANAGER"
-      ) {
-        return res
-          .status(403)
-          .json("Only admins and managers can manage data room members");
+        userTeam.role === "MANAGER" &&
+        targetMembership.role !== "ADMIN";
+
+      if (userTeam.role !== "ADMIN" && !canManagerAssignDatarooms) {
+        return res.status(403).json("Only admins can change user roles");
       }
 
       if (userTeam?.role === "ADMIN" && userTeam.userId === userToBeChanged) {
