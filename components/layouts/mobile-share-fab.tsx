@@ -87,6 +87,14 @@ export function MobileShareFab({ mode, dataroomId }: MobileShareFabProps) {
 
   const documents = docListData?.documents ?? [];
 
+  const handleDocumentPickerOpenChange = (open: boolean) => {
+    setDocPickerOpen(open);
+    if (!open) {
+      setDocSearch("");
+      setDebouncedDocSearch("");
+    }
+  };
+
   const openDataroomLinkFor = useCallback((id: string) => {
     setPickedDataroomId(id);
     setDrPickerOpen(false);
@@ -104,7 +112,7 @@ export function MobileShareFab({ mode, dataroomId }: MobileShareFabProps) {
 
   const handlePickDocument = (id: string) => {
     setPickedDocumentId(id);
-    setDocPickerOpen(false);
+    handleDocumentPickerOpenChange(false);
     setChooseOpen(false);
     setDocLinkOpen(true);
   };
@@ -156,7 +164,7 @@ export function MobileShareFab({ mode, dataroomId }: MobileShareFabProps) {
               className="h-auto justify-start gap-3 py-4 text-left"
               onClick={() => {
                 setChooseOpen(false);
-                setDocPickerOpen(true);
+                handleDocumentPickerOpenChange(true);
               }}
             >
               <FileTextIcon className="h-5 w-5 shrink-0" />
@@ -188,7 +196,10 @@ export function MobileShareFab({ mode, dataroomId }: MobileShareFabProps) {
         </SheetContent>
       </Sheet>
 
-      <Sheet open={docPickerOpen} onOpenChange={setDocPickerOpen}>
+      <Sheet
+        open={docPickerOpen}
+        onOpenChange={handleDocumentPickerOpenChange}
+      >
         <SheetContent
           side="bottom"
           className="flex max-h-[85dvh] flex-col rounded-t-xl border-t px-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 md:hidden"
@@ -201,7 +212,7 @@ export function MobileShareFab({ mode, dataroomId }: MobileShareFabProps) {
                 variant="ghost"
                 size="icon"
                 className="shrink-0"
-                onClick={() => setDocPickerOpen(false)}
+                onClick={() => handleDocumentPickerOpenChange(false)}
               >
                 <XIcon className="h-5 w-5" />
               </Button>
