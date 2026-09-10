@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
 import { toast } from "sonner";
@@ -29,24 +29,20 @@ export default function GlobalBlockListForm() {
   const [blockListInput, setBlockListInput] = useState("");
   const [initialBlockListInput, setInitialBlockListInput] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const hasUnsavedChanges = blockListInput !== initialBlockListInput;
 
   useEffect(() => {
-    if (blockList) {
+    if (blockList && !hasUnsavedChanges) {
       const val = blockList.join("\n");
       setBlockListInput(val);
       setInitialBlockListInput(val);
     }
-  }, [blockList]);
+  }, [blockList, hasUnsavedChanges]);
 
   const { invalid: invalidEntries } = validateList(blockListInput, "both");
 
-  const saveDisabled = useMemo(() => {
-    return (
-      isSaving ||
-      blockListInput === initialBlockListInput ||
-      invalidEntries.length > 0
-    );
-  }, [isSaving, blockListInput, initialBlockListInput, invalidEntries]);
+  const saveDisabled =
+    isSaving || !hasUnsavedChanges || invalidEntries.length > 0;
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -64,6 +60,9 @@ export default function GlobalBlockListForm() {
         throw new Error(error || "Failed to update block list.");
       }
       await mutate();
+      const savedValue = entries.join("\n");
+      setBlockListInput(savedValue);
+      setInitialBlockListInput(savedValue);
       return res.json();
     });
 
@@ -98,6 +97,7 @@ export default function GlobalBlockListForm() {
           placeholder={`Enter emails or domains separated by comma, semicolon, or new line, e.g.\n@company.io\nuser@example.com`}
           value={blockListInput}
           onChange={(e) => setBlockListInput(e.target.value)}
+          disabled={isSaving}
           aria-invalid={invalidEntries.length > 0}
         />
         {invalidEntries.length > 0 ? (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
 import { toast } from "sonner";
@@ -29,24 +29,20 @@ export default function IgnoredDomainsForm() {
   const [domainsInput, setDomainsInput] = useState("");
   const [initialDomainsInput, setInitialDomainsInput] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const hasUnsavedChanges = domainsInput !== initialDomainsInput;
 
   useEffect(() => {
-    if (ignoredDomains) {
+    if (ignoredDomains && !hasUnsavedChanges) {
       const val = ignoredDomains.join("\n");
       setDomainsInput(val);
       setInitialDomainsInput(val);
     }
-  }, [ignoredDomains]);
+  }, [ignoredDomains, hasUnsavedChanges]);
 
   const { invalid: invalidDomains } = validateList(domainsInput, "domain");
 
-  const saveDisabled = useMemo(() => {
-    return (
-      isSaving ||
-      domainsInput === initialDomainsInput ||
-      invalidDomains.length > 0
-    );
-  }, [isSaving, domainsInput, initialDomainsInput, invalidDomains]);
+  const saveDisabled =
+    isSaving || !hasUnsavedChanges || invalidDomains.length > 0;
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -64,6 +60,9 @@ export default function IgnoredDomainsForm() {
         throw new Error(error || "Failed to update ignored domains.");
       }
       await mutate();
+      const savedValue = domains.join("\n");
+      setDomainsInput(savedValue);
+      setInitialDomainsInput(savedValue);
       return res.json();
     });
 
@@ -98,6 +97,7 @@ export default function IgnoredDomainsForm() {
 @example.com`}
           value={domainsInput}
           onChange={(e) => setDomainsInput(e.target.value)}
+          disabled={isSaving}
           aria-invalid={invalidDomains.length > 0}
         />
         {invalidDomains.length > 0 ? (
