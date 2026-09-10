@@ -61,32 +61,35 @@ const STATUS_CONFIG: Record<
     useStrong: true,
     suffix: "...",
     icon: LoadingSpinner,
-    className: "bg-neutral-100 text-neutral-500",
+    className:
+      "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300",
   },
   "has site": {
     suffix:
       "is currently pointing to an existing website. Only proceed if you're sure you want to use this domain for Papermark links.",
     icon: InfoIcon,
-    className: "bg-blue-100 text-blue-800",
+    className: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200",
   },
   available: {
     suffix: "is ready to connect.",
     icon: CircleCheckIcon,
-    className: "bg-emerald-100 text-emerald-600",
+    className:
+      "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300",
   },
   invalid: {
     message: "Enter a valid domain to check availability.",
     icon: AlertTriangleIcon,
-    className: "bg-rose-100 text-rose-600",
+    className: "bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-300",
   },
   idle: {
     message: "Enter a valid domain to check availability.",
-    className: "bg-neutral-100 text-neutral-500",
+    className:
+      "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300",
   },
   error: {
     message: "We couldn't check this domain right now. Try again.",
     icon: AlertTriangleIcon,
-    className: "bg-rose-100 text-rose-600",
+    className: "bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-300",
   },
 };
 
@@ -312,10 +315,11 @@ export function AddDomainModal({
               <div
                 className={cn(
                   "-m-1 mt-2 rounded-[0.625rem] p-1",
-                  currentStatus.className || "bg-neutral-100 text-neutral-500",
+                  currentStatus.className ||
+                    "bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300",
                 )}
               >
-                <div className="flex rounded-md border border-neutral-300 bg-white">
+                <div className="flex rounded-md border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-950">
                   <Input
                     id="domain"
                     placeholder="docs.yourdomain.com"
