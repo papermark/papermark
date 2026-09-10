@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { useTeam } from "@/context/team-context";
 import { format } from "date-fns";
@@ -62,6 +62,7 @@ export default function TokenSettings() {
   const {
     data: tokens,
     isLoading,
+    error,
     mutate,
   } = useSWR<Token[]>(teamId ? `/api/teams/${teamId}/tokens` : null, fetcher);
 
@@ -116,7 +117,7 @@ export default function TokenSettings() {
     setShowDeleteTokenModal(true);
   };
 
-  const hasTokens = useMemo(() => (tokens?.length ?? 0) > 0, [tokens]);
+  const hasTokens = (tokens?.length ?? 0) > 0;
 
   return (
     <AppLayout>
@@ -180,6 +181,8 @@ export default function TokenSettings() {
                   ))}
                 </div>
               </div>
+            ) : error ? (
+              <ErrorState />
             ) : !hasTokens ? (
               <EmptyState />
             ) : (
@@ -266,6 +269,25 @@ export default function TokenSettings() {
         }
       </main>
     </AppLayout>
+  );
+}
+
+function ErrorState() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-500 dark:border-red-900 dark:bg-red-950">
+        <KeyRoundIcon className="h-5 w-5" />
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          Failed to load API keys
+        </p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Something went wrong while loading your API keys. Please refresh the
+          page or try again later.
+        </p>
+      </div>
+    </div>
   );
 }
 
