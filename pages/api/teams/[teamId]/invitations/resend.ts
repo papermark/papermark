@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth";
+import { z } from "zod";
 
 import { hashToken } from "@/lib/api/auth/token";
 import { sendTeammateInviteEmail } from "@/lib/emails/send-teammate-invite";
@@ -10,6 +11,8 @@ import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 import { generateChecksum } from "@/lib/utils/generate-checksum";
 import { generateJWT } from "@/lib/utils/generate-jwt";
+
+const emailSchema = z.string().trim().email();
 
 export default async function handle(
   req: NextApiRequest,
@@ -25,7 +28,11 @@ export default async function handle(
 
     const { teamId } = req.query as { teamId: string };
 
-    const { email } = req.body as { email: string };
+    const emailResult = emailSchema.safeParse(req.body?.email);
+    if (!emailResult.success) {
+      return res.status(400).json("A valid email is required");
+    }
+    const email = emailResult.data;
 
     try {
       // check if currentUser is part of the team with the teamId
@@ -62,19 +69,31 @@ export default async function handle(
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 168); // invitation expires in 7 days
 
-      // update invitation
-      const invitation = await prisma.invitation.update({
+      const invitation = await prisma.invitation.findUnique({
         where: {
           email_teamId: {
-            email: email,
-            teamId: teamId,
+            email,
+            teamId,
+          },
+        },
+        select: {
+          token: true,
+        },
+      });
+
+      if (!invitation) {
+        return res.status(404).json("Invitation not found");
+      }
+
+      await prisma.invitation.update({
+        where: {
+          email_teamId: {
+            email,
+            teamId,
           },
         },
         data: {
           expires: expiresAt,
-        },
-        select: {
-          token: true,
         },
       });
 
