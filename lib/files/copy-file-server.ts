@@ -133,7 +133,7 @@ async function copyFolder(
       }
     }
     if (list.NextContinuationToken) {
-      recursiveCopy(list.NextContinuationToken);
+      return recursiveCopy(list.NextContinuationToken);
     }
     return `${count} files copied.`;
   };
