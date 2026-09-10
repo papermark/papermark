@@ -103,10 +103,11 @@ export default async function handle(
         return res.status(401).json({ error: "Unauthorized" });
       }
 
-      const { name } = req.body;
-      if (!name) {
+      const name = req.body?.name;
+      if (typeof name !== "string" || !name.trim()) {
         return res.status(400).json({ error: "Name is required" });
       }
+      const trimmedName = name.trim();
 
       // Generate webhook ID and secret
       const webhookId = generateWebhookId(teamId);
@@ -114,7 +115,7 @@ export default async function handle(
       // Create incoming webhook
       const incomingWebhook = await prisma.incomingWebhook.create({
         data: {
-          name: "New Incoming Webhook",
+          name: trimmedName,
           externalId: webhookId,
           teamId,
         },
