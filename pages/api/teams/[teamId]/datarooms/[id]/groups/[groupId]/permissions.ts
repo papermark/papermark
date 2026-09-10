@@ -5,6 +5,7 @@ import { ItemType } from "@prisma/client";
 import cuid from "cuid";
 import { getServerSession } from "next-auth/next";
 
+import { enforceDataroomMemberScope } from "@/lib/api/rbac/guard";
 import {
   buildBulkUpsertPermissionsSql,
   buildFindAncestorFolderIdsSql,
@@ -51,6 +52,17 @@ export default async function handler(
   };
 
   try {
+    if (
+      await enforceDataroomMemberScope({
+        userId,
+        teamId,
+        dataroomId,
+        res,
+      })
+    ) {
+      return;
+    }
+
     const { permissions } = req.body as {
       permissions: Record<
         string,
