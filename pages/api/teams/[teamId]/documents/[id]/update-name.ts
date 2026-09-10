@@ -73,7 +73,7 @@ export default async function handle(
         });
 
         if (!document) {
-          return res.status(404).json({ error: "Document not found" });
+          return null;
         }
 
         const updateResult = await tx.document.update({
@@ -84,7 +84,6 @@ export default async function handle(
         return updateResult;
       });
 
-      // Check if any rows were affected
       if (!result) {
         return res.status(404).json({ error: "Document not found" });
       }
