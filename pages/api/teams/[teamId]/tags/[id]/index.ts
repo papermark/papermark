@@ -43,6 +43,7 @@ export default async function handle(
     }
   } catch (error) {
     errorhandler(error, res);
+    return;
   }
   if (req.method === "PUT") {
     // PUT /api/teams/:teamId/tags/[id]

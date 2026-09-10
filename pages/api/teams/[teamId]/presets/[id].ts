@@ -51,6 +51,7 @@ export default async function handle(
     }
   } catch (error) {
     errorhandler(error, res);
+    return;
   }
 
   if (req.method === "GET") {
