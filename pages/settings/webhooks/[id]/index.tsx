@@ -55,13 +55,13 @@ export default function WebhookDetail() {
   );
 
   useEffect(() => {
-    if (webhook) {
+    if (webhook && !isEditing) {
       setFormData({
         name: webhook.name,
         triggers: webhook.triggers as string[],
       });
     }
-  }, [webhook]);
+  }, [isEditing, webhook]);
 
   const handleUpdate = async () => {
     if ((isFree || isPro) && !isTrial) {
@@ -353,7 +353,15 @@ export default function WebhookDetail() {
                         <Button
                           variant="outline"
                           className="dark:bg-transparent dark:hover:bg-muted"
-                          onClick={() => setIsEditing(false)}
+                          onClick={() => {
+                            if (webhook) {
+                              setFormData({
+                                name: webhook.name,
+                                triggers: webhook.triggers as string[],
+                              });
+                            }
+                            setIsEditing(false);
+                          }}
                         >
                           Cancel
                         </Button>
