@@ -132,9 +132,14 @@ export function AddFolderModal({
       );
 
       if (!response.ok) {
-        const { message } = await response.json();
-        setLoading(false);
-        toast.error(message.error);
+        const responseBody = await response.json();
+        const errorMessage =
+          typeof responseBody?.message === "string"
+            ? responseBody.message
+            : typeof responseBody?.error === "string"
+              ? responseBody.error
+              : "Error adding folder. Please try again.";
+        toast.error(errorMessage);
         return;
       }
 
@@ -162,16 +167,14 @@ export function AddFolderModal({
       mutate(
         `/api/teams/${teamInfo?.currentTeam?.id}/${endpointTargetType}${parentFolderPath}`,
       );
-    } catch (error) {
-      setLoading(false);
-      toast.error("Error adding folder. Please try again.");
-      return;
-    } finally {
       setFolderName("");
       setFolderIcon(DEFAULT_FOLDER_ICON);
       setFolderColor(DEFAULT_FOLDER_COLOR);
-      setLoading(false);
       setOpen(false);
+    } catch (error) {
+      toast.error("Error adding folder. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
