@@ -135,42 +135,51 @@ export function AddViewerModal({
 
     setLoading(true);
 
-    // POST request with multiple emails
-    const response = await fetch(
-      `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/users`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+    try {
+      const response = await fetch(
+        `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/users`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            emails: emails,
+          }),
         },
-        body: JSON.stringify({
-          emails: emails,
-        }),
-      },
-    );
+      );
 
-    if (!response.ok) {
-      const error = await response.json();
-      setLoading(false);
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        const errorMessage =
+          typeof errorBody?.message === "string"
+            ? errorBody.message
+            : typeof errorBody?.error === "string"
+              ? errorBody.error
+              : "Failed to send invitations.";
+        toast.error(errorMessage);
+        return;
+      }
+
+      analytics.capture("Dataroom View Invitation Sent", {
+        inviteeCount: emails.length,
+        teamId: teamInfo?.currentTeam?.id,
+        dataroomId: dataroomId,
+      });
+
+      mutate(
+        `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/viewers`,
+      );
+
+      toast.success("Invitation emails have been sent!");
+      setEmails([]);
+      setInputValue("");
       setOpen(false);
-      toast.error(error.message || "Failed to send invitations.");
-      return;
+    } catch (error) {
+      toast.error("Failed to send invitations.");
+    } finally {
+      setLoading(false);
     }
-
-    analytics.capture("Dataroom View Invitation Sent", {
-      inviteeCount: emails.length,
-      teamId: teamInfo?.currentTeam?.id,
-      dataroomId: dataroomId,
-    });
-
-    mutate(
-      `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/viewers`,
-    );
-
-    toast.success("Invitation emails have been sent!");
-    setOpen(false);
-    setLoading(false);
-    setEmails([]); // Reset emails state
   };
 
   return (
