@@ -68,7 +68,9 @@ const formSchema = z.object({
     .min(3, "Please provide a webhook name with at least 3 characters."),
   url: z.string().url("Please enter a valid URL."),
   secret: z.string(),
-  triggers: z.array(z.string()),
+  triggers: z
+    .array(z.string())
+    .min(1, "Select at least one event trigger."),
 });
 
 export default function NewWebhook() {
@@ -344,11 +346,14 @@ export default function NewWebhook() {
                   trigger="create_webhook"
                   highlightItem={["webhooks"]}
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || formData.triggers.length === 0}
                   key="create-webhook"
                 />
               ) : (
-                <Button type="submit" disabled={isLoading}>
+                <Button
+                  type="submit"
+                  disabled={isLoading || formData.triggers.length === 0}
+                >
                   {isLoading ? "Creating..." : "Create Webhook"}
                 </Button>
               )}

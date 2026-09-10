@@ -6,7 +6,9 @@ export const createWebhookSchema = z.object({
   name: z.string().min(1).max(40),
   url: z.string().url().max(190),
   secret: z.string().startsWith("whsec_"),
-  triggers: z.array(z.enum(WEBHOOK_TRIGGERS)),
+  triggers: z
+    .array(z.enum(WEBHOOK_TRIGGERS))
+    .min(1, "Select at least one event trigger."),
 });
 
 export const updateWebhookSchema = createWebhookSchema.partial();
