@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getToken } from "next-auth/jwt";
 
+import { sessionCookieName } from "@/lib/auth/session-cookie";
+
 const LOGIN_PATH = "/login";
 const DEFAULT_AUTH_REDIRECT_PATH = "/dashboard";
 
@@ -54,6 +56,7 @@ export default async function AppMiddleware(req: NextRequest) {
   const token = (await getToken({
     req,
     secret: process.env.NEXTAUTH_SECRET,
+    cookieName: sessionCookieName,
   })) as {
     email?: string;
     user?: {

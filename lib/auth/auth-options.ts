@@ -8,14 +8,17 @@ import GoogleProvider from "next-auth/providers/google";
 import LinkedInProvider from "next-auth/providers/linkedin";
 
 import { identifyUser, trackAnalytics } from "@/lib/analytics";
+import {
+  sessionCookieDomain,
+  sessionCookieName,
+  useSecureCookies,
+} from "@/lib/auth/session-cookie";
 import { qstash } from "@/lib/cron";
 import { sendVerificationRequestEmail } from "@/lib/emails/send-verification-request";
 import hanko from "@/lib/hanko";
 import { jackson } from "@/lib/jackson";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
-
-const VERCEL_DEPLOYMENT = !!process.env.VERCEL_URL;
 
 function getMainDomainUrl(): string {
   if (process.env.NODE_ENV === "development") {
@@ -182,13 +185,13 @@ export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
   cookies: {
     sessionToken: {
-      name: `${VERCEL_DEPLOYMENT ? "__Secure-" : ""}next-auth.session-token`,
+      name: sessionCookieName,
       options: {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        domain: VERCEL_DEPLOYMENT ? ".papermark.com" : undefined,
-        secure: VERCEL_DEPLOYMENT,
+        domain: sessionCookieDomain,
+        secure: useSecureCookies,
       },
     },
   },
