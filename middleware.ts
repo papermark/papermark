@@ -19,6 +19,35 @@ function isAnalyticsPath(path: string) {
   return pattern.test(path);
 }
 
+function hostnameOf(host: string) {
+  // Strip an optional port, keeping a bracketed IPv6 literal such as
+  // `[2001:db8::1]` intact so it matches `new URL(...).hostname`.
+  return host
+    .match(/^(\[[^\]]*\]|[^:]+)/)?.[1]
+    ?.toLowerCase()
+    .trim();
+}
+
+// Hosts a self-hosted instance serves the app itself on. Without this every
+// host outside the papermark.com list was routed to the custom-domain
+// dataroom handler, so /login on papermark.example.com rendered a spinner.
+// NEXT_PUBLIC_APP_BASE_HOST is inlined at build time; NEXTAUTH_URL is read at
+// runtime, so a prebuilt image still gets the right answer.
+function isConfiguredAppHost(host: string) {
+  const hostname = hostnameOf(host);
+  const appHosts = [
+    process.env.NEXT_PUBLIC_APP_BASE_HOST?.toLowerCase().trim(),
+  ];
+  try {
+    if (process.env.NEXTAUTH_URL) {
+      appHosts.push(new URL(process.env.NEXTAUTH_URL).hostname.toLowerCase());
+    }
+  } catch {
+    // malformed NEXTAUTH_URL: fall through to the static host list
+  }
+  return !!hostname && appHosts.includes(hostname);
+}
+
 function isCustomDomain(host: string) {
   return (
     (process.env.NODE_ENV === "development" &&
@@ -28,7 +57,8 @@ function isCustomDomain(host: string) {
         host?.includes("localhost") ||
         host?.includes("papermark.io") ||
         host?.includes("papermark.com") ||
-        host?.endsWith(".vercel.app")
+        host?.endsWith(".vercel.app") ||
+        isConfiguredAppHost(host)
       ))
   );
 }
