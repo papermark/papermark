@@ -8,6 +8,12 @@ export type GetFileOptions = {
   isDownload?: boolean;
   /** Signed URL lifetime in milliseconds (server-side S3 only, capped at 1 hour) */
   expiresIn?: number;
+  /**
+   * Override the Content-Disposition returned for this single download.
+   * Only honored for S3-backed documents on origins that are not fronted by
+   * CloudFront (CloudFront strips/ignores the override).
+   */
+  responseContentDisposition?: string;
 };
 
 export const getFile = async ({
@@ -15,6 +21,7 @@ export const getFile = async ({
   data,
   isDownload = false,
   expiresIn,
+  responseContentDisposition,
 }: GetFileOptions): Promise<string> => {
   const url = await match(type)
     .with(DocumentStorageType.VERCEL_BLOB, () => {
@@ -25,7 +32,7 @@ export const getFile = async ({
       }
     })
     .with(DocumentStorageType.S3_PATH, async () =>
-      getFileFromS3(data, expiresIn),
+      getFileFromS3(data, expiresIn, responseContentDisposition),
     )
     .exhaustive();
 
@@ -37,11 +44,16 @@ const fetchPresignedUrl = async (
   headers: Record<string, string>,
   key: string,
   expiresIn?: number,
+  responseContentDisposition?: string,
 ): Promise<string> => {
   const response = await fetch(endpoint, {
     method: "POST",
     headers,
-    body: JSON.stringify({ key, ...(expiresIn && { expiresIn }) }),
+    body: JSON.stringify({
+      key,
+      ...(expiresIn && { expiresIn }),
+      ...(responseContentDisposition && { responseContentDisposition }),
+    }),
   });
 
   if (!response.ok) {
@@ -71,7 +83,11 @@ const fetchPresignedUrl = async (
   return url;
 };
 
-const getFileFromS3 = async (key: string, expiresIn?: number) => {
+const getFileFromS3 = async (
+  key: string,
+  expiresIn?: number,
+  responseContentDisposition?: string,
+) => {
   const isServer =
     typeof window === "undefined" && !!process.env.INTERNAL_API_KEY;
 
@@ -84,6 +100,7 @@ const getFileFromS3 = async (key: string, expiresIn?: number) => {
       },
       key,
       expiresIn,
+      responseContentDisposition,
     );
   } else {
     return fetchPresignedUrl(
@@ -92,6 +109,8 @@ const getFileFromS3 = async (key: string, expiresIn?: number) => {
         "Content-Type": "application/json",
       },
       key,
+      undefined,
+      responseContentDisposition,
     );
   }
 };

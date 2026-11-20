@@ -1,10 +1,98 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
+import { mergeGroupDomains } from "@/lib/utils/email-domain";
+
+const GROUP_MISSING = Symbol("group-missing");
+const DOMAIN_WRITE_ATTEMPTS = 3;
+
+type MembersBody =
+  | { ok: true; emails: string[]; domains: string[]; allowAll?: boolean }
+  | { ok: false; error: string };
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function parseMembersBody(body: unknown): MembersBody {
+  if (body == null) {
+    return { ok: true, emails: [], domains: [] };
+  }
+  if (typeof body !== "object" || Array.isArray(body)) {
+    return { ok: false, error: "Invalid request body." };
+  }
+
+  const emails = Reflect.get(body, "emails");
+  const domains = Reflect.get(body, "domains");
+  const allowAll = Reflect.get(body, "allowAll");
+
+  if (emails !== undefined && !isStringArray(emails)) {
+    return { ok: false, error: "emails must be an array of strings." };
+  }
+  if (domains !== undefined && !isStringArray(domains)) {
+    return { ok: false, error: "domains must be an array of strings." };
+  }
+  if (allowAll !== undefined && typeof allowAll !== "boolean") {
+    return { ok: false, error: "allowAll must be a boolean." };
+  }
+
+  return {
+    ok: true,
+    emails: isStringArray(emails) ? emails : [],
+    domains: isStringArray(domains) ? domains : [],
+    ...(typeof allowAll === "boolean" ? { allowAll } : {}),
+  };
+}
+
+async function writeMergedGroupDomains(
+  groupId: string,
+  dataroomId: string,
+  incomingDomains: string[],
+  allowAll?: boolean,
+) {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= DOMAIN_WRITE_ATTEMPTS; attempt++) {
+    try {
+      await prisma.$transaction(
+        async (tx) => {
+          const current = await tx.viewerGroup.findUnique({
+            where: { id: groupId, dataroomId },
+            select: { domains: true },
+          });
+          if (!current) {
+            throw GROUP_MISSING;
+          }
+          await tx.viewerGroup.update({
+            where: { id: groupId },
+            data: {
+              domains: mergeGroupDomains(current.domains ?? [], incomingDomains),
+              ...(typeof allowAll === "boolean" ? { allowAll } : {}),
+            },
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+      return;
+    } catch (error) {
+      if (error === GROUP_MISSING) {
+        throw error;
+      }
+      lastError = error;
+      const retryable =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034";
+      if (!retryable || attempt === DOMAIN_WRITE_ATTEMPTS) {
+        throw error;
+      }
+    }
+  }
+  throw lastError;
+}
 
 export default async function handle(
   req: NextApiRequest,
@@ -29,11 +117,11 @@ export default async function handle(
       groupId: string;
     };
 
-    const { emails, domains, allowAll } = req.body as {
-      emails: string[];
-      domains: string[];
-      allowAll: boolean;
-    };
+    const parsed = parseMembersBody(req.body);
+    if (!parsed.ok) {
+      return res.status(400).json({ error: parsed.error });
+    }
+    const { emails, domains, allowAll } = parsed;
 
     try {
       // Check if the user is part of the team
@@ -64,41 +152,42 @@ export default async function handle(
         return res.status(404).end("Group not found");
       }
 
-      // First, create or connect viewers
-      await prisma.viewer.createMany({
-        data: emails.map((email) => ({
-          email,
-          teamId,
-        })),
-        skipDuplicates: true,
-      });
+      let members = { count: 0 };
+      if (emails.length > 0) {
+        await prisma.viewer.createMany({
+          data: emails.map((email) => ({
+            email,
+            teamId,
+          })),
+          skipDuplicates: true,
+        });
 
-      const viewers = await prisma.viewer.findMany({
-        where: {
-          teamId: teamId,
-          email: {
-            in: emails,
+        const viewers = await prisma.viewer.findMany({
+          where: {
+            teamId: teamId,
+            email: {
+              in: emails,
+            },
           },
-        },
-        select: { id: true },
-      });
+          select: { id: true },
+        });
 
-      // Then, create the membership
-      const members = await prisma.viewerGroupMembership.createMany({
-        data: viewers.map((viewer) => ({
-          groupId: groupId,
-          viewerId: viewer.id,
-        })),
-      });
+        members = await prisma.viewerGroupMembership.createMany({
+          data: viewers.map((viewer) => ({
+            groupId: groupId,
+            viewerId: viewer.id,
+          })),
+          skipDuplicates: true,
+        });
+      }
 
-      // Update the group with the new domains and allowAll setting
-      await prisma.viewerGroup.update({
-        where: { id: groupId },
-        data: { domains, allowAll },
-      });
+      await writeMergedGroupDomains(groupId, dataroomId, domains, allowAll);
 
       res.status(201).json(members);
     } catch (error) {
+      if (error === GROUP_MISSING) {
+        return res.status(404).end("Group not found");
+      }
       console.error("Request error", error);
       res.status(500).json({ error: "Error creating folder" });
     }

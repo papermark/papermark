@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { runs } from "@trigger.dev/sdk";
+import { waitUntil } from "@vercel/functions";
+
 import { processDocument } from "@/lib/api/documents/process-document";
 import { verifyDataroomSession } from "@/lib/auth/dataroom-auth";
 import { DocumentData } from "@/lib/documents/create-document";
 import prisma from "@/lib/prisma";
+import { sendDataroomChangeNotificationTask } from "@/lib/trigger/dataroom-change-notification";
 import { sendDataroomUploadNotificationTask } from "@/lib/trigger/dataroom-upload-notification";
-import { sanitizePlainText } from "@/lib/utils/sanitize-html";
 import { supportsAdvancedExcelMode } from "@/lib/utils/get-content-type";
-import { runs } from "@trigger.dev/sdk";
-import { waitUntil } from "@vercel/functions";
+import { sanitizePlainText } from "@/lib/utils/sanitize-html";
 
 /**
  * GET /api/links/[id]/upload?dataroomId=xxx
@@ -37,10 +39,7 @@ export async function GET(
     );
 
     if (!dataroomSession || !dataroomSession.viewerId) {
-      return NextResponse.json(
-        { message: "Unauthorized" },
-        { status: 401 },
-      );
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     const { viewerId } = dataroomSession;
@@ -153,13 +152,18 @@ export async function POST(
         name: true,
         enableUpload: true,
         enableNotification: true,
-        uploadFolderId: true,
+        uploadFolderIds: true,
         dataroomId: true,
         teamId: true,
         team: {
           select: {
             plan: true,
             enableExcelAdvancedMode: true,
+          },
+        },
+        dataroom: {
+          select: {
+            enableVisitorUploadChangeNotifications: true,
           },
         },
       },
@@ -221,7 +225,8 @@ export async function POST(
     const updatedDocumentData = {
       ...documentData,
       name: sanitizedDocumentName,
-      enableExcelAdvancedMode: documentData.supportedFileType === "sheet" &&
+      enableExcelAdvancedMode:
+        documentData.supportedFileType === "sheet" &&
         link.team?.enableExcelAdvancedMode &&
         supportsAdvancedExcelMode(documentData.contentType),
     };
@@ -234,22 +239,53 @@ export async function POST(
       isExternalUpload: true,
     });
 
-    // 2. Create the dataroom document
-    // If folderId is provided and link has no uploadFolderId, use folderId as the dataroomFolderId
-    // Otherwise, use the link's uploadFolderId
-    // or null if it doesn't exist
-    let dataroomFolderId: string | null = folderId ?? null;
-    if (link.uploadFolderId) {
-      const dataroomFolder = await prisma.dataroomFolder.findUnique({
+    // 2. Resolve the target dataroom folder.
+    //
+    // Semantics:
+    //   - Admin selected 0 folders  → visitor can upload anywhere (use folderId
+    //     from the request, validated against the dataroom).
+    //   - Admin selected 1+ folders → the visitor-supplied folderId must be
+    //     inside that allow-list. If it isn't (e.g. the visitor is currently
+    //     browsing another folder), fall back to the first allowed folder so
+    //     uploads never silently escape the allow-list.
+    const allowedUploadFolderIds = Array.isArray(link.uploadFolderIds)
+      ? link.uploadFolderIds.filter(
+          (id): id is string => typeof id === "string" && !!id,
+        )
+      : [];
+
+    let dataroomFolderId: string | null = null;
+
+    if (allowedUploadFolderIds.length === 0) {
+      // No restriction: validate the visitor-chosen folder belongs to this
+      // dataroom before using it.
+      if (folderId) {
+        const dataroomFolder = await prisma.dataroomFolder.findUnique({
+          where: { id: folderId, dataroomId },
+          select: { id: true },
+        });
+        dataroomFolderId = dataroomFolder?.id ?? null;
+      }
+    } else {
+      // Restricted: look up all allowed folders in one query and prefer the
+      // one the visitor is currently in if it's on the list.
+      const allowedFolders = await prisma.dataroomFolder.findMany({
         where: {
-          id: link.uploadFolderId,
+          id: { in: allowedUploadFolderIds },
           dataroomId,
         },
-        select: {
-          id: true,
-        },
+        select: { id: true },
       });
-      dataroomFolderId = dataroomFolder?.id ?? null;
+      const allowedSet = new Set(allowedFolders.map((f) => f.id));
+
+      if (folderId && allowedSet.has(folderId)) {
+        dataroomFolderId = folderId;
+      } else {
+        // Preserve admin-selected ordering so the first allowed folder wins
+        // when the visitor isn't currently inside one of the allowed folders.
+        dataroomFolderId =
+          allowedUploadFolderIds.find((id) => allowedSet.has(id)) ?? null;
+      }
     }
 
     const newDataroomDocument = await prisma.dataroomDocument.create({
@@ -324,6 +360,66 @@ export async function POST(
         );
       } catch (error) {
         console.error("Error triggering upload notification:", error);
+      }
+    }
+
+    // 5. Notify other dataroom visitors about the new upload (each visitor gets their own email)
+    //    Uses cancel-and-retrigger as a debounce: cancelled runs' document IDs
+    //    are accumulated into the new run so no uploads are lost.
+    if (link.dataroom?.enableVisitorUploadChangeNotifications) {
+      try {
+        const existingChangeRuns = await runs.list({
+          taskIdentifier: ["send-dataroom-change-notification"],
+          tag: [`dataroom_${dataroomId}`, `visitor_upload_${viewerId}`],
+          status: ["DELAYED", "QUEUED"],
+          period: "15m",
+        });
+
+        const matchingChangeRuns = existingChangeRuns.data.filter(
+          (run) =>
+            run.tags?.includes(`dataroom_${dataroomId}`) &&
+            run.tags?.includes(`visitor_upload_${viewerId}`),
+        );
+
+        let accumulatedDocIds: string[] = [newDataroomDocument.id];
+        for (const run of matchingChangeRuns) {
+          const fullRun = await runs.retrieve(run.id);
+          const existingIds = (
+            fullRun.payload as { dataroomDocumentIds?: string[] } | undefined
+          )?.dataroomDocumentIds;
+          if (Array.isArray(existingIds)) {
+            accumulatedDocIds.push(...existingIds);
+          }
+        }
+        accumulatedDocIds = [...new Set(accumulatedDocIds)];
+
+        await Promise.all(matchingChangeRuns.map((run) => runs.cancel(run.id)));
+
+        waitUntil(
+          sendDataroomChangeNotificationTask.trigger(
+            {
+              dataroomId,
+              dataroomDocumentIds: accumulatedDocIds,
+              senderUserId: null,
+              teamId: link.teamId,
+              excludeViewerId: viewerId,
+            },
+            {
+              idempotencyKey: `visitor-change-notification-${link.teamId}-${dataroomId}-${viewerId}-${Date.now()}`,
+              tags: [
+                `team_${link.teamId}`,
+                `dataroom_${dataroomId}`,
+                `visitor_upload_${viewerId}`,
+              ],
+              delay: new Date(Date.now() + 10 * 60 * 1000),
+            },
+          ),
+        );
+      } catch (error) {
+        console.error(
+          "Error triggering visitor upload change notification:",
+          error,
+        );
       }
     }
 

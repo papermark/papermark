@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/alert";
 
 export default function TrialBanner() {
-  const { trial } = usePlan();
+  const { trial, trialEndsAt } = usePlan();
   const isTrial = !!trial;
   const [showTrialBanner, setShowTrialBanner] = useState<boolean | null>(null);
 
@@ -28,10 +28,15 @@ export default function TrialBanner() {
     } else {
       setShowTrialBanner(false);
     }
-  }, []);
+  }, [isTrial]);
 
   if (isTrial && showTrialBanner) {
-    return <TrialBannerComponent setShowTrialBanner={setShowTrialBanner} />;
+    return (
+      <TrialBannerComponent
+        setShowTrialBanner={setShowTrialBanner}
+        trialEndsAt={trialEndsAt}
+      />
+    );
   }
 
   return null;
@@ -39,8 +44,10 @@ export default function TrialBanner() {
 
 function TrialBannerComponent({
   setShowTrialBanner,
+  trialEndsAt,
 }: {
   setShowTrialBanner: Dispatch<SetStateAction<boolean | null>>;
+  trialEndsAt: Date | null | undefined;
 }) {
   const teamInfo = useTeam();
 
@@ -53,21 +60,27 @@ function TrialBannerComponent({
 
   const { datarooms } = useDataroomsSimple();
 
-  const trialDaysLeft = datarooms
-    ? daysLeft(
-        new Date(
-          datarooms[0]?.createdAt ??
-            teamInfo?.currentTeam?.createdAt ??
-            new Date(),
-        ),
-        7,
-      )
-    : 0;
+  // Prefer the explicit trialEndsAt override when set (e.g. after a manual
+  // trial extension); otherwise fall back to the legacy "7d from first
+  // dataroom or team creation" computation.
+  let trialDaysLeft = 0;
+  if (trialEndsAt) {
+    trialDaysLeft = daysLeft(new Date(trialEndsAt), 0);
+  } else if (datarooms) {
+    trialDaysLeft = daysLeft(
+      new Date(
+        datarooms[0]?.createdAt ??
+          teamInfo?.currentTeam?.createdAt ??
+          new Date(),
+      ),
+      7,
+    );
+  }
 
   const isExpired = trialDaysLeft <= 0;
 
   return (
-    <div className="mx-2 my-2 mb-2">
+    <div className="mx-2 my-2 mb-2 hidden md:block">
       <Alert
         variant="default"
         className={
@@ -75,12 +88,12 @@ function TrialBannerComponent({
         }
       >
         <CrownIcon className="h-4 w-4" />
-        <AlertTitle>
+        <AlertTitle className="pr-6">
           {isExpired
-            ? "Your Data Room trial has expired"
-            : `Data Room trial: ${trialDaysLeft} days left`}
+            ? "Your Data Room Plus trial has expired"
+            : `Data Room Plus trial: ${trialDaysLeft} days left`}
         </AlertTitle>
-        <AlertDescription>
+        <AlertDescription className="pr-6">
           {isExpired ? (
             <>
               <UpgradePlanModal
@@ -91,23 +104,22 @@ function TrialBannerComponent({
                   Upgrade to keep access
                 </span>
               </UpgradePlanModal>{" "}
-              to unlimited data rooms, custom domains, advanced access controls,
-              and granular file permissions ✨
+              to unlimited data rooms, custom domains, and granular permissions
             </>
           ) : (
             <>
-              You are on the <span className="font-bold">Data Rooms</span> plan
-              trial, you have access to advanced access controls, granular file
-              permissions, and data room. <br />
+              You&apos;re on the{" "}
+              <span className="font-bold">Data Rooms</span> trial.{" "}
               <UpgradePlanModal
                 clickedPlan={PlanEnum.DataRooms}
                 trigger={"trial_navbar"}
               >
                 <span className="cursor-pointer font-bold text-orange-500 underline underline-offset-4 hover:text-orange-600">
-                  Upgrade to keep access
+                  Upgrade
                 </span>
-              </UpgradePlanModal>
-              , unlock unlimited data rooms and custom domains ✨
+              </UpgradePlanModal>{" "}
+              to keep unlimited data rooms, custom domains, and advanced access
+              controls
             </>
           )}
         </AlertDescription>

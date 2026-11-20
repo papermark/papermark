@@ -35,19 +35,15 @@ export default async function handle(
   const notionUrl = validationResult.data;
 
   try {
-    // Check if user has access to the team
-    const team = await prisma.team.findUnique({
+    const teamAccess = await prisma.userTeam.findUnique({
       where: {
-        id: teamId,
-        users: {
-          some: {
-            userId: userId,
-          },
+        userId_teamId: {
+          userId: userId,
+          teamId: teamId,
         },
       },
     });
-
-    if (!team) {
+    if (!teamAccess) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
@@ -55,6 +51,9 @@ export default async function handle(
       where: {
         documentId: documentId,
         isPrimary: true,
+        document: {
+          teamId: teamId,
+        },
       },
       select: {
         id: true,
@@ -84,10 +83,9 @@ export default async function handle(
     }
 
     // Update document version
-    await prisma.documentVersion.updateMany({
+    await prisma.documentVersion.update({
       where: {
-        documentId: documentId,
-        isPrimary: true,
+        id: documentVersion.id,
       },
       data: {
         file: newUrl.toString(),

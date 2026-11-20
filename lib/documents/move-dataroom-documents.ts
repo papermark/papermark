@@ -22,7 +22,7 @@ export const moveDataroomDocumentToFolder = async ({
   }
 
   console.log("moving documents to folder", documentIds, folderId);
-  const key = `/api/teams/${teamId}/datarooms/${dataroomId}${folderPathName ? `/folders/documents/${folderPathName.join("/")}` : "/documents"}`;
+  const key = `/api/teams/${teamId}/datarooms/${dataroomId}${folderPathName ? `/folder-documents/${folderPathName.join("/")}` : "/documents"}`;
   // Optimistically update the UI by removing the documents from current folder
   mutate(
     key,
@@ -88,7 +88,7 @@ export const moveDataroomDocumentToFolder = async ({
       mutate(`/api/teams/${teamId}/datarooms/${dataroomId}/folders?root=true`);
     // update documents in new folder (`newPath` or home)
     mutate(
-      `/api/teams/${teamId}/datarooms/${dataroomId}${newPath ? `/folders/documents/${newPath}` : "/documents"}`,
+      `/api/teams/${teamId}/datarooms/${dataroomId}${newPath ? `/folder-documents/${newPath}` : "/documents"}`,
     );
     mutate(`/api/teams/${teamId}/datarooms/${dataroomId}/folders`);
     toast.success(

@@ -5,6 +5,10 @@ import { z } from "zod";
 
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
+import {
+  buildAgreementSigningExternalId,
+  getSigningAgreementCreateData,
+} from "@/lib/signing/agreements";
 import { CustomUser } from "@/lib/types";
 import { log } from "@/lib/utils";
 import { validateContent } from "@/lib/utils/sanitize-html";
@@ -12,18 +16,28 @@ import { validateContent } from "@/lib/utils/sanitize-html";
 import { authOptions } from "../../../auth/[...nextauth]";
 
 // Zod schema for agreement creation
-const createAgreementSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Name is required")
-    .max(150, "Name must be less than 150 characters"),
-  content: z
-    .string()
-    .min(1, "Content is required")
-    .max(1500, "Content must be less than 1500 characters"),
-  contentType: z.enum(["LINK", "TEXT"]).default("LINK"),
-  requireName: z.boolean().default(false),
-});
+const createAgreementSchema = z
+  .object({
+    name: z
+      .string()
+      .min(1, "Name is required")
+      .max(150, "Name must be less than 150 characters"),
+    content: z
+      .string()
+      .max(3000, "Content must be less than 3000 characters")
+      .optional(),
+    contentType: z.enum(["LINK", "TEXT", "SIGNING"]).default("SIGNING"),
+    requireName: z.boolean().default(false),
+  })
+  .superRefine((data, ctx) => {
+    if (data.contentType !== "SIGNING" && !data.content?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Content is required",
+        path: ["content"],
+      });
+    }
+  });
 
 export default async function handle(
   req: NextApiRequest,
@@ -57,6 +71,13 @@ export default async function handle(
                   links: {
                     where: {
                       deletedAt: null,
+                    },
+                  },
+                  responses: {
+                    where: {
+                      signingStatus: {
+                        in: ["SIGNED", "COMPLETED"],
+                      },
                     },
                   },
                 },
@@ -117,17 +138,37 @@ export default async function handle(
 
       const { name, content, contentType, requireName } = parseResult.data;
 
-      // Sanitize content using existing sanitization logic
-      const sanitizedContent = validateContent(content, 1500);
+      const sanitizedContent =
+        contentType === "SIGNING"
+          ? content?.trim()
+          : validateContent(content || "", 3000);
 
-      const agreement = await prisma.agreement.create({
-        data: {
-          teamId,
-          name: name.trim(),
-          content: sanitizedContent,
-          contentType: contentType || "LINK",
-          requireName,
-        },
+      const agreement = await prisma.$transaction(async (tx) => {
+        const created = await tx.agreement.create({
+          data: getSigningAgreementCreateData({
+            teamId,
+            name,
+            content: sanitizedContent,
+            contentType,
+            requireName,
+          }),
+        });
+
+        if (contentType === "SIGNING") {
+          return tx.agreement.update({
+            where: {
+              id: created.id,
+            },
+            data: {
+              signingExternalId: buildAgreementSigningExternalId(
+                teamId,
+                created.id,
+              ),
+            },
+          });
+        }
+
+        return created;
       });
 
       return res.status(201).json(agreement);

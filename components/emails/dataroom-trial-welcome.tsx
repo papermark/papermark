@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Body, Head, Html, Tailwind, Text } from "@react-email/components";
+import { Body, Head, Html, Tailwind, Text } from "react-email";
 
 interface WelcomeEmailProps {
   name: string | null | undefined;

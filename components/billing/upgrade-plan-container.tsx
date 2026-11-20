@@ -5,28 +5,15 @@ import { useState } from "react";
 import { useTeam } from "@/context/team-context";
 import { CancellationModal } from "@/ee/features/billing/cancellation/components";
 import { PlanEnum } from "@/ee/stripe/constants";
-import {
-  BanIcon,
-  CirclePauseIcon,
-  CreditCardIcon,
-  MoreVertical,
-  ReceiptTextIcon,
-} from "lucide-react";
+import { MoreVertical, SquareXIcon } from "lucide-react";
 import { toast } from "sonner";
 import { mutate } from "swr";
 
 import { useAnalytics } from "@/lib/analytics";
 import { usePlan } from "@/lib/swr/use-billing";
 
+import Stripe from "@/components/shared/icons/stripe";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,15 +37,15 @@ export default function UpgradePlanContainer() {
     isDataroomsUnlimited,
     isPaused,
     isCancelled,
-    isCustomer,
     startsAt,
     endsAt,
     pauseStartsAt,
-    pauseEndsAt,
     discount,
-    mutate: mutatePlan,
   } = usePlan({ withDiscount: true });
   const analytics = useAnalytics();
+
+  const goToUpgrade = () => router.push("/settings/billing/upgrade");
+  const goToInvoices = () => router.push("/settings/billing/invoices");
 
   const manageSubscription = async ({
     type,
@@ -73,6 +60,7 @@ export default function UpgradePlanContainer() {
     if (!currentTeamId) return;
 
     setLoading(true);
+    const toastId = toast.loading("Redirecting to Stripe...");
 
     try {
       fetch(`/api/teams/${currentTeamId}/billing/manage`, {
@@ -87,6 +75,9 @@ export default function UpgradePlanContainer() {
           router.push(url);
         })
         .catch((err) => {
+          toast.error("Failed to open Stripe. Please try again.", {
+            id: toastId,
+          });
           throw err;
         })
         .finally(() => {
@@ -94,7 +85,6 @@ export default function UpgradePlanContainer() {
         });
     } catch (error) {
       console.error(error);
-    } finally {
       setLoading(false);
     }
   };
@@ -195,133 +185,146 @@ export default function UpgradePlanContainer() {
     return discountText;
   };
 
+  const planTitle = isDataroomsUnlimited
+    ? "Unlimited"
+    : isDataroomsPremium
+      ? "Premium"
+      : isDataroomsPlus
+        ? "Datarooms+"
+        : plan.charAt(0).toUpperCase() + plan.slice(1);
+
+  const BillingPortalItem = () => (
+    <DropdownMenuItem
+      onClick={() => manageSubscription({ type: "manage" })}
+      disabled={loading}
+    >
+      <Stripe className="h-4 w-4 rounded-[3px]" />
+      Open billing portal
+    </DropdownMenuItem>
+  );
+
   const ButtonList = () => {
     if (isFree) {
       return (
-        <div className="flex items-center gap-3">
-          <UpgradeButton
-            text=""
-            customText="Upgrade"
-            clickedPlan={PlanEnum.Business}
-            trigger="upgrade_plan"
-            useModal={false}
-            onClick={() => router.push("/settings/upgrade")}
-          />
-        </div>
-      );
-    } else if (isCancelled) {
-      return (
-        <Button onClick={handleReactivateSubscription} loading={unpauseLoading}>
-          Reactivate subscription
-        </Button>
-      );
-    } else {
-      return (
-        <div className="flex items-center gap-3">
-          {isPaused ? (
-            <>
-              <Button
-                onClick={handleUnpauseSubscription}
-                loading={unpauseLoading}
-              >
-                Unpause subscription
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 w-9 p-0">
-                    <MoreVertical className="h-4 w-4" />
-                    <span className="sr-only">More options</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => manageSubscription({ type: "cancellation" })}
-                    className="text-red-500"
-                  >
-                    <BanIcon className="h-4 w-4" />
-                    Cancel subscription
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          ) : (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => setCancellationModalOpen(true)}
-              >
-                Cancel subscription
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  manageSubscription({ type: "subscription_update" })
-                }
-                loading={loading}
-              >
-                Change plan
-              </Button>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 w-9 p-0">
-                    <MoreVertical className="h-4 w-4" />
-                    <span className="sr-only">More options</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => manageSubscription({ type: "manage" })}
-                  >
-                    <CreditCardIcon className="h-4 w-4" />
-                    Change billing information
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          )}
-        </div>
+        <UpgradeButton
+          text=""
+          customText="Upgrade"
+          clickedPlan={PlanEnum.Business}
+          trigger="upgrade_plan"
+          useModal={false}
+          onClick={goToUpgrade}
+        />
       );
     }
+
+    if (isCancelled) {
+      return (
+        <>
+          <Button onClick={handleReactivateSubscription} loading={unpauseLoading}>
+            Reactivate subscription
+          </Button>
+          <Button variant="outline" onClick={goToInvoices}>
+            View invoices
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 w-9 p-0">
+                <MoreVertical className="h-4 w-4" />
+                <span className="sr-only">More options</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <BillingPortalItem />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      );
+    }
+
+    if (isPaused) {
+      return (
+        <>
+          <Button onClick={handleUnpauseSubscription} loading={unpauseLoading}>
+            Unpause subscription
+          </Button>
+          <Button variant="outline" onClick={goToInvoices}>
+            View invoices
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 w-9 p-0">
+                <MoreVertical className="h-4 w-4" />
+                <span className="sr-only">More options</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <BillingPortalItem />
+              <DropdownMenuItem
+                onClick={() => manageSubscription({ type: "cancellation" })}
+                disabled={loading}
+              >
+                <SquareXIcon className="h-4 w-4" />
+                Cancel subscription
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <Button onClick={goToUpgrade}>Manage plan</Button>
+        <Button variant="outline" onClick={goToInvoices}>
+          View invoices
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-9 w-9 p-0">
+              <MoreVertical className="h-4 w-4" />
+              <span className="sr-only">More options</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <BillingPortalItem />
+            <DropdownMenuItem onClick={() => setCancellationModalOpen(true)}>
+              <SquareXIcon className="h-4 w-4" />
+              Cancel subscription
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </>
+    );
   };
 
   return (
     <>
-      <div className="rounded-lg">
-        <Card className="bg-transparent">
-          <CardHeader>
-            <CardTitle>
-              {isDataroomsUnlimited
-                ? "Unlimited"
-                : isDataroomsPremium
-                  ? "Premium"
-                  : isDataroomsPlus
-                    ? "Datarooms+"
-                    : plan.charAt(0).toUpperCase() + plan.slice(1)}{" "}
-              Plan
-            </CardTitle>
+      <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex flex-col items-start justify-between gap-3 p-5 sm:flex-row sm:items-center sm:p-6">
+          <div className="space-y-1">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              {planTitle} Plan
+            </h2>
             {!isCancelled && startsAt && endsAt && isBillingCycleCurrent() && (
-              <CardDescription>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 <span className="font-medium text-foreground">
                   Current billing cycle:{" "}
                 </span>
-                <span className="text-foreground">
-                  {new Date(startsAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                  {" - "}
-                  {new Date(endsAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
-              </CardDescription>
+                {new Date(startsAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+                {" - "}
+                {new Date(endsAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </p>
             )}
             {isPaused && pauseStartsAt && (
-              <CardDescription>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 <span className="font-medium text-foreground">
                   Subscription{" "}
                   {new Date(pauseStartsAt) > new Date()
@@ -329,42 +332,35 @@ export default function UpgradePlanContainer() {
                     : "paused on"}
                   :{" "}
                 </span>
-                <span className="text-foreground">
-                  {new Date(pauseStartsAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
-              </CardDescription>
+                {new Date(pauseStartsAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </p>
             )}
             {isCancelled && endsAt && (
-              <CardDescription>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 <span className="font-medium text-foreground">
                   Subscription cancels on:{" "}
                 </span>
-                <span className="text-foreground">
-                  {new Date(endsAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
-              </CardDescription>
+                {new Date(endsAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </p>
             )}
             {discount && discount.valid && getDiscountText() && (
-              <CardDescription>
-                <div className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-400/10 dark:text-green-400 dark:ring-green-400/30">
-                  🎉 {getDiscountText()} applied
-                </div>
-              </CardDescription>
+              <div className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-400/10 dark:text-green-400 dark:ring-green-400/30">
+                🎉 {getDiscountText()} applied
+              </div>
             )}
-          </CardHeader>
-          <CardContent></CardContent>
-          <CardFooter className="flex items-center justify-end rounded-b-lg border-t px-6 py-3">
-            <div className="shrink-0">{ButtonList()}</div>
-          </CardFooter>
-        </Card>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {ButtonList()}
+          </div>
+        </div>
       </div>
 
       <CancellationModal

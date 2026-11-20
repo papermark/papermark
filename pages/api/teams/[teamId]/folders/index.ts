@@ -1,9 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { safeSlugify } from "@/lib/utils";
 import { getServerSession } from "next-auth/next";
 
+import { resolveFreeFolderPath } from "@/lib/folders/bulk-create";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 
@@ -147,34 +147,19 @@ export default async function handle(
         },
       });
 
-      let folderName = name;
-      let counter = 1;
-      const MAX_RETRIES = 50;
-
-      let childFolderPath = path
-        ? "/" + path + "/" + safeSlugify(folderName)
-        : "/" + safeSlugify(folderName);
-
-      while (counter <= MAX_RETRIES) {
-        const existingFolder = await prisma.folder.findUnique({
-          where: {
-            teamId_path: {
-              teamId: teamId,
-              path: childFolderPath,
-            },
-          },
-        });
-
-        if (!existingFolder) break;
-
-        folderName = `${name} (${counter})`;
-        childFolderPath = path
-          ? "/" + path + "/" + safeSlugify(folderName)
-          : "/" + safeSlugify(folderName);
-        counter++;
-      }
-
-      if (counter > MAX_RETRIES) {
+      const resolved = await resolveFreeFolderPath({
+        name,
+        parentPath: parentFolderPath,
+        findExisting: (candidates) =>
+          prisma.folder.findMany({
+            where: { teamId, path: { in: candidates } },
+            select: { path: true },
+          }),
+      }).catch((err) => {
+        if (err?.code === "SLUG_EXHAUSTED") return null;
+        throw err;
+      });
+      if (!resolved) {
         return res.status(400).json({
           error: "Failed to create folder",
           message: "Too many folders with similar names",
@@ -183,8 +168,8 @@ export default async function handle(
 
       const folder = await prisma.folder.create({
         data: {
-          name: folderName,
-          path: childFolderPath,
+          name: resolved.name,
+          path: resolved.path,
           parentId: parentFolder?.id ?? null,
           teamId: teamId,
           icon: icon ?? null,

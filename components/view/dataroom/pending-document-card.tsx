@@ -12,6 +12,7 @@ import {
   Upload,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import useSWRImmutable from "swr/immutable";
 
@@ -44,14 +45,17 @@ type PendingDocumentCardProps = {
   showFolderPath?: boolean;
 };
 
-/** Build a breadcrumb path like "Home > Company Info > Financials > Q4" */
+/** Build a breadcrumb path like "Home > Company Info > Financials > Q4".
+ *  `homeLabel` is injected so the label can be localized at the call site —
+ *  folder names are admin-authored and intentionally left as-is. */
 function getFolderPath(
   folderId: string | null,
   folders: FolderInfo[],
+  homeLabel: string,
 ): string {
-  if (!folderId) return "Home";
+  if (!folderId) return homeLabel;
 
-  const parts: string[] = ["Home"];
+  const parts: string[] = [homeLabel];
   const folderParts: string[] = [];
   let current = folders.find((f) => f.id === folderId);
   while (current) {
@@ -70,6 +74,7 @@ export default function PendingDocumentCard({
   onNavigateToFolder,
   showFolderPath = false,
 }: PendingDocumentCardProps) {
+  const { t } = useTranslation("dataroom");
   const { theme, systemTheme } = useTheme();
   const router = useRouter();
   const { updatePendingUpload } = usePendingUploads();
@@ -202,7 +207,7 @@ export default function PendingDocumentCard({
 
   const folderPath =
     showFolderPath && folders.length > 0
-      ? getFolderPath(pendingUpload.folderId, folders)
+      ? getFolderPath(pendingUpload.folderId, folders, t("breadcrumb.home", "Home"))
       : null;
 
   return (

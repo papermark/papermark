@@ -89,7 +89,7 @@ export default function CustomFieldsSection({
   return (
     <div className="pb-5">
       <LinkItem
-        title="Custom Form Fields"
+        title="Custom form fields"
         tooltipContent="Add custom fields to collect additional information from viewers"
         link="https://www.papermark.com/help/article/custom-fields"
         enabled={enabled}
@@ -125,6 +125,7 @@ export default function CustomFieldsSection({
               ))}
             </div>
             <Button
+              type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -146,6 +147,10 @@ export default function CustomFieldsSection({
         onChange={handleConfigSave}
         isConfigOpen={isConfigOpen}
         setIsConfigOpen={setIsConfigOpen}
+        requireEmail={data.emailProtected}
+        requirePassword={!!data.password}
+        requireAgreement={data.enableAgreement}
+        welcomeMessage={data.welcomeMessage}
       />
     </div>
   );

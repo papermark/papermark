@@ -1,0 +1,56 @@
+{
+  "welcome": {
+    "fallback": "続行するには操作が必要です"
+  },
+  "buttons": {
+    "continue": "続ける",
+    "verifying": "確認中..."
+  },
+  "fields": {
+    "email": {
+      "label": "メールアドレス",
+      "placeholder": "メールアドレスを入力",
+      "errorInvalid": "有効なメールアドレスを入力してください",
+      "sharedWithSender": "この情報は送信者と共有されます。",
+      "sharedWithProvider": "この情報はコンテンツ提供者と共有されます。"
+    },
+    "password": {
+      "label": "パスコード",
+      "placeholder": "パスコードを入力"
+    },
+    "name": {
+      "label": "氏名",
+      "placeholder": "氏名を入力"
+    },
+    "url": {
+      "errorInvalid": "https:// で始まる有効な URL を入力してください"
+    },
+    "phone": {
+      "placeholderDefault": "+81 90 1234 5678"
+    }
+  },
+  "agreement": {
+    "fallbackPrefix": "内容を確認し、以下の条件に同意します"
+  },
+  "verification": {
+    "title": "メールアドレスを確認してください",
+    "description": "<email>{{email}}</email> に送信された 6 桁の確認コードを入力してください",
+    "errorInvalid": "コードが無効です。もう一度お試しください。",
+    "noEmail": "メールが届きませんでしたか？",
+    "resending": "コードを再送信中...",
+    "resendIn": "コードを再送信 ({{seconds}} 秒)",
+    "resend": "コードを再送信"
+  },
+  "footer": {
+    "sharedSecurelyVia": "この資料は安全に共有されています：",
+    "sharedSecurelyViaDataroom": "このデータルームは安全に共有されています：",
+    "papermark": "Papermark",
+    "seeHowWeProtect": "データ保護の詳細はこちら：",
+    "privacyPolicy": "プライバシーポリシー"
+  },
+  "reauth": {
+    "title": "本人確認をしてください",
+    "description": "このファイルはあなたがアップロードしたものです。再度開くには、<email>{{email}}</email> を管理していることを確認してください。",
+    "otpDescription": "<email>{{email}}</email> に 6 桁のコードを送信しました。下に入力してアップロードしたファイルにアクセスしてください。"
+  }
+}

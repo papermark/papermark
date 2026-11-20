@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
+
+import { Trans, useTranslation } from "react-i18next";
 
 import {
   InputOTP,
@@ -21,6 +23,12 @@ export interface DownloadOtpVerificationProps {
   compact?: boolean;
   /** When true, send OTP email automatically on mount (e.g. when user just chose "Notify me" and clicked Start download). */
   sendOtpOnMount?: boolean;
+  /**
+   * Optional copy shown above the OTP input. Defaults to the
+   * download-notification phrasing. Override for other re-auth flows
+   * (e.g. viewer-upload access).
+   */
+  description?: ReactNode;
 }
 
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -33,7 +41,9 @@ export function DownloadOtpVerification({
   onCancel,
   compact = false,
   sendOtpOnMount = false,
+  description,
 }: DownloadOtpVerificationProps) {
+  const { t } = useTranslation("dataroom");
   const [code, setCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -55,14 +65,14 @@ export function DownloadOtpVerification({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Failed to send code");
+        setError(data.error ?? t("downloadOtp.sendFailed", "Failed to send code"));
         return;
       }
       setResendCooldown(RESEND_COOLDOWN_SECONDS);
     } finally {
       setIsSending(false);
     }
-  }, [linkId, viewId, email]);
+  }, [linkId, viewId, email, t]);
 
   useEffect(() => {
     if (!sendOtpOnMount || hasSentOnMountRef.current) return;
@@ -86,7 +96,7 @@ export function DownloadOtpVerification({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Invalid code");
+        setError(data.error ?? t("downloadOtp.invalidCode", "Invalid code"));
         return;
       }
       onVerified();
@@ -106,10 +116,16 @@ export function DownloadOtpVerification({
 
   return (
     <form onSubmit={verifyOtp} className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        We sent a 6-digit code to <strong>{email}</strong>. Enter it below to
-        verify and receive download notifications.
-      </p>
+      {description ?? (
+        <p className="text-sm text-muted-foreground">
+          <Trans
+            ns="dataroom"
+            i18nKey="downloadOtp.defaultDescription"
+            values={{ email }}
+            components={{ email: <strong /> }}
+          />
+        </p>
+      )}
       <InputOTP
         maxLength={6}
         pattern={REGEXP_ONLY_DIGITS}
@@ -135,11 +151,11 @@ export function DownloadOtpVerification({
           type="submit"
           disabled={!code || code.length !== 6 || isLoading}
         >
-          {isLoading ? "Verifying..." : "Verify"}
+          {isLoading ? t("downloadOtp.verifying", "Verifying...") : t("downloadOtp.verify", "Verify")}
         </Button>
       </div>
       <p className="text-sm text-muted-foreground">
-        Didn&apos;t receive the email?{" "}
+        {t("downloadOtp.noEmail", "Didn't receive the email?")}{" "}
         <Button
           type="button"
           variant="link"
@@ -148,10 +164,10 @@ export function DownloadOtpVerification({
           onClick={sendOtp}
         >
           {isSending
-            ? "Sending..."
+            ? t("downloadOtp.resending", "Sending...")
             : resendCooldown > 0
-              ? `Resend code (${resendCooldown}s)`
-              : "Resend code"}
+              ? t("downloadOtp.resendIn", "Resend code ({{seconds}}s)", { seconds: resendCooldown })
+              : t("downloadOtp.resend", "Resend code")}
         </Button>
       </p>
     </form>

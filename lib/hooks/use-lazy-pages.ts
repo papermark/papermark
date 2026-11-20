@@ -1,25 +1,32 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { PageLink } from "@/lib/types/page-link";
+
 type PageData = {
   file: string | null;
   pageNumber: string;
   embeddedLinks: string[];
-  pageLinks: {
-    href: string;
-    coords: string;
-    isInternal?: boolean;
-    targetPage?: number;
-  }[];
-  metadata: { width: number; height: number; scaleFactor: number };
+  pageLinks?: PageLink[] | null;
+  metadata: { width: number; height: number; scaleFactor: number } | null;
 };
 
 type FetchPagesResponse = {
-  pages: { pageNumber: number; file: string }[];
+  pages: {
+    pageNumber: number;
+    file: string;
+    /**
+     * Re-signed overlay URLs for `pageLinks` of the requested page.
+     * Optional so older callers stay compatible.
+     */
+    pageLinks?: PageLink[];
+  }[];
 };
 
 type UseLazyPagesOptions = {
   initialPages: PageData[];
   viewId?: string;
+  previewToken?: string;
+  linkId?: string;
   documentVersionId: string;
   preloadRadius?: number;
   apiEndpoint?: string;
@@ -30,6 +37,8 @@ const DEFAULT_PRELOAD_RADIUS = 5;
 export function useLazyPages({
   initialPages,
   viewId,
+  previewToken,
+  linkId,
   documentVersionId,
   preloadRadius = DEFAULT_PRELOAD_RADIUS,
   apiEndpoint = "/api/views/pages",
@@ -63,14 +72,15 @@ export function useLazyPages({
       needed.forEach((pn) => pendingRef.current.add(pn));
 
       try {
+        const payload =
+          viewId
+            ? { viewId, documentVersionId, pageNumbers: needed }
+            : { previewToken, linkId, documentVersionId, pageNumbers: needed };
+
         const response = await fetch(apiEndpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            viewId,
-            documentVersionId,
-            pageNumbers: needed,
-          }),
+          body: JSON.stringify(payload),
         });
 
         if (!response.ok) {
@@ -88,6 +98,9 @@ export function useLazyPages({
               updated[idx] = {
                 ...updated[idx],
                 file: fetchedPage.file,
+                ...(fetchedPage.pageLinks
+                  ? { pageLinks: fetchedPage.pageLinks }
+                  : {}),
               };
             }
           }
@@ -99,7 +112,7 @@ export function useLazyPages({
         needed.forEach((pn) => pendingRef.current.delete(pn));
       }
     },
-    [viewId, documentVersionId, apiEndpoint],
+    [viewId, previewToken, linkId, documentVersionId, apiEndpoint],
   );
 
   const ensurePagesLoaded = useCallback(

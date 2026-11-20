@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { useState } from "react";
 
-import { AlertCircle } from "lucide-react";
-
 import { SSOLogin } from "@/ee/features/security/sso";
 import { signInWithPasskey } from "@teamhanko/passkeys-next-auth-provider/client";
+import { AlertCircle } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -25,9 +24,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function Login() {
-  const { next } = useParams as { next?: string };
   const router = useRouter();
   const searchParams = useSearchParams();
+  const next = searchParams?.get("next") ?? undefined;
   const authError = searchParams?.get("error");
   const isSSORequired = authError === "require-saml-sso";
 
@@ -260,7 +259,7 @@ export default function Login() {
           <div className="flex w-full max-w-xl flex-col items-center">
             <div className="mb-6 w-full max-w-md">
               <img
-                className="h-auto w-full rounded-[4px] object-cover "
+                className="h-auto w-full rounded-[4px] object-cover"
                 src="/_static/testimonials/backtrace.jpeg"
                 alt="Backtrace Capital"
               />

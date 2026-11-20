@@ -1,10 +1,17 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { isTeamPausedById } from "@/ee/features/billing/cancellation/lib/is-team-paused";
+import { resolveOwnedBrandId } from "@/ee/features/branding/lib/resolve-base-brand";
 import { LinkAudienceType, Tag } from "@prisma/client";
 import { waitUntil } from "@vercel/functions";
 import { getServerSession } from "next-auth/next";
 
+import {
+  assertDocumentAccess,
+  canAccessDataroom,
+  getAllowedDataroomIds,
+} from "@/lib/api/rbac/entitlements";
+import { isDataroomScopedRole } from "@/lib/api/rbac/permissions";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { CustomUser, WatermarkConfigSchema } from "@/lib/types";
@@ -24,6 +31,32 @@ export const config = {
 export interface DomainObject {
   id: string;
   slug: string;
+}
+
+/**
+ * Normalize the list of allowed upload folder ids from the incoming payload,
+ * deduplicating and dropping falsy entries. An empty array represents
+ * "visitor may upload anywhere". An omitted/undefined property is treated as
+ * an empty array; any other non-array shape is rejected so the caller can
+ * surface a 400 instead of silently dropping malformed input.
+ */
+function normalizeUploadFolderIds(linkData: {
+  uploadFolderIds?: unknown;
+}): string[] {
+  if (
+    !Object.prototype.hasOwnProperty.call(linkData, "uploadFolderIds") ||
+    linkData.uploadFolderIds === undefined
+  ) {
+    return [];
+  }
+  if (!Array.isArray(linkData.uploadFolderIds)) {
+    throw new TypeError("uploadFolderIds must be an array.");
+  }
+  const ids: string[] = [];
+  for (const id of linkData.uploadFolderIds) {
+    if (typeof id === "string" && id.length > 0) ids.push(id);
+  }
+  return Array.from(new Set(ids));
 }
 
 export default async function handler(
@@ -60,11 +93,37 @@ export default async function handler(
             teamId,
           },
         },
-        select: { teamId: true },
+        select: { teamId: true, role: true },
       });
 
       if (!teamAccess) {
         return res.status(401).json({ error: "Unauthorized." });
+      }
+
+      // Dataroom-scoped members may only create links for documents/datarooms
+      // within their assigned rooms.
+      if (isDataroomScopedRole(teamAccess.role)) {
+        const allowedIds = await getAllowedDataroomIds(userId, teamId);
+        if (dataroomLink) {
+          if (!canAccessDataroom(teamAccess.role, allowedIds, targetId)) {
+            return res
+              .status(403)
+              .json({ error: "You do not have access to this data room." });
+          }
+        } else if (documentLink) {
+          const hasAccess = await assertDocumentAccess({
+            role: teamAccess.role,
+            userId,
+            teamId,
+            documentId: targetId,
+            allowedIds,
+          });
+          if (!hasAccess) {
+            return res
+              .status(403)
+              .json({ error: "You do not have access to this document." });
+          }
+        }
       }
 
       // Check if team is paused
@@ -74,6 +133,48 @@ export default async function handler(
           error:
             "Team is currently paused. New link creation is not available.",
         });
+      }
+
+      if (!targetId) {
+        return res.status(400).json({
+          error: "A target document or data room is required.",
+        });
+      }
+
+      if (!documentLink && !dataroomLink) {
+        return res.status(400).json({
+          error: "Invalid link type.",
+        });
+      }
+
+      if (documentLink) {
+        const document = await prisma.document.findUnique({
+          where: { id: targetId, teamId },
+          select: { id: true },
+        });
+        if (!document) {
+          return res.status(400).json({
+            error: "Invalid document.",
+          });
+        }
+      }
+
+      if (dataroomLink && targetId) {
+        const dataroom = await prisma.dataroom.findUnique({
+          where: { id: targetId, teamId },
+          select: { isFrozen: true },
+        });
+        if (!dataroom) {
+          return res.status(400).json({
+            error: "Invalid data room.",
+          });
+        }
+        if (dataroom.isFrozen) {
+          return res.status(403).json({
+            error:
+              "This data room is frozen. You cannot create new links for a frozen data room.",
+          });
+        }
       }
 
       const hashedPassword =
@@ -96,11 +197,14 @@ export default async function handler(
         domainObj = await prisma.domain.findUnique({
           where: {
             slug: domain,
+            teamId,
           },
         });
 
         if (!domainObj) {
-          return res.status(400).json({ error: "Domain not found." });
+          return res.status(400).json({
+            error: "Domain not found or not associated with this team.",
+          });
         }
 
         const existingLink = await prisma.link.findUnique({
@@ -168,11 +272,61 @@ export default async function handler(
 
         if (validGroups.length !== linkData.visitorGroupIds.length) {
           return res.status(400).json({
-            error:
-              "One or more visitor group IDs do not belong to this team.",
+            error: "One or more visitor group IDs do not belong to this team.",
           });
         }
       }
+
+      // Validate upload folder IDs belong to the target dataroom. Without this
+      // check, a tampered payload could persist arbitrary folder cuids
+      // (including ones from other datarooms/teams) into the link.
+      let validatedUploadFolderIds: string[] = [];
+      let validatedUploadFolders: { id: string; name: string; path: string }[] =
+        [];
+      if (linkData.enableUpload) {
+        let normalizedIds: string[];
+        try {
+          normalizedIds = normalizeUploadFolderIds(linkData);
+        } catch (err) {
+          if (err instanceof TypeError) {
+            return res.status(400).json({ error: err.message });
+          }
+          throw err;
+        }
+
+        if (normalizedIds.length > 0) {
+          if (!dataroomLink || !targetId) {
+            return res.status(400).json({
+              error: "Upload folders can only be assigned to dataroom links.",
+            });
+          }
+
+          const validFolders = await prisma.dataroomFolder.findMany({
+            where: {
+              id: { in: normalizedIds },
+              dataroomId: targetId,
+            },
+            select: { id: true, name: true, path: true },
+          });
+          const byId = new Map(validFolders.map((f) => [f.id, f]));
+
+          if (byId.size !== normalizedIds.length) {
+            return res.status(400).json({
+              error:
+                "One or more upload folders do not belong to this data room.",
+            });
+          }
+
+          validatedUploadFolderIds = normalizedIds.filter((id) => byId.has(id));
+          validatedUploadFolders = validatedUploadFolderIds
+            .map((id) => byId.get(id))
+            .filter(
+              (f): f is { id: string; name: string; path: string } => !!f,
+            );
+        }
+      }
+
+      const resolvedBrandId = await resolveOwnedBrandId(teamId, linkData.brandId);
 
       // Fetch the link and its related document from the database
       const updatedLink = await prisma.$transaction(async (tx) => {
@@ -199,12 +353,14 @@ export default async function handler(
             enableNotification: linkData.enableNotification,
             enableFeedback: linkData.enableFeedback,
             enableScreenshotProtection: linkData.enableScreenshotProtection,
+            enableConfidentialView: linkData.enableConfidentialView,
             enableCustomMetatag: linkData.enableCustomMetatag,
             metaTitle: linkData.metaTitle || null,
             metaDescription: linkData.metaDescription || null,
             metaImage: linkData.metaImage || null,
             metaFavicon: linkData.metaFavicon || null,
             welcomeMessage: linkData.welcomeMessage || null,
+            brandId: resolvedBrandId,
             allowList: linkData.allowList,
             denyList: linkData.denyList,
             audienceType: linkData.audienceType,
@@ -234,7 +390,7 @@ export default async function handler(
             ...(linkData.enableUpload && {
               enableUpload: linkData.enableUpload,
               isFileRequestOnly: linkData.isFileRequestOnly,
-              uploadFolderId: linkData.uploadFolderId,
+              uploadFolderIds: validatedUploadFolderIds,
             }),
             enableAIAgents: linkData.enableAIAgents || false,
             enableConversation: linkData.enableConversation || false,
@@ -279,6 +435,13 @@ export default async function handler(
           },
         });
 
+        if (linkData.enableConversation && dataroomLink) {
+          await tx.dataroom.updateMany({
+            where: { id: targetId, teamId },
+            data: { conversationsEnabled: true },
+          });
+        }
+
         let tags: Partial<Tag>[] = [];
         if (linkData.tags?.length) {
           // create tag items
@@ -304,6 +467,9 @@ export default async function handler(
 
       const linkWithView = {
         ...updatedLink,
+        // Echo the resolved folder allow-list so the client can render chips
+        // with the correct folder names without an extra round-trip.
+        uploadFolders: validatedUploadFolders,
         _count: { views: 0 },
         views: [],
       };

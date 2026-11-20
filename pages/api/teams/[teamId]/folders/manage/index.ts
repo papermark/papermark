@@ -67,11 +67,13 @@ export default async function handle(
         return res.status(401).end("Unauthorized");
       }
 
-      const folder = await prisma.folder.findUnique({
+      const folder = await prisma.folder.findFirst({
         where: {
           id: folderId,
+          teamId,
         },
         select: {
+          id: true,
           name: true,
           path: true,
           icon: true,
@@ -146,7 +148,7 @@ export default async function handle(
         // Now update the renamed folder itself
         return tx.folder.update({
           where: {
-            id: folderId,
+            id: folder.id,
           },
           data: updateData,
         });

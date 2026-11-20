@@ -28,7 +28,7 @@ export const TabMenu: React.FC<React.PropsWithChildren<Props>> = ({
     <nav
       className={cn("sticky top-0 bg-background dark:bg-gray-950", className)}
     >
-      <div className="flex w-full items-center overflow-x-auto px-4">
+      <div className="flex w-full items-center overflow-x-auto px-0 md:px-4">
         <ul className="flex flex-row gap-4">
           {navigation.map(
             ({ label, href, value, currentValue, count, tag, disabled }) => (
@@ -75,7 +75,7 @@ const TabItem: React.FC<Props["navigation"][0]> = ({
       <Link
         href={href}
         className={cn(
-          "-mx-3 flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted hover:text-primary",
+          "-mx-3 flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted hover:text-primary",
           {
             "font-medium": active,
           },

@@ -17,7 +17,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 import LoadingSpinner from "./loading-spinner";
 
@@ -204,44 +203,42 @@ export const SingleSelect = React.forwardRef<
               )}
               onKeyDown={handleInputKeyDown}
             />
-            <ScrollArea className="max-h-[300px]">
-              <CommandList>
-                <CommandGroup>
-                  {loading ? (
-                    <CommandItem className="justify-center">
-                      <LoadingSpinner className="size-4 shrink-0" />
-                    </CommandItem>
-                  ) : filteredOptions.length > 0 ? (
-                    filteredOptions.map((option) => {
-                      const isSelected = value === option.value;
-                      return (
-                        <CommandItem
-                          key={option.value}
-                          onSelect={() => handleSelect(option.value)}
-                          className={cn(
-                            "cursor-pointer gap-2 py-2.5",
-                            optionClassName,
-                          )}
-                          value={option.value}
-                        >
-                          {renderOption ? (
-                            renderOption(option, isSelected)
-                          ) : (
-                            <span className="text-sm">{option.label}</span>
-                          )}
-                        </CommandItem>
-                      );
-                    })
-                  ) : (
-                    <CommandItem disabled className="justify-center">
-                      <span className="text-sm text-muted-foreground">
-                        {emptyText}
-                      </span>
-                    </CommandItem>
-                  )}
-                </CommandGroup>
-              </CommandList>
-            </ScrollArea>
+            <CommandList className="scroll-mask-y scrollbar-hide">
+              <CommandGroup>
+                {loading ? (
+                  <CommandItem className="justify-center">
+                    <LoadingSpinner className="size-4 shrink-0" />
+                  </CommandItem>
+                ) : filteredOptions.length > 0 ? (
+                  filteredOptions.map((option) => {
+                    const isSelected = value === option.value;
+                    return (
+                      <CommandItem
+                        key={option.value}
+                        onSelect={() => handleSelect(option.value)}
+                        className={cn(
+                          "cursor-pointer gap-2 py-2.5",
+                          optionClassName,
+                        )}
+                        value={option.value}
+                      >
+                        {renderOption ? (
+                          renderOption(option, isSelected)
+                        ) : (
+                          <span className="text-sm">{option.label}</span>
+                        )}
+                      </CommandItem>
+                    );
+                  })
+                ) : (
+                  <CommandItem disabled className="justify-center">
+                    <span className="text-sm text-muted-foreground">
+                      {emptyText}
+                    </span>
+                  </CommandItem>
+                )}
+              </CommandGroup>
+            </CommandList>
           </Command>
         </PopoverContent>
       </Popover>

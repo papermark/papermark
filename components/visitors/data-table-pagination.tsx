@@ -18,14 +18,18 @@ import {
 interface DataTablePaginationProps<TData> {
   table: Table<TData>;
   name: string;
+  /** Required for server-paginated tables, where the row model only holds the current page. */
+  totalRows?: number;
 }
 
 export function DataTablePagination<TData>({
   table,
   name,
+  totalRows: totalRowsOverride,
 }: DataTablePaginationProps<TData>) {
   const { pageSize, pageIndex } = table.getState().pagination;
-  const totalRows = table.getFilteredRowModel().rows.length;
+  const totalRows =
+    totalRowsOverride ?? table.getFilteredRowModel().rows.length;
   const visibleRows = table.getRowModel().rows.length;
 
   return (

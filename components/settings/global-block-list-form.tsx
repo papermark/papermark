@@ -4,7 +4,7 @@ import { useTeam } from "@/context/team-context";
 import { toast } from "sonner";
 import useSWR from "swr";
 
-import { fetcher, sanitizeList } from "@/lib/utils";
+import { fetcher, sanitizeList, validateList } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -38,14 +38,7 @@ export default function GlobalBlockListForm() {
     }
   }, [blockList]);
 
-  const allEntered = blockListInput
-    .split("\n")
-    .map((d) => d.trim())
-    .filter(Boolean);
-  const validEntries = sanitizeList(blockListInput, "both");
-  const invalidEntries = allEntered.filter(
-    (d) => !validEntries.includes(d.toLowerCase()),
-  );
+  const { invalid: invalidEntries } = validateList(blockListInput, "both");
 
   const saveDisabled = useMemo(() => {
     return (
@@ -93,22 +86,28 @@ export default function GlobalBlockListForm() {
         <CardTitle>Global Block List</CardTitle>
         <CardDescription>
           Visitors with these emails or domains will be{" "}
-          <b>blocked from all links</b> in your team. Use{" "}
-          <code>@domain.com</code> for domains or full email addresses.
+          <b>blocked from all links</b> in your team, unless a link&apos;s allow
+          list explicitly includes them. Use <code>@domain.com</code> for
+          domains or full email addresses.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Textarea
           className="focus:ring-inset"
           rows={5}
-          placeholder={`Enter one email or domain per line, e.g.\n@company.io\nuser@example.com`}
+          placeholder={`Enter emails or domains separated by comma, semicolon, or new line, e.g.\n@company.io\nuser@example.com`}
           value={blockListInput}
           onChange={(e) => setBlockListInput(e.target.value)}
+          aria-invalid={invalidEntries.length > 0}
         />
-        {invalidEntries.length > 0 && (
+        {invalidEntries.length > 0 ? (
           <p className="mt-2 text-sm text-destructive">
-            The following entries are not valid and will be ignored:{" "}
-            {invalidEntries.join(", ")}
+            The following entries are not valid and must be fixed before
+            saving: {invalidEntries.join(", ")}
+          </p>
+        ) : (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Separate multiple entries with a comma, semicolon, or new line.
           </p>
         )}
       </CardContent>

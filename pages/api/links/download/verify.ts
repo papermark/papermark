@@ -63,7 +63,13 @@ export default async function handler(
           dataroomId: true,
           viewerId: true,
           viewerEmail: true,
-          link: { select: { teamId: true } },
+          link: {
+            select: {
+              teamId: true,
+              brandId: true,
+              dataroom: { select: { brandId: true } },
+            },
+          },
         },
       })
     : await prisma.view.findFirst({
@@ -77,7 +83,13 @@ export default async function handler(
           dataroomId: true,
           viewerId: true,
           viewerEmail: true,
-          link: { select: { teamId: true } },
+          link: {
+            select: {
+              teamId: true,
+              brandId: true,
+              dataroom: { select: { brandId: true } },
+            },
+          },
         },
         orderBy: { viewedAt: "desc" },
       });
@@ -133,7 +145,10 @@ export default async function handler(
       },
     });
 
-    await sendOtpVerificationEmail(email, otpCode, true, view.link.teamId);
+    await sendOtpVerificationEmail(email, otpCode, true, view.link.teamId, {
+      linkBrandId: view.link.brandId,
+      dataroomBrandId: view.link.dataroom?.brandId,
+    });
 
     return res.status(200).json({
       type: "email-verification",

@@ -1,0 +1,233 @@
+{
+  "shell": {
+    "dataRoomEyebrow": "Sala de dados",
+    "updatedOn": "Atualizado em {{date}}",
+    "lastUpdated": "Última atualização: {{date}}",
+    "secureFooter": "Protegido por",
+    "papermark": "Papermark",
+    "copyright": "© {{year}}{{name}}"
+  },
+  "tabs": {
+    "documents": "Documentos",
+    "myUploads": "Meus envios"
+  },
+  "search": {
+    "placeholder": "Buscar...",
+    "results": "Resultados da busca por \"{{query}}\"",
+    "resultCount_one": "({{count}} resultado em todas as pastas)",
+    "resultCount_other": "({{count}} resultados em todas as pastas)",
+    "noMatches": "Nenhum documento corresponde à sua busca."
+  },
+  "breadcrumb": {
+    "home": "Início"
+  },
+  "empty": {
+    "noItems": "Nenhum item disponível.",
+    "noUploads": "Ainda não há envios. Envie documentos usando o botão \"Adicionar Documento\"."
+  },
+  "cards": {
+    "updated": "Atualizado {{when}}",
+    "processing": "(Processando...)",
+    "actionsLabel": "Ações",
+    "download": "Baixar",
+    "openMenu": "Abrir menu",
+    "openDocument": "Abrir documento {{name}}",
+    "openFolder": "Abrir pasta {{name}}",
+    "documents": "Documentos",
+    "folder": "Pasta",
+    "folderBadge": "PASTA"
+  },
+  "compactList": {
+    "name": "Nome",
+    "updated": "Atualizado",
+    "settings": "Configurações"
+  },
+  "trailingActions": {
+    "viewQA": "Ver Perguntas e Respostas",
+    "downloadDataroom": "Baixar sala de dados",
+    "teamMemberTooltip": "Verificação ignorada porque você é membro da equipe; nenhuma análise será coletada"
+  },
+  "navToasts": {
+    "cannotDownloadPreview": "Você não pode baixar salas de dados no modo de pré-visualização.",
+    "cannotDownloadDocPreview": "Você não pode baixar documentos da sala de dados no modo de pré-visualização.",
+    "cannotDownloadFolderPreview": "Você não pode baixar pastas da sala de dados no modo de pré-visualização.",
+    "foldersNotAllowed": "O download de pastas não é permitido.",
+    "enterEmailFirst": "Insira seu e-mail na sala de dados para baixar.",
+    "documentStillProcessing": "O documento ainda está sendo processado. Aguarde um momento e tente novamente.",
+    "downloadPreparing": "Preparando download...",
+    "downloadSuccess": "Arquivo baixado com sucesso",
+    "downloadFailed": "Falha ao baixar arquivo"
+  },
+  "intro": {
+    "viewIntroduction": "Ver introdução",
+    "title": "Bem-vindo(a) à {{name}}",
+    "defaultName": "Sala de Dados",
+    "continueButton": "Continuar para a Sala de Dados"
+  },
+  "upload": {
+    "trigger": "Adicionar Documento",
+    "title": "Enviar Documento para a Sala de Dados",
+    "description": "Seu documento aparecerá imediatamente na sala de dados e será processado em segundo plano.",
+    "destinationLabel": "Pasta de destino",
+    "selectDestination": "Selecionar pasta de destino",
+    "uploadingTo": "Enviando para:",
+    "setByOwner": "(definido pelo proprietário da sala de dados)",
+    "success": "Documento enviado com sucesso!",
+    "successDescription": "Seu documento agora está visível na sala de dados.",
+    "previewDisabled": "Você não pode enviar arquivos no modo de pré-visualização."
+  },
+  "download": {
+    "folderTitle": "Baixar pasta: {{name}}",
+    "dataroomTitle": "Baixar {{name}}",
+    "defaultName": "Sala de dados",
+    "chooseDescription": "Inicie o download. Opcionalmente, você pode receber um e-mail quando estiver pronto.",
+    "otpDescription": "Verifique seu e-mail para receber notificações de download.",
+    "ready": "Seus arquivos estão prontos para download.",
+    "preparing": "Preparando seus arquivos...",
+    "notifyByEmail": "Avise-me por e-mail quando o download estiver pronto",
+    "needsVerification": "Você precisará verificar seu e-mail primeiro com um código de uso único.",
+    "starting": "Iniciando...",
+    "start": "Iniciar download",
+    "cancel": "Cancelar",
+    "viewDownloads": "Ver seus downloads",
+    "openDownloads": "Abrir página de downloads",
+    "preparingShort": "Preparando...",
+    "processingFiles": "Processando {{processed}} de {{total}} arquivos...",
+    "complete": "Seu download está pronto!",
+    "failed": "O download falhou.",
+    "downloadZip": "Baixar ZIP",
+    "downloadAll": "Baixar tudo ({{count}} partes)",
+    "downloadingProgress": "Baixando {{current}} de {{total}}...",
+    "part": "Parte {{index}}",
+    "expiresIn": "Expira em {{time}}",
+    "expiresLessThanHour": "menos de uma hora",
+    "expiresDays_one": "{{count}} dia",
+    "expiresDays_other": "{{count}} dias",
+    "expiresHours_one": "{{count}} hora",
+    "expiresHours_other": "{{count}} horas",
+    "willEmailWhenReady": "Você pode fechar isto. Enviaremos um e-mail quando estiver pronto.",
+    "checkBackOnDownloads": "Você pode fechar isto. Volte à página de downloads quando estiver pronto.",
+    "tryAgain": "Tentar novamente",
+    "startFailed": "Falha ao iniciar o download",
+    "statusFetchFailed": "Falha ao obter o status",
+    "expiresSoon": "em breve"
+  },
+  "downloadsPage": {
+    "title": "Seus downloads",
+    "description": "Baixe seus arquivos preparados abaixo. Os links expiram após 3 dias.",
+    "emailHeading": "Ver seus downloads",
+    "emailDescription": "Insira o e-mail que você usou para acessar este data room.",
+    "emailPlaceholder": "voce@exemplo.com",
+    "sendingCode": "Enviando código...",
+    "continueButton": "Continuar",
+    "verifyEmailHeading": "Verifique seu e-mail",
+    "empty": "Você ainda não tem downloads. Inicie um download no data room para vê-lo aqui.",
+    "jobFolderPrefix": "Pasta:",
+    "jobFullDataroom": "Data room completo",
+    "expired": "expirado",
+    "expiresPrefix": "Expira em {{time}}",
+    "hideParts": "Ocultar partes",
+    "showParts": "Mostrar partes ({{count}})",
+    "orIndividual": "Ou baixar individualmente:",
+    "partOf": "Parte {{index}} de {{total}}",
+    "errors": {
+      "noAccess": "Nenhum acesso encontrado para este e-mail. Use o e-mail com o qual você abriu o data room.",
+      "rateLimit": "Muitas solicitações. Tente novamente mais tarde.",
+      "generic": "Algo deu errado."
+    }
+  },
+  "downloadOtp": {
+    "defaultDescription": "Enviamos um código de 6 dígitos para <email>{{email}}</email>. Insira abaixo para verificar e receber notificações de download.",
+    "verify": "Verificar",
+    "verifying": "Verificando...",
+    "noEmail": "Não recebeu o e-mail?",
+    "resending": "Enviando...",
+    "resend": "Reenviar código",
+    "resendIn": "Reenviar código ({{seconds}} s)",
+    "sendFailed": "Falha ao enviar o código",
+    "invalidCode": "Código inválido"
+  },
+  "downloadsPanel": {
+    "ready": "Pronto",
+    "failedFallback": "Falhou",
+    "creatingZip": "Criando ZIP...",
+    "filesCount": "{{processed}} / {{total}} arquivos",
+    "verifying": "Verificando acesso...",
+    "buildingFileList": "Criando lista de arquivos...",
+    "preparing": "Preparando..."
+  },
+  "folderPicker": {
+    "home": "Início"
+  },
+  "indexFile": {
+    "trigger": "Gerar arquivo de índice",
+    "title": "Gerar arquivo de índice do data room",
+    "description": "Selecione um formato para gerar o arquivo de índice.",
+    "selectFormat": "Selecionar formato",
+    "generate": "Gerar",
+    "generating": "Gerando...",
+    "successToast": "Arquivo de índice gerado com sucesso",
+    "errorToast": "Falha ao gerar o índice",
+    "genericError": "Algo deu errado. Por favor, tente novamente.",
+    "previewDisabled": "Você não pode gerar um arquivo de índice no modo de pré-visualização."
+  },
+  "requestList": {
+    "trigger": "Lista de solicitações",
+    "title": "Lista de solicitações",
+    "summaryEmpty": "As solicitações atribuídas a você aparecem aqui.",
+    "summaryPending_one": "{{count}} solicitação precisa da sua atenção.",
+    "summaryPending_other": "{{count}} solicitações precisam da sua atenção.",
+    "summaryDone": "Você está em dia. Aguardando a revisão do proprietário.",
+    "emptyTitle": "Nada a fazer",
+    "emptyDescription": "Nenhuma solicitação está atribuída a você no momento.",
+    "due": "Prazo {{date}}",
+    "overdue": "atrasada",
+    "lockedByHost": "Marcada como concluída pelo proprietário",
+    "commentPlaceholder": "Adicione uma observação para o proprietário (opcional)…",
+    "commentPlaceholderLocked": "Adicione um comentário…",
+    "submitComment": "Adicionar comentário",
+    "submitStatus": "Atualizar solicitação",
+    "submitDefault": "Enviar atualização",
+    "activityHeading": "Atividade",
+    "uploadsHeading": "Seus arquivos",
+    "uploadRequired": "Arquivo obrigatório",
+    "uploadProcessing": "Processando",
+    "toastUpdated": "Solicitação atualizada",
+    "toastCommented": "Comentário adicionado",
+    "toastFailed": "Falha ao atualizar",
+    "status": {
+      "OPEN": "Aberta",
+      "IN_PROGRESS": "Em andamento",
+      "SUBMITTED": "Enviada",
+      "COMPLETED": "Concluída"
+    },
+    "activity": {
+      "you": "Você",
+      "someone": "Alguém",
+      "empty": "Ainda não há atividade.",
+      "created": "criou a solicitação",
+      "assigned": "atualizou os responsáveis",
+      "uploaded": "enviou {{name}}",
+      "uploadedFallback": "enviou um arquivo",
+      "statusFromTo": "alterou o status de {{from}} para {{to}}",
+      "statusTo": "definiu o status como {{status}}",
+      "statusChanged": "alterou o status",
+      "updated": "atualizou a solicitação"
+    }
+  },
+  "uploadZone": {
+    "dropzoneTitle": "Arraste e solte arquivos aqui ou clique para selecioná-los",
+    "dropzoneHint": "Compatível: PDF, Office, planilhas, imagens, ZIP e mais",
+    "dropActive": "Solte seus arquivos aqui",
+    "dropActiveHint": "PDF, Office, imagens, ZIP e mais",
+    "rejectedTitle": "Alguns arquivos foram rejeitados:",
+    "rejectedTooLarge": "Arquivo muito grande (máx. {{size}} MB).",
+    "rejectedType": "Tipo de arquivo não compatível.",
+    "toastComplete": "Envio concluído!",
+    "toastError": "Ocorreu um erro durante o envio",
+    "toastFileFailed": "Falha ao enviar {{name}}",
+    "toastUploadFailed": "Falha ao enviar o documento",
+    "errorProcessFailed": "Falha ao processar o envio",
+    "errorMissingMetadata": "Os metadados do documento estão ausentes na resposta de envio"
+  }
+}

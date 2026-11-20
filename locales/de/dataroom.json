@@ -1,0 +1,233 @@
+{
+  "shell": {
+    "dataRoomEyebrow": "Datenraum",
+    "updatedOn": "Aktualisiert {{date}}",
+    "lastUpdated": "Zuletzt aktualisiert {{date}}",
+    "secureFooter": "Geschützt mit",
+    "papermark": "Papermark",
+    "copyright": "© {{year}}{{name}}"
+  },
+  "tabs": {
+    "documents": "Dokumente",
+    "myUploads": "Meine Uploads"
+  },
+  "search": {
+    "placeholder": "Suchen ...",
+    "results": "Suchergebnisse für „{{query}}“",
+    "resultCount_one": "({{count}} Ergebnis in allen Ordnern)",
+    "resultCount_other": "({{count}} Ergebnisse in allen Ordnern)",
+    "noMatches": "Keine Dokumente entsprechen Ihrer Suche."
+  },
+  "breadcrumb": {
+    "home": "Übersicht"
+  },
+  "empty": {
+    "noItems": "Keine Elemente verfügbar.",
+    "noUploads": "Noch keine Uploads. Laden Sie Dokumente über die Schaltfläche „Dokument hinzufügen“ hoch."
+  },
+  "cards": {
+    "updated": "Aktualisiert {{when}}",
+    "processing": "(Wird verarbeitet ...)",
+    "actionsLabel": "Aktionen",
+    "download": "Herunterladen",
+    "openMenu": "Menü öffnen",
+    "openDocument": "Dokument {{name}} öffnen",
+    "openFolder": "Ordner {{name}} öffnen",
+    "documents": "Dokumente",
+    "folder": "Ordner",
+    "folderBadge": "ORDNER"
+  },
+  "compactList": {
+    "name": "Name",
+    "updated": "Aktualisiert",
+    "settings": "Einstellungen"
+  },
+  "trailingActions": {
+    "viewQA": "F&A anzeigen",
+    "downloadDataroom": "Datenraum herunterladen",
+    "teamMemberTooltip": "Verifizierung übersprungen, da Sie Teammitglied sind; es werden keine Analysen erfasst"
+  },
+  "navToasts": {
+    "cannotDownloadPreview": "Im Vorschaumodus können Sie keine Datenräume herunterladen.",
+    "cannotDownloadDocPreview": "Im Vorschaumodus können Sie keine Datenraumdokumente herunterladen.",
+    "cannotDownloadFolderPreview": "Im Vorschaumodus können Sie keine Datenraumordner herunterladen.",
+    "foldersNotAllowed": "Das Herunterladen von Ordnern ist nicht erlaubt.",
+    "enterEmailFirst": "Geben Sie Ihre E-Mail im Datenraum ein, um herunterzuladen.",
+    "documentStillProcessing": "Dokument wird noch verarbeitet. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+    "downloadPreparing": "Download wird vorbereitet ...",
+    "downloadSuccess": "Datei erfolgreich heruntergeladen",
+    "downloadFailed": "Datei konnte nicht heruntergeladen werden"
+  },
+  "intro": {
+    "viewIntroduction": "Einführung anzeigen",
+    "title": "Willkommen bei {{name}}",
+    "defaultName": "Datenraum",
+    "continueButton": "Weiter zum Datenraum"
+  },
+  "upload": {
+    "trigger": "Dokument hinzufügen",
+    "title": "Dokument in den Datenraum hochladen",
+    "description": "Ihr Dokument erscheint sofort im Datenraum und wird im Hintergrund verarbeitet.",
+    "destinationLabel": "Zielordner",
+    "selectDestination": "Zielordner auswählen",
+    "uploadingTo": "Hochladen nach:",
+    "setByOwner": "(festgelegt vom Datenraum-Inhaber)",
+    "success": "Dokument erfolgreich hochgeladen!",
+    "successDescription": "Ihr Dokument ist jetzt im Datenraum sichtbar.",
+    "previewDisabled": "Im Vorschaumodus können Sie keine Dateien hochladen."
+  },
+  "download": {
+    "folderTitle": "Ordner herunterladen: {{name}}",
+    "dataroomTitle": "{{name}} herunterladen",
+    "defaultName": "Datenraum",
+    "chooseDescription": "Download starten. Optional erhalten Sie eine E-Mail, sobald er bereit ist.",
+    "otpDescription": "Bestätigen Sie Ihre E-Mail, um Download-Benachrichtigungen zu erhalten.",
+    "ready": "Ihre Dateien sind zum Download bereit.",
+    "preparing": "Ihre Dateien werden vorbereitet ...",
+    "notifyByEmail": "Benachrichtigen Sie mich per E-Mail, wenn der Download bereit ist",
+    "needsVerification": "Sie müssen Ihre E-Mail zuvor mit einem Einmalcode bestätigen.",
+    "starting": "Wird gestartet ...",
+    "start": "Download starten",
+    "cancel": "Abbrechen",
+    "viewDownloads": "Ihre Downloads anzeigen",
+    "openDownloads": "Downloads-Seite öffnen",
+    "preparingShort": "Wird vorbereitet ...",
+    "processingFiles": "{{processed}} von {{total}} Dateien werden verarbeitet ...",
+    "complete": "Ihr Download ist bereit!",
+    "failed": "Download fehlgeschlagen.",
+    "downloadZip": "ZIP herunterladen",
+    "downloadAll": "Alle herunterladen ({{count}} Teile)",
+    "downloadingProgress": "{{current}} von {{total}} wird heruntergeladen ...",
+    "part": "Teil {{index}}",
+    "expiresIn": "Läuft ab in {{time}}",
+    "expiresLessThanHour": "weniger als einer Stunde",
+    "expiresDays_one": "{{count}} Tag",
+    "expiresDays_other": "{{count}} Tagen",
+    "expiresHours_one": "{{count}} Stunde",
+    "expiresHours_other": "{{count}} Stunden",
+    "willEmailWhenReady": "Sie können dies schließen. Wir senden Ihnen eine E-Mail, wenn es bereit ist.",
+    "checkBackOnDownloads": "Sie können dies schließen. Schauen Sie auf der Downloads-Seite vorbei, wenn es bereit ist.",
+    "tryAgain": "Erneut versuchen",
+    "startFailed": "Download konnte nicht gestartet werden",
+    "statusFetchFailed": "Status konnte nicht abgerufen werden",
+    "expiresSoon": "in Kürze"
+  },
+  "downloadsPage": {
+    "title": "Ihre Downloads",
+    "description": "Laden Sie unten Ihre vorbereiteten Dateien herunter. Die Links laufen nach 3 Tagen ab.",
+    "emailHeading": "Ihre Downloads anzeigen",
+    "emailDescription": "Geben Sie die E-Mail-Adresse ein, mit der Sie auf diesen Datenraum zugegriffen haben.",
+    "emailPlaceholder": "sie@beispiel.de",
+    "sendingCode": "Code wird gesendet ...",
+    "continueButton": "Weiter",
+    "verifyEmailHeading": "E-Mail bestätigen",
+    "empty": "Sie haben noch keine Downloads. Starten Sie einen Download im Datenraum, um ihn hier zu sehen.",
+    "jobFolderPrefix": "Ordner:",
+    "jobFullDataroom": "Gesamter Datenraum",
+    "expired": "abgelaufen",
+    "expiresPrefix": "Läuft ab {{time}}",
+    "hideParts": "Teile ausblenden",
+    "showParts": "Teile anzeigen ({{count}})",
+    "orIndividual": "Oder einzeln herunterladen:",
+    "partOf": "Teil {{index}} von {{total}}",
+    "errors": {
+      "noAccess": "Für diese E-Mail wurde kein Zugang gefunden. Verwenden Sie die E-Mail, mit der Sie den Datenraum geöffnet haben.",
+      "rateLimit": "Zu viele Anfragen. Bitte versuchen Sie es später erneut.",
+      "generic": "Etwas ist schiefgelaufen."
+    }
+  },
+  "downloadOtp": {
+    "defaultDescription": "Wir haben einen 6-stelligen Code an <email>{{email}}</email> gesendet. Geben Sie ihn unten ein, um sich zu verifizieren und Download-Benachrichtigungen zu erhalten.",
+    "verify": "Bestätigen",
+    "verifying": "Wird bestätigt ...",
+    "noEmail": "Keine E-Mail erhalten?",
+    "resending": "Wird gesendet ...",
+    "resend": "Code erneut senden",
+    "resendIn": "Code erneut senden ({{seconds}} s)",
+    "sendFailed": "Code konnte nicht gesendet werden",
+    "invalidCode": "Ungültiger Code"
+  },
+  "downloadsPanel": {
+    "ready": "Bereit",
+    "failedFallback": "Fehlgeschlagen",
+    "creatingZip": "ZIP wird erstellt ...",
+    "filesCount": "{{processed}} / {{total}} Dateien",
+    "verifying": "Zugriff wird überprüft ...",
+    "buildingFileList": "Dateiliste wird erstellt ...",
+    "preparing": "Wird vorbereitet ..."
+  },
+  "folderPicker": {
+    "home": "Übersicht"
+  },
+  "indexFile": {
+    "trigger": "Indexdatei generieren",
+    "title": "Datenraum-Indexdatei generieren",
+    "description": "Wählen Sie ein Format, um die Indexdatei zu generieren.",
+    "selectFormat": "Format auswählen",
+    "generate": "Generieren",
+    "generating": "Wird generiert...",
+    "successToast": "Indexdatei erfolgreich generiert",
+    "errorToast": "Index konnte nicht generiert werden",
+    "genericError": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+    "previewDisabled": "Im Vorschaumodus können Sie keine Indexdatei generieren."
+  },
+  "requestList": {
+    "trigger": "Anfrageliste",
+    "title": "Anfrageliste",
+    "summaryEmpty": "Ihnen zugewiesene Anfragen erscheinen hier.",
+    "summaryPending_one": "{{count}} Anfrage benötigt Ihre Aufmerksamkeit.",
+    "summaryPending_other": "{{count}} Anfragen benötigen Ihre Aufmerksamkeit.",
+    "summaryDone": "Sie haben alles erledigt. Warten auf die Prüfung durch den Inhaber.",
+    "emptyTitle": "Nichts zu erledigen",
+    "emptyDescription": "Ihnen ist derzeit keine Anfrage zugewiesen.",
+    "due": "Fällig {{date}}",
+    "overdue": "überfällig",
+    "lockedByHost": "Vom Inhaber als erledigt markiert",
+    "commentPlaceholder": "Notiz für den Inhaber hinzufügen (optional)…",
+    "commentPlaceholderLocked": "Kommentar hinzufügen…",
+    "submitComment": "Kommentar hinzufügen",
+    "submitStatus": "Anfrage aktualisieren",
+    "submitDefault": "Update senden",
+    "activityHeading": "Aktivität",
+    "uploadsHeading": "Ihre Dateien",
+    "uploadRequired": "Datei erforderlich",
+    "uploadProcessing": "Wird verarbeitet",
+    "toastUpdated": "Anfrage aktualisiert",
+    "toastCommented": "Kommentar hinzugefügt",
+    "toastFailed": "Aktualisierung fehlgeschlagen",
+    "status": {
+      "OPEN": "Offen",
+      "IN_PROGRESS": "In Bearbeitung",
+      "SUBMITTED": "Eingereicht",
+      "COMPLETED": "Abgeschlossen"
+    },
+    "activity": {
+      "you": "Sie",
+      "someone": "Jemand",
+      "empty": "Noch keine Aktivität.",
+      "created": "Anfrage erstellt",
+      "assigned": "Zuweisungen aktualisiert",
+      "uploaded": "{{name}} hochgeladen",
+      "uploadedFallback": "Datei hochgeladen",
+      "statusFromTo": "Status von {{from}} zu {{to}} geändert",
+      "statusTo": "Status auf {{status}} gesetzt",
+      "statusChanged": "Status geändert",
+      "updated": "Anfrage aktualisiert"
+    }
+  },
+  "uploadZone": {
+    "dropzoneTitle": "Dateien hierher ziehen und ablegen oder klicken, um Dateien auszuwählen",
+    "dropzoneHint": "Unterstützt: PDF, Office, Tabellen, Bilder, ZIP und mehr",
+    "dropActive": "Datei(en) hier ablegen",
+    "dropActiveHint": "PDF, Office, Bilder, ZIP und mehr",
+    "rejectedTitle": "Einige Dateien wurden abgelehnt:",
+    "rejectedTooLarge": "Datei ist zu groß (max. {{size}} MB).",
+    "rejectedType": "Dateityp wird nicht unterstützt.",
+    "toastComplete": "Upload abgeschlossen!",
+    "toastError": "Beim Hochladen ist ein Fehler aufgetreten",
+    "toastFileFailed": "{{name}} konnte nicht hochgeladen werden",
+    "toastUploadFailed": "Dokument konnte nicht hochgeladen werden",
+    "errorProcessFailed": "Upload konnte nicht verarbeitet werden",
+    "errorMissingMetadata": "In der Upload-Antwort fehlen die Dokument-Metadaten"
+  }
+}

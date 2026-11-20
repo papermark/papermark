@@ -1,4 +1,4 @@
-import { render } from "@react-email/components";
+import { render, toPlainText } from "react-email";
 import { nanoid } from "nanoid";
 
 import prisma from "@/lib/prisma";
@@ -141,7 +141,8 @@ export async function processEmailQueue() {
                     unsubscribeUrl,
                   });
 
-                  const plainText = await render(react, { plainText: true });
+                  const html = await render(react);
+                  const plainText = toPlainText(html);
 
                   return {
                     email: {

@@ -7,6 +7,7 @@ import { fetcher } from "@/lib/utils";
 export interface AgreementWithLinksCount extends Agreement {
   _count: {
     links: number;
+    responses: number;
   };
 }
 

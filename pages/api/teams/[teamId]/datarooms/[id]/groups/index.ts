@@ -5,6 +5,7 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { ItemType } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
+import { enforceDataroomMemberScope } from "@/lib/api/rbac/guard";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
@@ -26,7 +27,13 @@ export default async function handle(
       id: string;
     };
     const documentId = req.query?.documentId as string;
+    const folderId = req.query?.folderId as string;
     const userId = (session.user as CustomUser).id;
+
+    // Scoped members may only read groups for their assigned rooms.
+    if (await enforceDataroomMemberScope({ userId, teamId, dataroomId, res })) {
+      return;
+    }
 
     try {
       const teamAccess = await prisma.userTeam.findUnique({
@@ -59,6 +66,14 @@ export default async function handle(
         return res.status(404).end("Dataroom not found");
       }
 
+      // When the caller scopes the query to a specific item we return the
+      // matching access controls so the UI can render existing toggle state.
+      const accessControlFilter = documentId
+        ? { itemId: documentId, itemType: ItemType.DATAROOM_DOCUMENT }
+        : folderId
+          ? { itemId: folderId, itemType: ItemType.DATAROOM_FOLDER }
+          : null;
+
       // Then, get viewer groups with optimized separate queries
       const viewerGroups = await prisma.viewerGroup.findMany({
         where: {
@@ -68,13 +83,10 @@ export default async function handle(
           createdAt: "desc",
         },
         include: {
-          ...(documentId
+          ...(accessControlFilter
             ? {
                 accessControls: {
-                  where: {
-                    itemId: documentId,
-                    itemType: ItemType.DATAROOM_DOCUMENT,
-                  },
+                  where: accessControlFilter,
                   select: {
                     id: true,
                     canView: true,
@@ -147,6 +159,11 @@ export default async function handle(
     };
 
     const { name } = req.body as { name: string };
+
+    // Scoped members may only create groups within their assigned rooms.
+    if (await enforceDataroomMemberScope({ userId, teamId, dataroomId, res })) {
+      return;
+    }
 
     try {
       // Check if the user is part of the team

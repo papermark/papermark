@@ -1,5 +1,14 @@
 // INFO: for numeric values,`null` means unlimited
 
+export type TFileSizeLimits = {
+  video?: number | null;
+  document?: number | null;
+  image?: number | null;
+  excel?: number | null;
+  maxFiles?: number | null;
+  maxPages?: number | null;
+};
+
 export type TPlanLimits = {
   users: number | null;
   links: number | null;
@@ -12,6 +21,8 @@ export type TPlanLimits = {
   watermarkOnBusiness?: boolean | null;
   agreementOnBusiness?: boolean | null;
   linkCustomFields?: number | null;
+  conversationsInDataroom?: boolean;
+  fileSizeLimits?: TFileSizeLimits;
 };
 
 export const FREE_PLAN_LIMITS = {

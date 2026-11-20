@@ -2,11 +2,12 @@ import { useRouter } from "next/router";
 
 import React, { useEffect, useRef, useState } from "react";
 
+import { PendingUploadsProvider } from "@/context/pending-uploads-context";
+import { useViewerRequestList } from "@/ee/features/request-lists/lib/swr/use-viewer-request-list";
 import { DataroomBrand } from "@prisma/client";
 import Cookies from "js-cookie";
 import { toast } from "sonner";
 
-import { PendingUploadsProvider } from "@/context/pending-uploads-context";
 import { useAnalytics } from "@/lib/analytics";
 import { SUPPORTED_DOCUMENT_SIMPLE_TYPES } from "@/lib/constants";
 import { useDisablePrint } from "@/lib/hooks/use-disable-print";
@@ -43,6 +44,14 @@ export type DEFAULT_DATAROOM_VIEW_TYPE = {
   viewerId?: string;
   conversationsEnabled?: boolean;
   enableVisitorUpload?: boolean;
+  /**
+   * When the link restricts uploads to specific folders this is the ordered
+   * allow-list. `null`/`undefined` means "no restriction — visitor may upload
+   * into whichever folder they're currently browsing".
+   */
+  uploadFolderAllowList?:
+    | { id: string; name: string; path: string }[]
+    | null;
   isTeamMember?: boolean;
   agentsEnabled?: boolean;
   dataroomName?: string;
@@ -58,7 +67,9 @@ export default function DataroomView({
   verifiedEmail,
   previewToken,
   disableEditEmail,
-  useCustomAccessForm,
+  urlPasscode,
+  disableEditPassword,
+  hideFooterOnAccessForm,
   logoOnAccessForm,
   isEmbedded,
   preview,
@@ -74,7 +85,9 @@ export default function DataroomView({
   verifiedEmail?: string;
   previewToken?: string;
   disableEditEmail?: boolean;
-  useCustomAccessForm?: boolean;
+  urlPasscode?: string;
+  disableEditPassword?: boolean;
+  hideFooterOnAccessForm?: boolean;
   isEmbedded?: boolean;
   preview?: boolean;
   logoOnAccessForm?: boolean;
@@ -118,6 +131,18 @@ export default function DataroomView({
     ? brand?.accentColor
     : "#ffffff";
 
+  // Request List uploads land in the same DocumentUpload table as voluntary
+  // visitor uploads, so track the viewer's uploads whenever either feature can
+  // produce them — even when the link's generic visitor-upload toggle is off.
+  const { enabled: requestListEnabled } = useViewerRequestList({
+    linkId: link.id,
+    dataroomId: dataroom?.id,
+    viewerId: viewData.viewerId,
+    isPreview: viewData.isPreview,
+  });
+  const trackViewerUploads =
+    !!viewData.enableVisitorUpload || requestListEnabled;
+
   const handleSubmission = async (): Promise<void> => {
     setIsLoading(true);
     const response = await fetch("/api/views-dataroom", {
@@ -128,6 +153,7 @@ export default function DataroomView({
       body: JSON.stringify({
         ...data,
         email: data.email ?? verifiedEmail ?? userEmail ?? null,
+        password: data.password ?? urlPasscode ?? undefined,
         linkId: link.id,
         userId: userId ?? null,
         dataroomId: dataroom?.id,
@@ -163,6 +189,7 @@ export default function DataroomView({
           viewerId,
           conversationsEnabled,
           enableVisitorUpload,
+          uploadFolderAllowList,
           isTeamMember,
           agentsEnabled,
           dataroomName,
@@ -200,6 +227,7 @@ export default function DataroomView({
           viewerId,
           conversationsEnabled,
           enableVisitorUpload,
+          uploadFolderAllowList,
           isTeamMember,
           agentsEnabled,
           dataroomName,
@@ -264,18 +292,24 @@ export default function DataroomView({
       <AccessForm
         data={data}
         email={userEmail}
+        password={urlPasscode}
         setData={setData}
         onSubmitHandler={handleSubmit}
         requireEmail={emailProtected}
         requirePassword={!!linkPassword}
         requireAgreement={enableAgreement!}
+        agreementId={link.agreement?.id}
         agreementName={link.agreement?.name}
         agreementContent={link.agreement?.content}
         agreementContentType={link.agreement?.contentType}
+        signingProvider={link.agreement?.signingProvider}
         requireName={link.agreement?.requireName}
         isLoading={isLoading}
+        linkId={link.id}
         disableEditEmail={disableEditEmail}
-        useCustomAccessForm={useCustomAccessForm}
+        disableEditPassword={disableEditPassword}
+        hideFooterOnAccessForm={hideFooterOnAccessForm}
+        linkType="DATAROOM_LINK"
         brand={brand}
         customFields={link.customFields}
         logoOnAccessForm={logoOnAccessForm}
@@ -295,11 +329,11 @@ export default function DataroomView({
   if (submitted) {
     return (
       <PendingUploadsProvider
-          linkId={viewData.enableVisitorUpload ? link.id : undefined}
-          dataroomId={viewData.enableVisitorUpload ? dataroom?.id : undefined}
+          linkId={trackViewerUploads ? link.id : undefined}
+          dataroomId={trackViewerUploads ? dataroom?.id : undefined}
         >
         <div
-          className="min-h-screen bg-white"
+          className="flex min-h-screen flex-col bg-white"
           style={{ backgroundColor: dataroomViewBackgroundColor ?? undefined }}
         >
           <DataroomViewer
@@ -317,6 +351,7 @@ export default function DataroomView({
             viewData={viewData}
             isEmbedded={isEmbedded}
             dataroomIndexEnabled={dataroomIndexEnabled}
+            showPoweredByBanner={link.showBanner ?? false}
             viewerEmail={
               viewData.viewerEmail ??
               data.email ??

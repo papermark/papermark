@@ -1,0 +1,141 @@
+{
+  "nav": {
+    "home": "Start",
+    "viewQA": "V&A bekijken",
+    "linksOnPage": "Links op de pagina",
+    "linksOnCurrentPage": "Links op de huidige pagina",
+    "zoomIn": "Inzoomen",
+    "zoomOut": "Uitzoomen",
+    "resetZoom": "Aanpassen aan scherm",
+    "fullscreen": "Volledig scherm",
+    "exitFullscreen": "Volledig scherm afsluiten",
+    "downloadDocument": "Document downloaden",
+    "teamMemberTooltip": "Verificatie overgeslagen omdat u teamlid bent; er worden geen analyses vastgelegd",
+    "changeLanguage": "Taal wijzigen"
+  },
+  "fullscreenControls": {
+    "rotate": "Draaien",
+    "exitFullscreen": "Volledig scherm afsluiten"
+  },
+  "toasts": {
+    "preparingDownload": "Download wordt voorbereid ...",
+    "preparingDownloadWatermark": "Download met watermerk wordt voorbereid ...",
+    "downloadSuccess": "Bestand succesvol gedownload",
+    "downloadFailed": "Bestand kon niet worden gedownload",
+    "cannotDownloadPreview": "In de voorbeeldmodus kunt u geen documenten downloaden."
+  },
+  "downloadOnly": {
+    "title": "Document downloaden",
+    "description": "Dit document is alleen beschikbaar om te downloaden",
+    "button": "Nu downloaden"
+  },
+  "awayPoster": {
+    "title": "We hebben gepauzeerd om uw sessie te beschermen",
+    "description": "U was {{duration}} inactief, daarom hebben we het documentvoorbeeld gepauzeerd om uw sessie veilig te houden.",
+    "ariaTitle": "Melding over automatisch gepauzeerde sessie",
+    "ariaDescription": "Uw sessie is gepauzeerd wegens inactiviteit. Klik op doorgaan of beweeg uw muis om te hervatten.",
+    "badge": "Automatisch gepauzeerd",
+    "idleFor": "{{duration}} inactief",
+    "minSec": "{{minutes}} min {{seconds}} sec",
+    "minOnly": "{{minutes}} min",
+    "secOnly": "{{seconds}} sec",
+    "resume": "Ga verder waar u was gebleven",
+    "moveHint": "Of beweeg uw muis of druk op een toets om door te gaan"
+  },
+  "poweredBy": {
+    "shareDocsVia": "Deel documenten via"
+  },
+  "report": {
+    "trigger": "Misbruik melden",
+    "title": "Probleem melden",
+    "description": "Ziet u iets ongepasts? Wij bekijken het en ondernemen waar nodig actie.",
+    "submit": "Melding verzenden",
+    "successToast": "Melding succesvol verzonden",
+    "selectTypeError": "Selecteer een type misbruik.",
+    "types": {
+      "spam": "Spam, fraude of zwendel",
+      "malware": "Malware of virus",
+      "copyright": "Auteursrechtinbreuk",
+      "harmful": "Schadelijke inhoud",
+      "notWorking": "Inhoud werkt niet goed",
+      "other": "Overig"
+    }
+  },
+  "qa": {
+    "header": {
+      "title": "Stel het team een vraag",
+      "composeTitle": "Nieuwe vraag stellen",
+      "subtitleWithName": "Vragen over {{name}}",
+      "subtitle": "Vragen over deze dataroom",
+      "back": "Terug",
+      "close": "Sluiten"
+    },
+    "tabs": {
+      "home": "Start",
+      "messages": "Vragen",
+      "faq": "FAQ"
+    },
+    "home": {
+      "askNew": "Nieuwe vraag stellen",
+      "recentReply": "Recente reactie",
+      "openConversation": "Gesprek openen",
+      "frequentlyAsked": "Veelgestelde vragen"
+    },
+    "messages": {
+      "emptyTitle": "Nog geen vragen",
+      "emptyDescription": "Stel het team een vraag en deze verschijnt hier.",
+      "askQuestion": "Vraag stellen",
+      "newReply": "Nieuwe reactie"
+    },
+    "compose": {
+      "aboutPage": "Over deze pagina",
+      "subjectPlaceholder": "Onderwerp (optioneel)",
+      "messagePlaceholder": "Typ uw vraag...",
+      "sending": "Verzenden…",
+      "submit": "Vraag verzenden"
+    },
+    "thread": {
+      "you": "U",
+      "team": "Team",
+      "page": "Pagina {{page}}",
+      "newDivider": "Nieuw",
+      "closed": "Dit gesprek is door het team gesloten.",
+      "messagePlaceholder": "Typ uw bericht...",
+      "sendReply": "Reactie verzenden"
+    },
+    "status": {
+      "answered": "Beantwoord",
+      "awaiting": "Wacht op reactie",
+      "closed": "Gesloten"
+    },
+    "snippet": {
+      "team": "Team: ",
+      "you": "U: "
+    },
+    "time": {
+      "now": "nu",
+      "minutes": "{{n}} min",
+      "hours": "{{n}} u",
+      "days": "{{n}} d"
+    },
+    "toasts": {
+      "sendMessageFailed": "Bericht verzenden mislukt",
+      "sendQuestionFailed": "Vraag verzenden mislukt"
+    },
+    "untitled": "Vraag zonder titel",
+    "faqEmpty": "Er zijn nog geen vragen gepubliceerd."
+  },
+  "notFound": {
+    "eyebrow": "Fout 404",
+    "title": "Pagina niet gevonden.",
+    "goHome": "Terug naar start",
+    "reasons": {
+      "expired": "De link die u zoekt is verlopen.",
+      "archived": "De link die u zoekt is gearchiveerd.",
+      "dataroomClosed": "Deze dataroom is gesloten en niet langer beschikbaar.",
+      "loadErrorRefresh": "We konden deze link niet laden. Vernieuw de pagina.",
+      "loadErrorRetry": "We konden deze link niet laden. Probeer het zo meteen opnieuw.",
+      "embedOnly": "Deze pagina is alleen toegankelijk wanneer deze in een andere website is ingesloten."
+    }
+  }
+}

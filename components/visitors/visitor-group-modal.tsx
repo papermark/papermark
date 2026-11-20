@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { useTeam } from "@/context/team-context";
@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { mutate } from "swr";
 import useSWR from "swr";
 
-import { fetcher, sanitizeList } from "@/lib/utils";
+import { fetcher, validateList } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -79,6 +79,11 @@ export function VisitorGroupModal({
     }
   }, [existingGroup, open]);
 
+  const validation = useMemo(
+    () => validateList(emailsInput, "both"),
+    [emailsInput],
+  );
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -88,9 +93,18 @@ export function VisitorGroupModal({
       return;
     }
 
+    if (validation.invalid.length > 0) {
+      toast.error(
+        `Fix invalid emails or domains: ${validation.invalid
+          .slice(0, 3)
+          .join(", ")}${validation.invalid.length > 3 ? ", ..." : ""}`,
+      );
+      return;
+    }
+
     setLoading(true);
 
-    const emails = sanitizeList(emailsInput);
+    const emails = validation.valid;
 
     try {
       const url = existingGroup
@@ -164,16 +178,32 @@ export function VisitorGroupModal({
                 id="group-emails"
                 className="mt-1 w-full focus:ring-inset"
                 rows={6}
-                placeholder={`Enter emails or domains, one per line, e.g.
+                placeholder={`Enter emails or domains separated by comma, semicolon, or new line, e.g.
 investor@fund.com
 partner@vc.com
 @example.org`}
                 value={emailsInput}
                 onChange={(e) => setEmailsInput(e.target.value)}
+                aria-invalid={validation.invalid.length > 0}
               />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Use @domain.com to allow all emails from a domain.
-              </p>
+              {validation.invalid.length > 0 ? (
+                <p className="mt-1 text-xs text-destructive">
+                  The following entries are not valid emails or domains and
+                  must be fixed before saving:{" "}
+                  <span className="font-medium">
+                    {validation.invalid.slice(0, 5).join(", ")}
+                    {validation.invalid.length > 5
+                      ? `, and ${validation.invalid.length - 5} more`
+                      : ""}
+                  </span>
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Separate multiple entries with a comma, semicolon, or new
+                  line. Use <code>@domain.com</code> to allow all emails from a
+                  domain.
+                </p>
+              )}
             </div>
 
             {existingGroup && (
@@ -243,7 +273,12 @@ partner@vc.com
             )}
           </div>
           <DialogFooter className="mt-4">
-            <Button type="submit" loading={loading} className="h-9 w-full">
+            <Button
+              type="submit"
+              loading={loading}
+              disabled={validation.invalid.length > 0}
+              className="h-9 w-full"
+            >
               {existingGroup ? "Update Group" : "Create Group"}
             </Button>
           </DialogFooter>

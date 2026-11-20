@@ -8,6 +8,7 @@ import { PlanEnum } from "@/ee/stripe/constants";
 import { FilterIcon, PlusIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
 
+import { useSelfMembership } from "@/lib/hooks/use-self-membership";
 import { usePlan } from "@/lib/swr/use-billing";
 import useDatarooms from "@/lib/swr/use-datarooms";
 import useLimits from "@/lib/swr/use-limits";
@@ -28,10 +29,20 @@ import { Separator } from "@/components/ui/separator";
 export default function DataroomsPage() {
   const teamInfo = useTeam();
   const { datarooms, totalCount } = useDatarooms();
-  const { isFree, isPro, isBusiness, isDatarooms, isDataroomsPlus, isTrial } =
-    usePlan();
+  const {
+    isFree,
+    isPro,
+    isBusiness,
+    isDatarooms,
+    isDataroomsPlus,
+    isTrial,
+    trialEndsAt,
+  } = usePlan();
   const { limits } = useLimits();
   const router = useRouter();
+
+  // Dataroom-scoped members cannot create datarooms; hide the creation controls.
+  const { isDataroomMember } = useSelfMembership();
 
   const [tagsFilter, setTagsFilter] = useQueryState<string[]>("tags", {
     parse: (value: string) => value.split(",").filter(Boolean),
@@ -61,25 +72,32 @@ export default function DataroomsPage() {
     return a.name.localeCompare(b.name);
   });
 
-  // Filter out only dataroom tags
-  const dataroomTags = useMemo(() => {
-    if (!availableTags) return [];
-    return availableTags;
-  }, [availableTags]);
-
-  const tagOptions = useMemo(() => {
-    return (
-      dataroomTags?.map((tag) => ({
-        value: tag.name,
-        label: tag.name,
-        meta: { color: tag.color, description: tag.description },
-      })) || []
-    );
-  }, [dataroomTags]);
-
   const selectedTagValues = useMemo(() => {
     return tagsFilter || [];
   }, [tagsFilter]);
+
+  // Only surface tags that are actually applied to a dataroom the user can see.
+  // Team tags that aren't attached to any visible dataroom would never match a
+  // filter, so showing them is just noise (and leaks unrelated tags to
+  // dataroom-scoped members). Selected tags are always kept so an active filter
+  // doesn't vanish when it narrows the result set.
+  const visibleTagNames = useMemo(() => {
+    const names = new Set<string>(selectedTagValues);
+    (datarooms ?? []).forEach((dataroom) => {
+      dataroom.tags?.forEach((tagItem) => names.add(tagItem.tag.name));
+    });
+    return names;
+  }, [datarooms, selectedTagValues]);
+
+  const tagOptions = useMemo(() => {
+    return (availableTags ?? [])
+      .filter((tag) => visibleTagNames.has(tag.name))
+      .map((tag) => ({
+        value: tag.name,
+        label: tag.name,
+        meta: { color: tag.color, description: tag.description },
+      }));
+  }, [availableTags, visibleTagNames]);
 
   const hasActiveFilters = searchQuery || tagsFilter?.length;
 
@@ -100,16 +118,19 @@ export default function DataroomsPage() {
             </p>
           </div>
           <div className="flex items-center gap-x-1">
-            {isBusiness && !canCreateUnlimitedDatarooms ? (
+            {isDataroomMember ? null : isBusiness &&
+              !canCreateUnlimitedDatarooms ? (
               <UpgradePlanModal
                 clickedPlan={PlanEnum.DataRooms}
                 trigger="datarooms"
               >
                 <Button
-                  className="group flex flex-1 items-center justify-start gap-x-3 px-3 text-left"
+                  className="group flex flex-1 items-center justify-start gap-x-1 whitespace-nowrap px-2 text-left sm:gap-x-3 sm:px-3"
                   title="Upgrade to Add Data Room"
                 >
-                  <span>Upgrade to Add Data Room</span>
+                  <span className="text-xs sm:text-sm">
+                    Upgrade to Add Data Room
+                  </span>
                 </Button>
               </UpgradePlanModal>
             ) : isTrial &&
@@ -117,18 +138,23 @@ export default function DataroomsPage() {
               !isBusiness &&
               !isDatarooms &&
               !isDataroomsPlus ? (
-              <div className="flex items-center gap-x-4">
-                <div className="text-sm text-destructive">
-                  <span>Dataroom Trial: </span>
+              <div className="flex items-center gap-x-2 sm:gap-x-4">
+                <div className="text-xs text-destructive sm:text-sm">
+                  <span>Trial: </span>
                   <span className="font-medium">
                     {(() => {
-                      const startDate =
-                        datarooms && datarooms.length > 0
-                          ? datarooms[datarooms.length - 1]?.createdAt
-                          : new Date(
-                              teamInfo?.currentTeam?.createdAt ?? Date.now(),
-                            );
-                      const days = daysLeft(new Date(startDate), 7);
+                      let days: number;
+                      if (trialEndsAt) {
+                        days = daysLeft(new Date(trialEndsAt), 0);
+                      } else {
+                        const startDate =
+                          datarooms && datarooms.length > 0
+                            ? datarooms[datarooms.length - 1]?.createdAt
+                            : new Date(
+                                teamInfo?.currentTeam?.createdAt ?? Date.now(),
+                              );
+                        days = daysLeft(new Date(startDate), 7);
+                      }
                       if (days <= 0) return "Expired";
                       const label = days === 1 ? "day" : "days";
                       return `${days} ${label} left`;
@@ -138,11 +164,14 @@ export default function DataroomsPage() {
                 {totalDatarooms < limitDatarooms ? (
                   <AddDataroomModal>
                     <Button
-                      className="group flex flex-1 items-center justify-start gap-x-3 px-3 text-left"
+                      className="group flex flex-1 items-center justify-start gap-x-1 whitespace-nowrap px-2 text-left sm:gap-x-3 sm:px-3"
                       title="Create New Dataroom"
                     >
-                      <PlusIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                      <span>Create New Dataroom</span>
+                      <PlusIcon
+                        className="h-5 w-5 shrink-0"
+                        aria-hidden="true"
+                      />
+                      <span className="text-xs sm:text-sm">New Dataroom</span>
                     </Button>
                   </AddDataroomModal>
                 ) : (
@@ -151,10 +180,10 @@ export default function DataroomsPage() {
                     trigger="datarooms"
                   >
                     <Button
-                      className="group flex flex-1 items-center justify-start gap-x-3 px-3 text-left"
+                      className="group flex flex-1 items-center justify-start gap-x-1 whitespace-nowrap px-2 text-left sm:gap-x-3 sm:px-3"
                       title="Upgrade to Add Data Room"
                     >
-                      <span>Upgrade to Add Data Room</span>
+                      <span className="text-xs sm:text-sm">Upgrade</span>
                     </Button>
                   </UpgradePlanModal>
                 )}
@@ -162,31 +191,31 @@ export default function DataroomsPage() {
             ) : isBusiness || isDatarooms || isDataroomsPlus ? (
               <AddDataroomModal>
                 <Button
-                  className="group flex flex-1 items-center justify-start gap-x-3 px-3 text-left"
-                  title="Create New Document"
+                  className="group flex flex-1 items-center justify-start gap-x-1 whitespace-nowrap px-2 text-left sm:gap-x-3 sm:px-3"
+                  title="Create New Dataroom"
                 >
                   <PlusIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                  <span>Create New Dataroom</span>
+                  <span className="text-xs sm:text-sm">New Dataroom</span>
                 </Button>
               </AddDataroomModal>
             ) : (
               <DataroomTrialModal>
                 <Button
-                  className="group flex flex-1 items-center justify-start gap-x-3 px-3 text-left"
+                  className="group flex flex-1 items-center justify-start gap-x-1 whitespace-nowrap px-2 text-left sm:gap-x-3 sm:px-3"
                   title="Start Data Room Trial"
                 >
-                  <span>Start Data Room Trial</span>
+                  <span className="text-xs sm:text-sm">Start Trial</span>
                 </Button>
               </DataroomTrialModal>
             )}
           </div>
         </section>
         {/* Search and Filters */}
-        <div className="mb-4 flex justify-end gap-3">
+        <div className="mb-4 flex justify-end gap-2 sm:gap-3">
           <div className="w-full sm:w-[280px]">
             <SearchBoxPersisted
               placeholder="Search datarooms..."
-              inputClassName="h-10"
+              inputClassName="h-9 text-sm sm:h-10"
             />
           </div>
 

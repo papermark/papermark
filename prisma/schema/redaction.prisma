@@ -1,0 +1,56 @@
+model DocumentRedactionJob {
+  id                String              @id @default(cuid())
+  documentId        String
+  document          Document            @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentVersionId String
+  documentVersion   DocumentVersion     @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+  teamId            String
+  team              Team                @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdById       String
+  createdBy         User                @relation(fields: [createdById], references: [id])
+  status            String              @default("PENDING") // Validated via Zod: PENDING | DETECTING | REVIEW | APPLYING | APPLIED | FAILED
+  customTerms       String[]
+  reasons           String[] // Validated via Zod: PRIVACY | GDPR | CPRA | STRATEGIC | COMMERCIAL | OTHER
+  resultVersionId   String? // The DocumentVersion that was produced after APPLY
+  error             String?
+  // Trigger.dev run ids so the UI can resubscribe to progress after a refresh
+  // or when the job is reopened from the 3-dot menu.
+  detectRunId       String?
+  applyRunId        String?
+  redactions        DocumentRedaction[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([documentId])
+  @@index([documentVersionId])
+  @@index([teamId])
+  @@index([teamId, status])
+}
+
+model DocumentRedaction {
+  id           String               @id @default(cuid())
+  jobId        String
+  job          DocumentRedactionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  pageNumber   Int
+  // Coordinates are stored on Gemini's normalized 0-1000 scale.
+  x            Float
+  y            Float
+  width        Float
+  height       Float
+  // A masked preview of the detected text (e.g. "Jo••••oe"). We deliberately
+  // do NOT store the raw PII value that Gemini returned — that plaintext only
+  // lives in memory long enough to be used for the post-redaction assertion
+  // in apply-redactions. Keep this short (≤32 chars) so indexes stay small.
+  textPreview String?
+  category     String? // Validated via Zod: PII_NAME | PII_EMAIL | PII_PHONE | PII_SSN | PII_ADDRESS | PII_TAX_ID | PII_ACCOUNT_NUMBER | CUSTOM_TERM | IMAGE | OTHER
+  confidence   String? // LOW | MEDIUM | HIGH
+  reason       String?
+  source       String               @default("AI") // AI | MANUAL
+  status       String               @default("PENDING") // PENDING | ACCEPTED | DECLINED | APPLIED
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@index([jobId])
+  @@index([jobId, pageNumber])
+  @@index([jobId, status])
+}

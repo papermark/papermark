@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { useRouter } from "next/router";
 
 import { useState } from "react";
@@ -7,17 +6,24 @@ import { useTeam } from "@/context/team-context";
 import { PlanEnum } from "@/ee/stripe/constants";
 import { LinkPreset } from "@prisma/client";
 import { format } from "date-fns";
-import { CircleHelpIcon, CrownIcon, PlusIcon } from "lucide-react";
+import { CircleHelpIcon, SettingsIcon } from "lucide-react";
 import useSWR from "swr";
 
 import { usePlan } from "@/lib/swr/use-billing";
-import { fetcher, formatExpirationTime } from "@/lib/utils";
+import { fetcher } from "@/lib/utils";
 
 import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
 import AppLayout from "@/components/layouts/app";
 import { SettingsHeader } from "@/components/settings/settings-header";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { BadgeTooltip } from "@/components/ui/tooltip";
 
 export default function Presets() {
@@ -43,90 +49,102 @@ export default function Presets() {
     <AppLayout>
       <main className="relative mx-2 mb-10 mt-4 space-y-8 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
         <SettingsHeader />
-        <div>
-          <div className="mb-4 flex items-center justify-between md:mb-8 lg:mb-12">
+        <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex flex-col items-start justify-between gap-3 border-b border-gray-200 p-5 sm:flex-row sm:items-center sm:p-6 dark:border-gray-800">
             <div className="space-y-1">
-              <h3 className="text-2xl font-semibold tracking-tight text-foreground">
-                Link Presets
-              </h3>
-              <p className="flex flex-row items-center gap-2 text-sm text-muted-foreground">
-                Configure and save presets for your links
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                  Link Presets
+                </h2>
                 <BadgeTooltip content="Create reusable link configurations that can be applied to new links">
-                  <CircleHelpIcon className="h-4 w-4 shrink-0 text-muted-foreground hover:text-foreground" />
+                  <CircleHelpIcon className="h-4 w-4 text-gray-400" />
                 </BadgeTooltip>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Configure and save presets for your links.
               </p>
             </div>
             {isTrial || isBusiness || isDatarooms || isDataroomsPlus ? (
-              <Button onClick={() => router.push("/settings/presets/new")}>
-                <PlusIcon className="mr-1.5 h-4 w-4" />
+              <Button
+                onClick={() => router.push("/settings/presets/new")}
+                className="shrink-0 whitespace-nowrap bg-gray-900 text-gray-50 hover:bg-gray-900/90"
+              >
                 Create Preset
               </Button>
             ) : (
-              <Button onClick={() => setShowUpgradeModal(true)}>
-                <CrownIcon className="mr-1.5 h-4 w-4" />
-                Upgrade to create presets
+              <Button
+                onClick={() => setShowUpgradeModal(true)}
+                className="shrink-0 whitespace-nowrap bg-gray-900 text-gray-50 hover:bg-gray-900/90"
+              >
+                Upgrade
               </Button>
             )}
           </div>
 
           {/* Presets List */}
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-muted-foreground">Loading presets...</p>
+            <div className="p-6">
+              <div className="space-y-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-12 animate-pulse rounded-md bg-gray-100 dark:bg-gray-800"
+                  />
+                ))}
+              </div>
             </div>
           ) : !presets || presets.length === 0 ? (
-            <div className="flex flex-col items-center justify-center space-y-4 py-12">
-              <div className="rounded-full bg-gray-100 p-3">
-                <PlusIcon className="h-6 w-6 text-gray-600" />
+            <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-800">
+                <SettingsIcon className="h-5 w-5" />
               </div>
-              <div className="text-center">
-                <h3 className="font-medium">No presets configured</h3>
-                <p className="mt-1 max-w-sm text-sm text-gray-500">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  No presets configured
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   Create link presets to quickly apply your preferred settings
                   when creating links.
                 </p>
               </div>
-              {isTrial || isBusiness || isDatarooms || isDataroomsPlus ? (
-                <Button
-                  variant="outline"
-                  onClick={() => router.push("/settings/presets/new")}
-                >
-                  Create your first preset
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => setShowUpgradeModal(true)}
-                >
-                  Upgrade to create presets
-                </Button>
-              )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3">
-              {presets.map((preset) => (
-                <Link
-                  key={preset.id}
-                  href={`/settings/presets/${preset.id}`}
-                  className="rounded-xl border border-gray-200 bg-white p-4 transition-[filter] hover:bg-gray-50 dark:border-gray-400 dark:bg-secondary dark:hover:bg-gray-800 sm:p-5"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold">{preset.name}</span>
-                      </div>
-                      <div className="mt-1 flex items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <span>
-                            Created:{" "}
-                            {format(new Date(preset.createdAt), "MMM d, yyyy")}
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-xs font-medium tracking-wide text-gray-500">
+                      Name
+                    </TableHead>
+                    <TableHead className="text-xs font-medium tracking-wide text-gray-500">
+                      Created
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {presets.map((preset) => (
+                    <TableRow
+                      key={preset.id}
+                      className="cursor-pointer"
+                      onClick={() =>
+                        router.push(`/settings/presets/${preset.id}`)
+                      }
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <SettingsIcon className="h-4 w-4 text-gray-400" />
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {preset.name}
                           </span>
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-700 dark:text-gray-300">
+                        {format(new Date(preset.createdAt), "MMM d, yyyy")}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </div>

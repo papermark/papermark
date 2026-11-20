@@ -36,6 +36,11 @@ const LINK_SETTINGS: LinkSetting[] = [
     isActive: (link) => !!link.enableScreenshotProtection,
   },
   {
+    key: "enableConfidentialView",
+    label: "Confidential view",
+    isActive: (link) => !!link.enableConfidentialView,
+  },
+  {
     key: "enableWatermark",
     label: "Watermark enabled",
     isActive: (link) => !!link.enableWatermark,

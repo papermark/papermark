@@ -1,5 +1,6 @@
 import { Brand, CustomField, DataroomBrand } from "@prisma/client";
 import { E164Number } from "libphonenumber-js";
+import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ export default function CustomFieldsSection({
   brand?: Partial<Brand> | Partial<DataroomBrand> | null;
 }) {
   const theme = useAccessFormTheme();
+  const { t } = useTranslation("access-form");
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -94,7 +96,9 @@ export default function CustomFieldsSection({
                 onChange={(phoneValue) =>
                   handlePhoneChange(phoneValue, field.identifier!)
                 }
-                placeholder={field.placeholder || "+1 123 456 7890"}
+                placeholder={
+                  field.placeholder || t("fields.phone.placeholderDefault", "+1 123 456 7890")
+                }
                 defaultCountry="US"
                 disabled={field.disabled}
                 translate="no"
@@ -127,7 +131,7 @@ export default function CustomFieldsSection({
                     onInvalid={(e) => {
                       if (field.type === "URL") {
                         e.currentTarget.setCustomValidity(
-                          "Please enter a valid URL starting with https://",
+                          t("fields.url.errorInvalid", "Please enter a valid URL starting with https://"),
                         );
                       }
                     }}

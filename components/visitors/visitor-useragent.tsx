@@ -2,8 +2,14 @@ import { useVisitorUserAgent } from "@/lib/swr/use-stats";
 
 import VisitorUserAgentBase from "./visitor-useragent-base";
 
-export default function VisitorUserAgent({ viewId }: { viewId: string }) {
-  const { userAgent, error } = useVisitorUserAgent(viewId);
+export default function VisitorUserAgent({
+  viewId,
+  documentId,
+}: {
+  viewId: string;
+  documentId?: string;
+}) {
+  const { userAgent, error } = useVisitorUserAgent(viewId, documentId);
 
   if (error) {
     return null;

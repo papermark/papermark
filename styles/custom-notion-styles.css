@@ -28,6 +28,31 @@
   max-width: 100%;
 }
 
+/*
+ * Full-width Notion pages (page_full_width: true) must span the viewport like
+ * they do on notion.site, instead of being squeezed into the default narrow
+ * column. react-notion-x adds the `notion-full-width` class to such pages, so
+ * for these we use fixed side margins and let the content track absorb the
+ * remaining width. Scoped to >= 769px so the mobile margin overrides further
+ * below keep applying on small screens.
+ */
+@media (min-width: 769px) {
+  .notion-page.notion-full-page.notion-full-width,
+  .notion-full-width .notion-page-content-inner {
+    grid-template-columns:
+      [full-start] 96px
+      [content-start] minmax(0, 1fr)
+      [content-end] 96px
+      [full-end];
+  }
+
+  /* Keep collection/database views aligned with the widened content. */
+  .notion-full-width .notion-collection .notion-table-view {
+    padding-left: 96px !important;
+    padding-right: 96px !important;
+  }
+}
+
 .notion-page-content-inner > * {
   grid-column: content;
   min-width: 0;

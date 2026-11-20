@@ -1,6 +1,6 @@
 import { useRouter } from "next/router";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ExternalLink } from "lucide-react";
 
@@ -8,6 +8,7 @@ import { useSafePageViewTracker } from "@/lib/tracking/safe-page-view-tracker";
 import { getTrackingOptions } from "@/lib/tracking/tracking-config";
 
 import { Button } from "@/components/ui/button";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 
 import Nav, { TNavData } from "./nav";
 import { AwayPoster } from "./viewer/away-poster";
@@ -17,6 +18,13 @@ interface LinkPreviewProps {
   linkName: string;
   navData: TNavData;
   versionNumber: number;
+  /**
+   * When true, the URL has been validated server-side against the
+   * Edge-Config-backed allowlist and may be rendered directly inside a
+   * sandboxed iframe. Trusting this flag is safe because it can only be set
+   * by the views API after consulting the allowlist.
+   */
+  isEmbeddable?: boolean;
 }
 
 export default function LinkPreview({
@@ -24,10 +32,12 @@ export default function LinkPreview({
   linkName,
   navData,
   versionNumber,
+  isEmbeddable = false,
 }: LinkPreviewProps) {
   const router = useRouter();
   const startTimeRef = useRef(Date.now());
   const visibilityRef = useRef<boolean>(true);
+  const [iframeLoaded, setIframeLoaded] = useState<boolean>(false);
 
   const domain = useMemo(() => {
     if (!linkUrl) return "";
@@ -229,6 +239,75 @@ export default function LinkPreview({
     window.open(linkUrl, "_blank", "noopener,noreferrer");
     return;
   };
+
+  if (isEmbeddable && linkUrl) {
+    return (
+      <>
+        <Nav pageNumber={1} numPages={1} navData={navData} />
+        <div
+          style={{ height: "calc(100dvh - 64px)" }}
+          className="relative flex flex-col bg-gray-50 dark:bg-gray-900"
+        >
+          {!iframeLoaded && (
+            <div
+              className="absolute inset-0 z-10 flex items-center justify-center bg-gray-50 dark:bg-gray-900"
+              aria-hidden="true"
+            >
+              <LoadingSpinner className="h-10 w-10 text-gray-500 dark:text-gray-400" />
+            </div>
+          )}
+          <iframe
+            src={linkUrl}
+            title={linkName || domain || "Embedded content"}
+            onLoad={() => setIframeLoaded(true)}
+            className="h-full w-full border-0"
+            // Permissions Policy: deny everything not required for a passive
+            // viewer. We intentionally do not grant camera, microphone,
+            // geolocation, clipboard, payment, USB, MIDI, etc. — even
+            // allowlisted hosts shouldn't be able to access these from
+            // inside Papermark without an explicit opt-in.
+            allow="fullscreen 'self'"
+            allowFullScreen
+            // Send no referrer so the embedded host cannot learn anything
+            // about the Papermark viewer URL (link id, document id, query
+            // params, etc.).
+            referrerPolicy="no-referrer"
+            // Sandbox the frame to the minimum capabilities required to
+            // render an interactive embed:
+            //   - allow-scripts: required to actually run the embed.
+            //   - allow-same-origin: required so the embed can read its
+            //     own cookies / storage on the host's origin (without it,
+            //     XHR, fetch and storage all break).
+            //   - allow-forms: lets users submit forms (e.g. login on the
+            //     embedded host).
+            //   - allow-popups: a click on a link inside the embed may
+            //     open a new tab (e.g. external help links).
+            // Notably omitted (each of these expand the blast radius):
+            //   - allow-top-navigation*: prevents the embed from
+            //     navigating Papermark's top-level window away.
+            //   - allow-popups-to-escape-sandbox: any popup the embed
+            //     opens inherits the sandbox restrictions instead of
+            //     becoming an unrestricted window.
+            //   - allow-modals: blocks alert/confirm/prompt and other
+            //     modal hijacks.
+            //   - allow-downloads: block drive-by downloads from the
+            //     embedded origin.
+            //   - allow-presentation, allow-pointer-lock,
+            //     allow-orientation-lock: not needed and easy to abuse.
+            //   - allow-storage-access-by-user-activation: keep the
+            //     embed's cookie scope strictly first-party.
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            loading="lazy"
+          />
+        </div>
+        <AwayPoster
+          isVisible={isInactive}
+          inactivityThreshold={trackingOptions.inactivityThreshold}
+          onDismiss={updateActivity}
+        />
+      </>
+    );
+  }
 
   return (
     <>

@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getServerSession } from "next-auth";
 
+import { revokeUserBoundTeamTokens } from "@/lib/api/auth/restricted-tokens";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
@@ -38,8 +39,23 @@ export default async function handle(
         return res.status(401).json("Unauthorized");
       }
 
-      if (userTeam?.role === "ADMIN" && userTeam.userId === userToBeDeleted) {
-        return res.status(401).json("You can't remove the Admin");
+      const isSelfRemoval = userTeam.userId === userToBeDeleted;
+
+      if (!isSelfRemoval && userTeam.role !== "ADMIN") {
+        return res.status(403).json("Only admins can remove teammates");
+      }
+
+      if (isSelfRemoval && userTeam.role === "ADMIN") {
+        const adminCount = await prisma.userTeam.count({
+          where: {
+            teamId,
+            role: "ADMIN",
+          },
+        });
+
+        if (adminCount <= 1) {
+          return res.status(403).json("You can't remove the last admin");
+        }
       }
 
       await Promise.all([
@@ -61,6 +77,15 @@ export default async function handle(
           },
           data: {
             ownerId: null,
+          },
+        }),
+        revokeUserBoundTeamTokens(userToBeDeleted, teamId),
+        // remove any dataroom-scoped assignments for this user in this team
+        // (UserDataroom has no FK to UserTeam, so it isn't covered by cascade)
+        prisma.userDataroom.deleteMany({
+          where: {
+            userId: userToBeDeleted,
+            teamId,
           },
         }),
         // delete the user from the team

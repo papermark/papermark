@@ -17,6 +17,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 
+import AccessScreenPreview from "../access-screen-preview";
 import CustomFieldComponent from "./custom-field";
 
 export type CustomFieldData = Omit<
@@ -31,11 +32,19 @@ export default function CustomFieldsPanel({
   onChange,
   isConfigOpen,
   setIsConfigOpen,
+  requireEmail,
+  requirePassword,
+  requireAgreement,
+  welcomeMessage,
 }: {
   fields: CustomFieldData[];
   onChange: (fields: CustomFieldData[]) => void;
   isConfigOpen: boolean;
   setIsConfigOpen: (open: boolean) => void;
+  requireEmail?: boolean;
+  requirePassword?: boolean;
+  requireAgreement?: boolean;
+  welcomeMessage?: string | null;
 }) {
   const { limits } = useLimits();
 
@@ -109,7 +118,7 @@ export default function CustomFieldsPanel({
 
   return (
     <Sheet open={isConfigOpen} onOpenChange={setIsConfigOpen}>
-      <SheetContent className="flex h-full flex-col">
+      <SheetContent className="flex h-full flex-col sm:max-w-6xl">
         <SheetHeader>
           <SheetTitle>Configure Custom Form Fields</SheetTitle>
           <SheetDescription>
@@ -123,41 +132,62 @@ export default function CustomFieldsPanel({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            {fields.length} of {fieldLimit} custom field
-            {fields.length === 1 ? "" : "s"}
+        <div className="flex min-h-0 flex-1 flex-col gap-6 lg:flex-row lg:gap-8">
+          {/* Config column */}
+          <div className="flex min-h-0 flex-1 flex-col gap-4 lg:w-[360px] lg:flex-none">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                {fields.length} of {fieldLimit} custom field
+                {fields.length === 1 ? "" : "s"}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addField}
+                className="flex items-center gap-2"
+                disabled={fields.length >= fieldLimit}
+              >
+                <Plus className="h-4 w-4" />
+                Add Field
+              </Button>
+            </div>
+
+            <Separator />
+
+            <ScrollArea className="min-h-0 flex-1 lg:pr-4">
+              <div className="space-y-4">
+                {fields.map((field, index) => (
+                  <CustomFieldComponent
+                    key={index}
+                    field={field}
+                    onUpdate={(updatedField) =>
+                      updateField(index, updatedField)
+                    }
+                    onDelete={() => removeField(index)}
+                    onMoveUp={() => moveField(index, "up")}
+                    onMoveDown={() => moveField(index, "down")}
+                    isFirst={index === 0}
+                    isLast={index === fields.length - 1}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={addField}
-            className="flex items-center gap-2"
-            disabled={fields.length >= fieldLimit}
-          >
-            <Plus className="h-4 w-4" />
-            Add Field
-          </Button>
+
+          {/* Separator */}
+          <div className="hidden lg:block lg:w-px lg:self-stretch lg:bg-border" />
+
+          {/* Preview column */}
+          <div className="min-h-0 flex-1 overflow-y-auto lg:pl-2">
+            <AccessScreenPreview
+              fields={fields}
+              requireEmail={requireEmail}
+              requirePassword={requirePassword}
+              requireAgreement={requireAgreement}
+              welcomeMessage={welcomeMessage}
+            />
+          </div>
         </div>
-
-        <Separator />
-
-        <ScrollArea className="flex-1">
-          <div className="space-y-4">
-            {fields.map((field, index) => (
-              <CustomFieldComponent
-                key={index}
-                field={field}
-                onUpdate={(updatedField) => updateField(index, updatedField)}
-                onDelete={() => removeField(index)}
-                onMoveUp={() => moveField(index, "up")}
-                onMoveDown={() => moveField(index, "down")}
-                isFirst={index === 0}
-                isLast={index === fields.length - 1}
-              />
-            ))}
-          </div>
-        </ScrollArea>
       </SheetContent>
     </Sheet>
   );

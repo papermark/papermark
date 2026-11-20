@@ -8,10 +8,28 @@ export type DownloadJobStatus =
   | "COMPLETED"
   | "FAILED";
 
+/**
+ * Sub-phase within a job's lifecycle. Lets the UI show meaningful copy
+ * during the "PENDING" stretch, which can be many seconds for big
+ * datarooms while we re-validate the link, load folders/documents, and
+ * persist analytics rows before the first Lambda call.
+ *
+ * - VALIDATING: re-checking link/dataroom is still permitted to download
+ * - BUILDING:   loading folders/documents/permissions and building the
+ *               folder tree + writing analytics rows
+ * - ZIPPING:    Lambda invocations to actually produce ZIP parts
+ */
+export type DownloadJobPhase = "VALIDATING" | "BUILDING" | "ZIPPING";
+
 export interface DownloadJob {
   id: string;
   type: "bulk" | "folder";
   status: DownloadJobStatus;
+  /**
+   * Optional finer-grained phase for the UI. Only set by the trigger
+   * task; older jobs and the legacy admin path may not have it.
+   */
+  phase?: DownloadJobPhase;
   dataroomId: string;
   dataroomName: string;
   totalFiles: number;

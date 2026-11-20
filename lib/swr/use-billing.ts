@@ -7,35 +7,6 @@ import useSWR from "swr";
 
 import { fetcher } from "@/lib/utils";
 
-interface BillingProps {
-  id: string;
-  plan: string;
-  startsAt: Date | null;
-  endsAt: Date | null;
-  subscriptionId: string | null;
-  _count: {
-    documents: number;
-  };
-}
-
-export function useBilling() {
-  const teamInfo = useTeam();
-
-  const { data, error } = useSWR<BillingProps>(
-    teamInfo?.currentTeam && `/api/teams/${teamInfo.currentTeam.id}/billing`,
-    fetcher,
-    {
-      dedupingInterval: 30000,
-    },
-  );
-
-  return {
-    ...data,
-    error,
-    loading: !data && !error,
-  };
-}
-
 export type BasePlan =
   | "free"
   | "starter"
@@ -59,6 +30,7 @@ type PlanResponse = {
   pauseEndsAt: Date | null;
   isPaused: boolean;
   cancelledAt: Date | null;
+  trialEndsAt: Date | null;
   isCustomer: boolean;
   subscriptionCycle: "monthly" | "yearly";
   discount: SubscriptionDiscount | null;
@@ -126,6 +98,7 @@ export function usePlan({
     startsAt: plan?.startsAt,
     endsAt: plan?.endsAt,
     cancelledAt: plan?.cancelledAt,
+    trialEndsAt: plan?.trialEndsAt ?? null,
     pausedAt: plan?.pausedAt,
     isPaused: plan?.isPaused ?? false,
     isCancelled: !!plan?.cancelledAt,

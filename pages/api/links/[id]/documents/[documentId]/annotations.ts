@@ -1,5 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  getDataroomSessionByLinkIdInPagesRouter,
+  verifyDataroomSessionInPagesRouter,
+} from "@/lib/auth/dataroom-auth";
 import { errorhandler } from "@/lib/errorHandler";
 import { getFeatureFlags } from "@/lib/featureFlags";
 import prisma from "@/lib/prisma";
@@ -30,6 +34,7 @@ export default async function handle(
       select: {
         id: true,
         viewedAt: true,
+        viewerId: true,
         link: {
           select: {
             id: true,
@@ -54,6 +59,36 @@ export default async function handle(
     // Check TTL - deny access for views older than 23 hours
     if (view.viewedAt < new Date(Date.now() - 23 * 60 * 60 * 1000)) {
       return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Bind the requested viewId to the caller's session. Dataroom links
+    // are verified against (linkId, dataroomId); document-only links only
+    // enforce when a dataroom-session cookie is present (not all
+    // document-link views set one).
+    if (view.link.linkType === "DATAROOM_LINK" && view.link.dataroomId) {
+      const session = await verifyDataroomSessionInPagesRouter(
+        req,
+        linkId,
+        view.link.dataroomId,
+      );
+      if (!session) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      const sameViewer =
+        !!session.viewerId &&
+        !!view.viewerId &&
+        session.viewerId === view.viewerId;
+      if (session.viewId !== view.id && !sameViewer) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+    } else {
+      const session = await getDataroomSessionByLinkIdInPagesRouter(
+        req,
+        linkId,
+      );
+      if (session && session.viewId !== view.id) {
+        return res.status(403).json({ error: "Access denied" });
+      }
     }
 
     // Check if annotations feature is enabled for this team

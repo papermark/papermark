@@ -11,7 +11,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from "@react-email/components";
+} from "react-email";
 
 interface SlackIntegrationEmailProps {
   name: string | null | undefined;

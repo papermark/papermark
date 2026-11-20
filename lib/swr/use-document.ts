@@ -54,13 +54,17 @@ export function useDocument() {
   };
 }
 
-export function useDocumentLinks() {
+export function useDocumentLinks(documentId?: string) {
   const router = useRouter();
   const teamInfo = useTeam();
 
-  const { id } = router.query as {
+  const { id: routerId } = router.query as {
     id: string;
   };
+
+  // Allow an explicit documentId (e.g. the dataroom-scoped document page where
+  // router.query.id is the dataroom id, not the document id).
+  const id = documentId ?? routerId;
 
   const {
     data: links,
@@ -106,8 +110,13 @@ interface ViewWithDuration extends View {
   agreementResponse: {
     id: string;
     agreementId: string;
+    signingStatus: string;
+    signedAt: string | null;
+    completedAt: string | null;
     agreement: {
       name: string;
+      contentType: string;
+      signingProvider: string;
     };
   } | null;
   versionNumber: number;
@@ -121,18 +130,49 @@ type TStatsData = {
   hiddenFromPause: number;
 };
 
-export function useDocumentVisits(page: number, limit: number) {
+export function useDocumentVisits(
+  page: number,
+  limit: number,
+  documentId?: string,
+  options?: {
+    /**
+     * Scope the visits to a single data room. Required for the `scope` filter
+     * to take effect (the dataroom-scoped document page passes this).
+     */
+    dataroomId?: string;
+    /**
+     * `dataroom` → only this room's visits; `other` → only the document's
+     * direct-link visits (no data room). Only applies when `dataroomId` is set.
+     */
+    scope?: "dataroom" | "other";
+  },
+) {
   const router = useRouter();
   const teamInfo = useTeam();
   const teamId = teamInfo?.currentTeam?.id;
 
-  const { id } = router.query as {
+  const { id: routerId } = router.query as {
     id: string;
   };
 
+  // Allow an explicit documentId (e.g. the dataroom-scoped document page where
+  // router.query.id is the dataroom id, not the document id).
+  const id = documentId ?? routerId;
+
+  const { dataroomId, scope } = options ?? {};
+
+  const query = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+  if (dataroomId) {
+    query.set("dataroomId", dataroomId);
+    if (scope) query.set("scope", scope);
+  }
+
   const cacheKey =
     teamId && id
-      ? `/api/teams/${teamId}/documents/${id}/views?page=${page}&limit=${limit}`
+      ? `/api/teams/${teamId}/documents/${id}/views?${query.toString()}`
       : null;
 
   const {

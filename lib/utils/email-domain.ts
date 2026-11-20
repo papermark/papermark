@@ -71,6 +71,48 @@ export function extractEmailDomain(email: string): string | null {
   return domain;
 }
 
+const GROUP_DOMAIN_REGEX =
+  /^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/;
+
+/**
+ * Normalize a viewer-group domain audience entry to the canonical stored and
+ * runtime format: a lowercased, "@"-prefixed domain such as "@acme.com".
+ *
+ * Membership at view time compares stored domains against extractEmailDomain(),
+ * which yields "@acme.com", so every stored/accepted domain must carry the "@"
+ * prefix. Accepts input with or without the prefix (the public API documents
+ * bare domains like "acme.com"; the dashboard uses "@acme.com"). Returns null
+ * when the value is not a valid domain.
+ */
+export function normalizeGroupDomain(input: string): string | null {
+  if (!input || typeof input !== "string") {
+    return null;
+  }
+  const trimmed = input.trim().toLowerCase();
+  const bare = trimmed.startsWith("@") ? trimmed.slice(1) : trimmed;
+  if (!GROUP_DOMAIN_REGEX.test(bare)) {
+    return null;
+  }
+  return `@${bare}`;
+}
+
+export function mergeGroupDomains(
+  existing: readonly string[],
+  incoming: readonly string[],
+): string[] {
+  const merged: string[] = [];
+  const seen = new Set<string>();
+  for (const entry of [...existing, ...incoming]) {
+    const normalized = normalizeGroupDomain(entry);
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    merged.push(normalized);
+  }
+  return merged;
+}
+
 export function normalizeListEntry(entry: string): string {
   if (!entry || typeof entry !== "string") {
     return "";

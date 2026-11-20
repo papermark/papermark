@@ -1,10 +1,9 @@
 import { useRouter } from "next/router";
 
-
-
 import { FormEvent, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
+import ConfidentialViewSection from "@/ee/features/permissions/components/confidential-view/confidential-view-section";
 import { PlanEnum } from "@/ee/stripe/constants";
 import { LinkType } from "@prisma/client";
 import { ArrowLeft } from "lucide-react";
@@ -58,13 +57,8 @@ export default function NewPreset() {
     name: "",
   });
 
-  const {
-    isPro,
-    isBusiness,
-    isDatarooms,
-    isDataroomsPlus,
-    isTrial,
-  } = usePlan();
+  const { isPro, isBusiness, isDatarooms, isDataroomsPlus, isTrial } =
+    usePlan();
   const { limits } = useLimits();
   const allowAdvancedLinkControls = limits
     ? limits?.advancedLinkControlsOnPro
@@ -131,6 +125,7 @@ export default function NewPreset() {
           expiresAt: data.expiresAt,
           expiresIn: data.expiresIn || null,
           enableScreenshotProtection: data.enableScreenshotProtection,
+          enableConfidentialView: data.enableConfidentialView,
           enableAgreement: data.enableAgreement,
           agreementId: data.agreementId,
           enableCustomFields: data.customFields
@@ -292,6 +287,14 @@ export default function NewPreset() {
                     isBusiness ||
                     isDatarooms ||
                     isDataroomsPlus
+                  }
+                  handleUpgradeStateChange={handleUpgradeStateChange}
+                />
+                <ConfidentialViewSection
+                  data={data}
+                  setData={setData}
+                  isAllowed={
+                    isTrial || isBusiness || isDatarooms || isDataroomsPlus
                   }
                   handleUpgradeStateChange={handleUpgradeStateChange}
                 />

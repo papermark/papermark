@@ -65,7 +65,7 @@ export function useFolderDocuments({ name }: { name: string[] }) {
   >(
     teamInfo?.currentTeam?.id &&
     name.length > 0 &&
-      `/api/teams/${teamInfo?.currentTeam?.id}/folders/documents/${name.join("/")}`,
+      `/api/teams/${teamInfo?.currentTeam?.id}/folder-documents/${name.join("/")}`,
     fetcher,
     {
       revalidateOnFocus: false,

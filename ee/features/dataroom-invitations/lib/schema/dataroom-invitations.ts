@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 const MAX_CUSTOM_MESSAGE_LENGTH = 500;
+export const MAX_INVITATION_EMAILS_PER_REQUEST = 10;
+export const MAX_INVITATION_EMAILS_PER_DAY = 50;
 
 export const invitationEmailSchema = z.string().email();
 
@@ -22,12 +24,12 @@ export const optionalCustomMessageSchema = z
 export const sendGroupInvitationSchema = z.object({
   linkId: z.string().min(1),
   customMessage: optionalCustomMessageSchema,
-  emails: z.array(invitationEmailSchema).optional(),
+  emails: z.array(invitationEmailSchema).max(MAX_INVITATION_EMAILS_PER_REQUEST).optional(),
 });
 
 export const sendLinkInvitationSchema = z.object({
   customMessage: optionalCustomMessageSchema,
-  emails: z.array(invitationEmailSchema).optional(),
+  emails: z.array(invitationEmailSchema).max(MAX_INVITATION_EMAILS_PER_REQUEST).optional(),
 });
 
 export const SendGroupInvitationSchema = sendGroupInvitationSchema;

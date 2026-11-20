@@ -9,9 +9,10 @@ import { SessionProvider } from "next-auth/react";
 import { NuqsAdapter } from "nuqs/adapters/next/pages";
 
 import { EXCLUDED_PATHS } from "@/lib/constants";
+import { useTrackLastVisited } from "@/lib/hooks/use-last-visited";
 
+import { PostHogGroupSync } from "@/components/providers/posthog-group-sync";
 import { PostHogCustomProvider } from "@/components/providers/posthog-provider";
-import { DealflowPopup } from "@/components/shared/dealflow-popup";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,6 +20,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import "@/styles/globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
+
+function LastVisitedTracker() {
+  useTrackLastVisited();
+  return null;
+}
 
 export default function App({
   Component,
@@ -29,7 +35,7 @@ export default function App({
     <>
       <Head>
         <title>Papermark | The Open Source DocSend Alternative</title>
-        <meta name="theme-color" content="#000000" />
+        <meta name="theme-color" content="#000000" key="theme-color" />
         <meta
           name="description"
           content="Papermark is an open-source document sharing alternative to DocSend with built-in analytics."
@@ -83,9 +89,10 @@ export default function App({
                     <Component {...pageProps} />
                   ) : (
                     <TeamProvider>
+                      <PostHogGroupSync />
+                      <LastVisitedTracker />
                       <UploadProgressProvider>
                         <Component {...pageProps} />
-                        <DealflowPopup />
                       </UploadProgressProvider>
                     </TeamProvider>
                   )}

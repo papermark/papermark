@@ -11,7 +11,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from "@react-email/components";
+} from "react-email";
 
 const Onboarding1Email = () => {
   const previewText = `Share documents not attachments`;

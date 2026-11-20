@@ -10,16 +10,19 @@ export async function dispatchNotification({
   notificationType,
   linkOwnerId,
   documentOwnerId,
+  taskOwnerId,
 }: {
   teamId: string;
   notificationType: TeamNotificationType;
   linkOwnerId?: string | null;
   documentOwnerId?: string | null;
+  taskOwnerId?: string | null;
 }): Promise<NotificationRecipient[]> {
   return resolveRecipients({
     teamId,
     notificationType,
     linkOwnerId,
     documentOwnerId,
+    taskOwnerId,
   });
 }

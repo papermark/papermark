@@ -408,17 +408,17 @@ export function VisitorGroupsSection() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-x-2">
+        <div className="min-w-0">
           <h3 className="text-lg font-semibold text-foreground">
             Visitor Groups
           </h3>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground sm:text-sm">
             Create groups of emails and domains, then apply them to link allow
             lists.
           </p>
         </div>
-        <Button onClick={handleCreate} size="sm" className="gap-1.5">
+        <Button onClick={handleCreate} size="sm" className="shrink-0 gap-1.5 whitespace-nowrap">
           <PlusIcon className="h-4 w-4" />
           Create Group
         </Button>

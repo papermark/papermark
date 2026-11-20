@@ -1,0 +1,56 @@
+{
+  "welcome": {
+    "fallback": "Ihre Aktion ist erforderlich, um fortzufahren"
+  },
+  "buttons": {
+    "continue": "Weiter",
+    "verifying": "Wird verifiziert ..."
+  },
+  "fields": {
+    "email": {
+      "label": "E-Mail-Adresse",
+      "placeholder": "E-Mail eingeben",
+      "errorInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
+      "sharedWithSender": "Diese Angaben werden mit dem Absender geteilt.",
+      "sharedWithProvider": "Diese Angaben werden mit dem Anbieter der Inhalte geteilt."
+    },
+    "password": {
+      "label": "Zugangscode",
+      "placeholder": "Zugangscode eingeben"
+    },
+    "name": {
+      "label": "Name",
+      "placeholder": "Vollständigen Namen eingeben"
+    },
+    "url": {
+      "errorInvalid": "Bitte geben Sie eine gültige URL ein, die mit https:// beginnt"
+    },
+    "phone": {
+      "placeholderDefault": "+49 30 12345678"
+    }
+  },
+  "agreement": {
+    "fallbackPrefix": "Ich habe die Bedingungen geprüft und akzeptiere sie:"
+  },
+  "verification": {
+    "title": "E-Mail-Adresse bestätigen",
+    "description": "Geben Sie den sechsstelligen Bestätigungscode ein, der an <email>{{email}}</email> gesendet wurde",
+    "errorInvalid": "Ungültiger Code. Bitte versuchen Sie es erneut.",
+    "noEmail": "Keine E-Mail erhalten?",
+    "resending": "Code wird erneut gesendet ...",
+    "resendIn": "Code erneut senden ({{seconds}}s)",
+    "resend": "Code erneut senden"
+  },
+  "footer": {
+    "sharedSecurelyVia": "Dieses Dokument wird sicher mit Ihnen geteilt über",
+    "sharedSecurelyViaDataroom": "Dieser Datenraum wird sicher mit Ihnen geteilt über",
+    "papermark": "Papermark",
+    "seeHowWeProtect": "Erfahren Sie, wie wir Ihre Daten schützen, in unserer",
+    "privacyPolicy": "Datenschutzerklärung"
+  },
+  "reauth": {
+    "title": "Bestätigen Sie, dass Sie es sind",
+    "description": "Diese Datei wurde von Ihnen hochgeladen. Um sie erneut zu öffnen, bestätigen Sie, dass Sie <email>{{email}}</email> verwalten.",
+    "otpDescription": "Wir haben einen 6-stelligen Code an <email>{{email}}</email> gesendet. Geben Sie ihn unten ein, um auf Ihre hochgeladene Datei zuzugreifen."
+  }
+}

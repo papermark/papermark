@@ -1,3 +1,5 @@
+import { Trash2Icon } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,27 +28,49 @@ export default function DeleteGroup({
   });
 
   return (
-    <div className="rounded-lg">
+    <div id="delete-group" className="scroll-mt-24 rounded-lg">
       <DeleteGroupModal />
-      <Card className="border-destructive bg-transparent">
+      <Card className="border-destructive/50 bg-transparent">
         <CardHeader>
-          <CardTitle>Delete Group</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Trash2Icon className="h-5 w-5 text-destructive" />
+            Delete Data Room Group
+          </CardTitle>
           <CardDescription>
-            Permanently delete your group. <br />
-            <span className="font-medium">This action cannot be undone</span> -
-            please proceed with caution.
+            Permanently delete{" "}
+            <span className="font-medium text-foreground">{groupName}</span>{" "}
+            and everything associated with it.
           </CardDescription>
         </CardHeader>
-        <CardContent></CardContent>
-        <CardFooter className="flex items-center justify-end rounded-b-lg border-t px-6 py-3">
-          <div className="shrink-0">
-            <Button
-              onClick={() => setShowDeleteGroupModal(true)}
-              variant="destructive"
-            >
-              Delete Group
-            </Button>
+        <CardContent className="space-y-3">
+          <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4">
+            <p className="text-sm font-medium text-destructive">
+              This action cannot be undone.
+            </p>
+            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+              <li>- All links in this group will be permanently removed</li>
+              <li>- All viewer access via this group will be revoked</li>
+              <li>- All views and analytics for those links will be lost</li>
+              <li>- Group permissions will be deleted</li>
+            </ul>
           </div>
+        </CardContent>
+        <CardFooter className="flex items-center justify-between rounded-b-lg border-t bg-muted px-6 py-6">
+          <p className="text-sm text-muted-foreground">
+            You will be asked to type{" "}
+            <code className="rounded bg-background px-1 py-0.5 font-mono text-xs">
+              confirm delete group
+            </code>{" "}
+            to continue.
+          </p>
+          <Button
+            onClick={() => setShowDeleteGroupModal(true)}
+            variant="destructive"
+            className="gap-2"
+          >
+            <Trash2Icon className="h-4 w-4" />
+            Delete Data Room Group
+          </Button>
         </CardFooter>
       </Card>
     </div>

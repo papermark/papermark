@@ -1,6 +1,4 @@
 import { DocumentStorageType } from "@prisma/client";
-import { upload } from "@vercel/blob/client";
-import { match } from "ts-pattern";
 
 import { newId } from "@/lib/id-helper";
 import { getPagesCount } from "@/lib/utils/get-page-number-count";
@@ -11,9 +9,10 @@ import type {
 } from "@/lib/zod/schemas/multipart";
 
 import { SUPPORTED_DOCUMENT_MIME_TYPES } from "../constants";
+import { assertS3Transport } from "./transport";
 
 /**
- * Uploads a file to the configured storage backend (S3 or Vercel).
+ * Uploads a file to S3.
  *
  * For S3 uploads:
  * - Files larger than 10MB automatically use multipart upload with pre-signed URLs
@@ -24,7 +23,7 @@ import { SUPPORTED_DOCUMENT_MIME_TYPES } from "../constants";
  * @param file - The file to upload
  * @param teamId - The team ID for storage configuration
  * @param docId - Optional document ID (generated if not provided)
- * @returns Upload result with storage type, key/URL, page count, and file size
+ * @returns Upload result with storage type, key, page count, and file size
  */
 export const putFile = async ({
   file,
@@ -40,44 +39,9 @@ export const putFile = async ({
   numPages: number | undefined;
   fileSize: number | undefined;
 }> => {
-  const NEXT_PUBLIC_UPLOAD_TRANSPORT = process.env.NEXT_PUBLIC_UPLOAD_TRANSPORT;
+  assertS3Transport();
 
-  const { type, data, numPages, fileSize } = await match(
-    NEXT_PUBLIC_UPLOAD_TRANSPORT,
-  )
-    .with("s3", async () => putFileInS3({ file, teamId, docId }))
-    .with("vercel", async () => putFileInVercel(file))
-    .otherwise(() => {
-      return {
-        type: null,
-        data: null,
-        numPages: undefined,
-        fileSize: undefined,
-      };
-    });
-
-  return { type, data, numPages, fileSize };
-};
-
-const putFileInVercel = async (file: File) => {
-  const newBlob = await upload(file.name, file, {
-    access: "public",
-    handleUploadUrl: "/api/file/browser-upload",
-  });
-
-  let numPages: number = 1;
-  // get page count for pdf files
-  if (file.type === "application/pdf") {
-    const body = await file.arrayBuffer();
-    numPages = await getPagesCount(body);
-  }
-
-  return {
-    type: DocumentStorageType.VERCEL_BLOB,
-    data: newBlob.url,
-    numPages: numPages,
-    fileSize: file.size,
-  };
+  return putFileInS3({ file, teamId, docId });
 };
 
 // Multipart upload threshold: 10MB
@@ -97,11 +61,32 @@ const putFileInS3 = async ({
     docId = newId("doc");
   }
 
+  // Some formats either have no browser-known MIME (binary GIS/stats) or
+  // browsers return inconsistent MIMEs (older Office macro-enabled / binary).
+  // Fall back to extension matching for those before rejecting the upload.
+  const EXTENSION_FALLBACKS = [
+    ".dwg",
+    ".dxf",
+    ".xlsm",
+    ".xlsb",
+    ".sav",
+    ".shp",
+    ".shx",
+    ".dbf",
+    ".sbn",
+    ".sbx",
+    ".qix",
+    ".cpg",
+    ".rar",
+    ".tar",
+    ".tar.gz",
+    ".tgz",
+    ".gz",
+  ];
+  const lowerName = file.name.toLowerCase();
   if (
     !SUPPORTED_DOCUMENT_MIME_TYPES.includes(file.type) &&
-    !file.name.endsWith(".dwg") &&
-    !file.name.endsWith(".dxf") &&
-    !file.name.endsWith(".xlsm")
+    !EXTENSION_FALLBACKS.some((ext) => lowerName.endsWith(ext))
   ) {
     throw new Error(
       "Only PDF, Powerpoint, Word, and Excel, ZIP files are supported",

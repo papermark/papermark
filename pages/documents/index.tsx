@@ -3,16 +3,15 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 
 import { useTeam } from "@/context/team-context";
-import { EyeOffIcon, FolderPlusIcon, PlusIcon } from "lucide-react";
+import { EyeOffIcon } from "lucide-react";
 
 import useDocuments, { useHiddenDocuments, useRootFolders } from "@/lib/swr/use-documents";
 import { handleInvitationStatus } from "@/lib/utils";
 
-import { AddDocumentModal } from "@/components/documents/add-document-modal";
+import { AddDocumentDropdown } from "@/components/documents/add-document-dropdown";
 import { DocumentsList } from "@/components/documents/documents-list";
 import SortButton from "@/components/documents/filters/sort-button";
 import { Pagination } from "@/components/documents/pagination";
-import { AddFolderModal } from "@/components/folders/add-folder-modal";
 import AppLayout from "@/components/layouts/app";
 import { SearchBoxPersisted } from "@/components/search-box";
 import { Button } from "@/components/ui/button";
@@ -65,7 +64,7 @@ export default function Documents() {
 
   return (
     <AppLayout>
-      <div className="sticky top-0 mb-4 min-h-[calc(100vh-72px)] rounded-lg bg-white p-4 dark:bg-gray-900 sm:mx-4 sm:pt-8">
+      <div className="sticky top-0 mb-4 min-h-[calc(100vh-72px)] rounded-lg bg-white p-3 dark:bg-gray-900 sm:mx-4 sm:p-4 sm:pt-8">
         <section className="mb-4 flex items-center justify-between space-x-2 sm:space-x-0">
           <div className="space-y-0 sm:space-y-1">
             <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
@@ -76,27 +75,7 @@ export default function Documents() {
             </p>
           </div>
           <div className="flex items-center gap-x-2">
-            <AddDocumentModal>
-              <Button
-                className="group flex flex-1 items-center justify-start gap-x-1 whitespace-nowrap px-1 text-left sm:gap-x-3 sm:px-3"
-                title="Add Document"
-              >
-                <PlusIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                <span className="text-xs sm:text-base">Add Document</span>
-              </Button>
-            </AddDocumentModal>
-            <AddFolderModal>
-              <Button
-                size="icon"
-                variant="outline"
-                className="border-gray-500 bg-gray-50 hover:bg-gray-200 dark:bg-black hover:dark:bg-muted"
-              >
-                <FolderPlusIcon
-                  className="h-5 w-5 shrink-0"
-                  aria-hidden="true"
-                />
-              </Button>
-            </AddFolderModal>
+            <AddDocumentDropdown variant="split" />
           </div>
         </section>
 

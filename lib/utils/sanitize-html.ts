@@ -1,6 +1,8 @@
 import sanitizeHtml from "sanitize-html";
 import { decodeHTML } from "entities";
 
+import { MAX_MESSAGE_LENGTH } from "@/lib/constants";
+
 const plainTextSanitizeConfig = {
   allowedTags: [],
   allowedAttributes: {},
@@ -18,8 +20,6 @@ export function sanitizePlainText(content: string) {
     .replace(invisibleControlRegex, "")
     .trim();
 }
-
-export const MAX_MESSAGE_LENGTH = 4000;
 
 export function validateContent(html: string, length: number = MAX_MESSAGE_LENGTH) {
   if (html.length > length) {

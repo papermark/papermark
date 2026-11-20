@@ -38,31 +38,38 @@ function sortItems(items: DataroomItem[]): DataroomItem[] {
 }
 
 /**
- * Builds a hierarchical tree structure from flat items
+ * Builds a hierarchical tree structure from flat items.
+ *
+ * Children are indexed by parent id once (O(n)) so we avoid re-scanning the
+ * full item list for every node — important for large datarooms (thousands of
+ * documents) where the previous O(n²) filtering became a bottleneck. Only
+ * folders can have children; documents are always leaves.
  */
-function buildHierarchy(
-  items: DataroomItem[],
-  parentId: string | null = null,
-): HierarchicalItem[] {
-  const children = items.filter((item) => {
-    if (item.type === "folder") {
-      return item.parentId === parentId;
+function buildHierarchy(items: DataroomItem[]): HierarchicalItem[] {
+  const childrenByParent = new Map<string | null, DataroomItem[]>();
+  for (const item of items) {
+    const parentKey =
+      (item.type === "folder" ? item.parentId : item.folderId) ?? null;
+    const siblings = childrenByParent.get(parentKey);
+    if (siblings) {
+      siblings.push(item);
     } else {
-      return item.folderId === parentId;
+      childrenByParent.set(parentKey, [item]);
     }
-  });
+  }
 
-  const sortedChildren = sortItems(children);
+  const build = (parentId: string | null): HierarchicalItem[] => {
+    const children = childrenByParent.get(parentId) ?? [];
+    const sortedChildren = sortItems(children);
 
-  return sortedChildren.map((item, index) => {
-    const hierarchicalItem: HierarchicalItem = {
+    return sortedChildren.map((item) => ({
       ...item,
       hierarchicalIndex: "", // Will be set later
-      children: buildHierarchy(items, item.id),
-    };
+      children: item.type === "folder" ? build(item.id) : [],
+    }));
+  };
 
-    return hierarchicalItem;
-  });
+  return build(null);
 }
 
 /**
@@ -165,7 +172,7 @@ export async function calculateAndUpdateHierarchicalIndexes(
         ];
 
         // Build hierarchy starting from root items (no parent)
-        const hierarchy = buildHierarchy(allItems, null);
+        const hierarchy = buildHierarchy(allItems);
 
         // Assign hierarchical indexes
         assignHierarchicalIndexes(hierarchy);
@@ -181,33 +188,46 @@ export async function calculateAndUpdateHierarchicalIndexes(
           (item) => item.type === "document",
         );
 
-        // Batched updates to reduce open query fan-out
-        const BATCH = 200;
-        for (let i = 0; i < folderUpdates.length; i += BATCH) {
-          const chunk = folderUpdates.slice(i, i + BATCH);
-          for (const f of chunk) {
-            await tx.dataroomFolder.update({
-              where: { id: f.id },
-              data: { hierarchicalIndex: f.hierarchicalIndex },
-            });
+        // Apply all index changes with a single bulk UPDATE per chunk instead
+        // of one round-trip per row. Issuing hundreds of sequential `update`
+        // calls inside an interactive transaction routinely blows past
+        // Prisma's default 5s transaction timeout (P2028) on larger datarooms.
+        const CHUNK = 500;
+
+        const bulkUpdateIndexes = async (
+          table: Prisma.Sql,
+          rows: Array<{ id: string; hierarchicalIndex: string }>,
+        ) => {
+          for (let i = 0; i < rows.length; i += CHUNK) {
+            const chunk = rows.slice(i, i + CHUNK);
+            const values = Prisma.join(
+              chunk.map((r) => Prisma.sql`(${r.id}, ${r.hierarchicalIndex})`),
+            );
+            await tx.$executeRaw`
+              UPDATE ${table} AS t
+              SET "hierarchicalIndex" = data.idx::text, "updatedAt" = NOW()
+              FROM (VALUES ${values}) AS data(id, idx)
+              WHERE t.id = data.id::text
+            `;
           }
-        }
-        for (let i = 0; i < documentUpdates.length; i += BATCH) {
-          const chunk = documentUpdates.slice(i, i + BATCH);
-          for (const d of chunk) {
-            await tx.dataroomDocument.update({
-              where: { id: d.id },
-              data: { hierarchicalIndex: d.hierarchicalIndex },
-            });
-          }
-        }
+        };
+
+        await bulkUpdateIndexes(Prisma.sql`"DataroomFolder"`, folderUpdates);
+        await bulkUpdateIndexes(
+          Prisma.sql`"DataroomDocument"`,
+          documentUpdates,
+        );
 
         return {
           foldersUpdated: folderUpdates.length,
           documentsUpdated: documentUpdates.length,
         };
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+        maxWait: 10_000,
+        timeout: 120_000,
+      },
     );
   } catch (error) {
     console.error(
@@ -215,6 +235,45 @@ export async function calculateAndUpdateHierarchicalIndexes(
       dataroomId,
       error,
     );
-    throw new Error("Failed to calculate and update hierarchical indexes");
+    const message = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(
+      `Failed to calculate and update hierarchical indexes: ${message}`,
+      { cause: error },
+    );
+  }
+}
+
+/**
+ * Clears (removes) hierarchical indexes for all folders and documents in a dataroom
+ * by setting their `hierarchicalIndex` back to null.
+ */
+export async function clearHierarchicalIndexes(
+  dataroomId: string,
+): Promise<{ foldersUpdated: number; documentsUpdated: number }> {
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        const foldersResult = await tx.dataroomFolder.updateMany({
+          where: { dataroomId, hierarchicalIndex: { not: null } },
+          data: { hierarchicalIndex: null },
+        });
+        const documentsResult = await tx.dataroomDocument.updateMany({
+          where: { dataroomId, hierarchicalIndex: { not: null } },
+          data: { hierarchicalIndex: null },
+        });
+
+        return {
+          foldersUpdated: foldersResult.count,
+          documentsUpdated: documentsResult.count,
+        };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
+  } catch (error) {
+    console.error("Error clearing hierarchical indexes for", dataroomId, error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Failed to clear hierarchical indexes: ${message}`, {
+      cause: error,
+    });
   }
 }

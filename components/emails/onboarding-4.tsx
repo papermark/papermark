@@ -11,7 +11,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from "@react-email/components";
+} from "react-email";
 
 const Onboarding4Email = () => {
   const previewText = `The document sharing infrastructure for the modern web`;

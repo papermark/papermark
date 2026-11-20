@@ -3,6 +3,8 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
+import { assertDocumentAccess } from "@/lib/api/rbac/entitlements";
+import { isDataroomScopedRole } from "@/lib/api/rbac/permissions";
 import { TeamError, errorhandler } from "@/lib/errorHandler";
 import { getFeatureFlags } from "@/lib/featureFlags";
 import { deleteFile } from "@/lib/files/delete-file-server";
@@ -49,11 +51,23 @@ export default async function handle(
             teamId: teamId,
           },
         },
-        select: { teamId: true },
+        select: { teamId: true, role: true },
       });
 
       if (!teamAccess) {
         return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Dataroom-scoped members may only read a document that lives in one of
+      // their assigned rooms (closes cross-room/all-documents IDOR).
+      const hasDocumentAccess = await assertDocumentAccess({
+        role: teamAccess.role,
+        userId,
+        teamId,
+        documentId: docId,
+      });
+      if (!hasDocumentAccess) {
+        return res.status(403).json({ message: "Forbidden" });
       }
 
       // Then fetch the specific document with its relationships (targeted query)
@@ -279,10 +293,13 @@ export default async function handle(
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      if (teamAccess.role !== "ADMIN" && teamAccess.role !== "MANAGER") {
+      // Data room members can only remove documents from a data room (via the
+      // dataroom-scoped endpoint); they must never delete the underlying
+      // document for the whole team.
+      if (isDataroomScopedRole(teamAccess.role)) {
         return res.status(403).json({
           message:
-            "You are not permitted to perform this action. Only admin and managers can delete documents.",
+            "Data room members cannot delete documents. You can only remove documents from a data room.",
         });
       }
 
@@ -307,8 +324,13 @@ export default async function handle(
         return res.status(404).json({ message: "Document not found" });
       }
 
-      //if it is not notion document then only delete the document from storage
-      if (documentVersions.type !== "notion") {
+      // Notion and web-link documents don't store any bytes: their `file` holds
+      // an external URL, not a storage object. Skip storage deletion for them
+      // (calling deleteFile on the URL would throw and abort the delete).
+      if (
+        documentVersions.type !== "notion" &&
+        documentVersions.type !== "link"
+      ) {
         // delete the files from storage
         for (const version of documentVersions.versions) {
           await deleteFile({

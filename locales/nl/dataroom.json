@@ -1,0 +1,233 @@
+{
+  "shell": {
+    "dataRoomEyebrow": "Dataroom",
+    "updatedOn": "Bijgewerkt {{date}}",
+    "lastUpdated": "Laatst bijgewerkt {{date}}",
+    "secureFooter": "Beveiligd door",
+    "papermark": "Papermark",
+    "copyright": "© {{year}}{{name}}"
+  },
+  "tabs": {
+    "documents": "Documenten",
+    "myUploads": "Mijn uploads"
+  },
+  "search": {
+    "placeholder": "Zoeken ...",
+    "results": "Zoekresultaten voor “{{query}}”",
+    "resultCount_one": "({{count}} resultaat in alle mappen)",
+    "resultCount_other": "({{count}} resultaten in alle mappen)",
+    "noMatches": "Geen documenten gevonden voor uw zoekopdracht."
+  },
+  "breadcrumb": {
+    "home": "Start"
+  },
+  "empty": {
+    "noItems": "Geen items beschikbaar.",
+    "noUploads": "Nog geen uploads. Upload documenten via de knop “Document toevoegen”."
+  },
+  "cards": {
+    "updated": "Bijgewerkt {{when}}",
+    "processing": "(Wordt verwerkt ...)",
+    "actionsLabel": "Acties",
+    "download": "Downloaden",
+    "openMenu": "Menu openen",
+    "openDocument": "Document {{name}} openen",
+    "openFolder": "Map {{name}} openen",
+    "documents": "Documenten",
+    "folder": "Map",
+    "folderBadge": "MAP"
+  },
+  "compactList": {
+    "name": "Naam",
+    "updated": "Bijgewerkt",
+    "settings": "Instellingen"
+  },
+  "trailingActions": {
+    "viewQA": "V&A bekijken",
+    "downloadDataroom": "Dataroom downloaden",
+    "teamMemberTooltip": "Verificatie overgeslagen omdat u teamlid bent; er worden geen analyses vastgelegd"
+  },
+  "navToasts": {
+    "cannotDownloadPreview": "In de voorbeeldmodus kunt u geen datarooms downloaden.",
+    "cannotDownloadDocPreview": "In de voorbeeldmodus kunt u geen dataroomdocumenten downloaden.",
+    "cannotDownloadFolderPreview": "In de voorbeeldmodus kunt u geen dataroommappen downloaden.",
+    "foldersNotAllowed": "Mappen downloaden is niet toegestaan.",
+    "enterEmailFirst": "Voer uw e-mailadres in de dataroom in om te downloaden.",
+    "documentStillProcessing": "Het document wordt nog verwerkt. Wacht een moment en probeer het opnieuw.",
+    "downloadPreparing": "Download wordt voorbereid ...",
+    "downloadSuccess": "Bestand succesvol gedownload",
+    "downloadFailed": "Bestand kon niet worden gedownload"
+  },
+  "intro": {
+    "viewIntroduction": "Introductie bekijken",
+    "title": "Welkom bij {{name}}",
+    "defaultName": "Dataroom",
+    "continueButton": "Doorgaan naar de dataroom"
+  },
+  "upload": {
+    "trigger": "Document toevoegen",
+    "title": "Document uploaden naar dataroom",
+    "description": "Uw document verschijnt direct in de dataroom en wordt op de achtergrond verwerkt.",
+    "destinationLabel": "Doelmap",
+    "selectDestination": "Doelmap selecteren",
+    "uploadingTo": "Uploaden naar:",
+    "setByOwner": "(ingesteld door de eigenaar van de dataroom)",
+    "success": "Document succesvol geüpload!",
+    "successDescription": "Uw document is nu zichtbaar in de dataroom.",
+    "previewDisabled": "Bestanden uploaden is niet beschikbaar in de voorbeeldmodus."
+  },
+  "download": {
+    "folderTitle": "Map downloaden: {{name}}",
+    "dataroomTitle": "{{name}} downloaden",
+    "defaultName": "Dataroom",
+    "chooseDescription": "Start de download. U kunt optioneel een e-mail ontvangen zodra deze klaar is.",
+    "otpDescription": "Verifieer uw e-mailadres om downloadmeldingen te ontvangen.",
+    "ready": "Uw bestanden zijn klaar om te downloaden.",
+    "preparing": "Uw bestanden worden voorbereid ...",
+    "notifyByEmail": "Stuur mij een e-mail zodra de download klaar is",
+    "needsVerification": "U moet uw e-mailadres eerst verifiëren met een eenmalige code.",
+    "starting": "Wordt gestart ...",
+    "start": "Download starten",
+    "cancel": "Annuleren",
+    "viewDownloads": "Uw downloads bekijken",
+    "openDownloads": "Downloadpagina openen",
+    "preparingShort": "Wordt voorbereid ...",
+    "processingFiles": "{{processed}} van {{total}} bestanden worden verwerkt ...",
+    "complete": "Uw download is klaar!",
+    "failed": "Download mislukt.",
+    "downloadZip": "ZIP downloaden",
+    "downloadAll": "Alles downloaden ({{count}} delen)",
+    "downloadingProgress": "{{current}} van {{total}} wordt gedownload ...",
+    "part": "Deel {{index}}",
+    "expiresIn": "Verloopt over {{time}}",
+    "expiresLessThanHour": "minder dan een uur",
+    "expiresDays_one": "{{count}} dag",
+    "expiresDays_other": "{{count}} dagen",
+    "expiresHours_one": "{{count}} uur",
+    "expiresHours_other": "{{count}} uur",
+    "willEmailWhenReady": "U kunt dit sluiten. We e-mailen u zodra het klaar is.",
+    "checkBackOnDownloads": "U kunt dit sluiten. Kijk op de downloadpagina zodra het klaar is.",
+    "tryAgain": "Opnieuw proberen",
+    "startFailed": "Download kon niet worden gestart",
+    "statusFetchFailed": "Status kon niet worden opgehaald",
+    "expiresSoon": "binnenkort"
+  },
+  "downloadsPage": {
+    "title": "Uw downloads",
+    "description": "Download hieronder uw voorbereide bestanden. Links verlopen na 3 dagen.",
+    "emailHeading": "Uw downloads bekijken",
+    "emailDescription": "Voer het e-mailadres in waarmee u toegang hebt gekregen tot deze dataroom.",
+    "emailPlaceholder": "u@voorbeeld.nl",
+    "sendingCode": "Code wordt verzonden ...",
+    "continueButton": "Doorgaan",
+    "verifyEmailHeading": "Verifieer uw e-mailadres",
+    "empty": "U hebt nog geen downloads. Start een download in de dataroom om deze hier te zien.",
+    "jobFolderPrefix": "Map:",
+    "jobFullDataroom": "Volledige dataroom",
+    "expired": "verlopen",
+    "expiresPrefix": "Verloopt {{time}}",
+    "hideParts": "Delen verbergen",
+    "showParts": "Delen weergeven ({{count}})",
+    "orIndividual": "Of download afzonderlijk:",
+    "partOf": "Deel {{index}} van {{total}}",
+    "errors": {
+      "noAccess": "Geen toegang gevonden voor dit e-mailadres. Gebruik het e-mailadres waarmee u de dataroom hebt geopend.",
+      "rateLimit": "Te veel verzoeken. Probeer het later opnieuw.",
+      "generic": "Er is iets misgegaan."
+    }
+  },
+  "downloadOtp": {
+    "defaultDescription": "We hebben een 6-cijferige code naar <email>{{email}}</email> verzonden. Voer deze hieronder in om te verifiëren en downloadmeldingen te ontvangen.",
+    "verify": "Verifiëren",
+    "verifying": "Verifiëren ...",
+    "noEmail": "Geen e-mail ontvangen?",
+    "resending": "Wordt verzonden ...",
+    "resend": "Code opnieuw verzenden",
+    "resendIn": "Code opnieuw verzenden ({{seconds}} s)",
+    "sendFailed": "Code kon niet worden verzonden",
+    "invalidCode": "Ongeldige code"
+  },
+  "downloadsPanel": {
+    "ready": "Klaar",
+    "failedFallback": "Mislukt",
+    "creatingZip": "ZIP wordt gemaakt ...",
+    "filesCount": "{{processed}} / {{total}} bestanden",
+    "verifying": "Toegang wordt gecontroleerd ...",
+    "buildingFileList": "Bestandslijst wordt opgebouwd ...",
+    "preparing": "Wordt voorbereid ..."
+  },
+  "folderPicker": {
+    "home": "Start"
+  },
+  "indexFile": {
+    "trigger": "Indexbestand genereren",
+    "title": "Dataroom-indexbestand genereren",
+    "description": "Selecteer een formaat om het indexbestand te genereren.",
+    "selectFormat": "Formaat selecteren",
+    "generate": "Genereren",
+    "generating": "Wordt gegenereerd ...",
+    "successToast": "Indexbestand succesvol gegenereerd",
+    "errorToast": "Indexbestand kon niet worden gegenereerd",
+    "genericError": "Er is iets misgegaan. Probeer het opnieuw.",
+    "previewDisabled": "Een indexbestand genereren is niet beschikbaar in de voorbeeldmodus."
+  },
+  "requestList": {
+    "trigger": "Verzoekenlijst",
+    "title": "Verzoekenlijst",
+    "summaryEmpty": "Verzoeken die aan u zijn toegewezen verschijnen hier.",
+    "summaryPending_one": "{{count}} verzoek vraagt om uw aandacht.",
+    "summaryPending_other": "{{count}} verzoeken vragen om uw aandacht.",
+    "summaryDone": "U bent helemaal bij. In afwachting van beoordeling door de eigenaar.",
+    "emptyTitle": "Niets te doen",
+    "emptyDescription": "Er zijn op dit moment geen verzoeken aan u toegewezen.",
+    "due": "Uiterlijk {{date}}",
+    "overdue": "te laat",
+    "lockedByHost": "Door de eigenaar als voltooid gemarkeerd",
+    "commentPlaceholder": "Voeg een notitie voor de eigenaar toe (optioneel)…",
+    "commentPlaceholderLocked": "Voeg een opmerking toe…",
+    "submitComment": "Opmerking toevoegen",
+    "submitStatus": "Verzoek bijwerken",
+    "submitDefault": "Update verzenden",
+    "activityHeading": "Activiteit",
+    "uploadsHeading": "Uw bestanden",
+    "uploadRequired": "Bestand vereist",
+    "uploadProcessing": "Wordt verwerkt",
+    "toastUpdated": "Verzoek bijgewerkt",
+    "toastCommented": "Opmerking toegevoegd",
+    "toastFailed": "Bijwerken mislukt",
+    "status": {
+      "OPEN": "Open",
+      "IN_PROGRESS": "In behandeling",
+      "SUBMITTED": "Ingediend",
+      "COMPLETED": "Voltooid"
+    },
+    "activity": {
+      "you": "U",
+      "someone": "Iemand",
+      "empty": "Nog geen activiteit.",
+      "created": "heeft het verzoek aangemaakt",
+      "assigned": "heeft de toegewezen personen bijgewerkt",
+      "uploaded": "heeft {{name}} geüpload",
+      "uploadedFallback": "heeft een bestand geüpload",
+      "statusFromTo": "heeft de status gewijzigd van {{from}} naar {{to}}",
+      "statusTo": "heeft de status ingesteld op {{status}}",
+      "statusChanged": "heeft de status gewijzigd",
+      "updated": "heeft het verzoek bijgewerkt"
+    }
+  },
+  "uploadZone": {
+    "dropzoneTitle": "Sleep bestanden hierheen of klik om bestanden te selecteren",
+    "dropzoneHint": "Ondersteund: PDF, Office, spreadsheets, afbeeldingen, ZIP en meer",
+    "dropActive": "Zet uw bestand(en) hier neer",
+    "dropActiveHint": "PDF, Office, afbeeldingen, ZIP en meer",
+    "rejectedTitle": "Sommige bestanden zijn geweigerd:",
+    "rejectedTooLarge": "Bestand is te groot (max. {{size}} MB).",
+    "rejectedType": "Bestandstype wordt niet ondersteund.",
+    "toastComplete": "Uploaden voltooid!",
+    "toastError": "Er is een fout opgetreden tijdens het uploaden",
+    "toastFileFailed": "Uploaden van {{name}} mislukt",
+    "toastUploadFailed": "Uploaden van document mislukt",
+    "errorProcessFailed": "Verwerken van de upload mislukt",
+    "errorMissingMetadata": "Documentmetagegevens ontbreken in het uploadantwoord"
+  }
+}

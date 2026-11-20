@@ -138,7 +138,7 @@ export default function OGSection({
     <div className="pb-5">
       <LinkItem
         tooltipContent="Customize how your links look when shared."
-        title="Custom Link Preview"
+        title="Custom link preview"
         link="https://www.papermark.com/help/article/change-social-media-cards"
         enabled={enableCustomMetatag}
         action={handleCustomMetatag}

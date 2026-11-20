@@ -31,6 +31,7 @@ import { Progress } from "@/components/ui/progress";
 export interface DownloadJobStatus {
   id: string;
   status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+  phase?: "VALIDATING" | "BUILDING" | "ZIPPING";
   progress: number;
   totalFiles: number;
   processedFiles: number;
@@ -43,11 +44,39 @@ export interface DownloadJobStatus {
   expiresAt?: string;
 }
 
+function getProgressMessage(status: DownloadJobStatus | null): string {
+  if (!status) return "Starting download...";
+  if (status.status === "PENDING") {
+    switch (status.phase) {
+      case "VALIDATING":
+        return "Verifying access...";
+      case "BUILDING":
+        return "Building file list...";
+      default:
+        return "Preparing your download...";
+    }
+  }
+  if (status.status === "PROCESSING") {
+    if (status.totalFiles > 0) {
+      return `Processing ${status.processedFiles} of ${status.totalFiles} files...`;
+    }
+    return "Creating ZIP archive...";
+  }
+  if (status.status === "COMPLETED") {
+    return status.downloadUrls && status.downloadUrls.length > 1
+      ? `Your download is ready! ${status.downloadUrls.length} ZIP files have been created.`
+      : "Your download is ready!";
+  }
+  return status.error || "Download failed. Please try again.";
+}
+
 interface DownloadProgressModalProps {
   isOpen: boolean;
   onClose: () => void;
   jobId: string | null;
   dataroomName?: string;
+  /** Display-only. Set when the job was scoped to a single folder. */
+  folderName?: string;
   // For team member downloads (uses next-auth session)
   teamId: string;
   dataroomId: string;
@@ -58,6 +87,7 @@ export function DownloadProgressModal({
   onClose,
   jobId,
   dataroomName,
+  folderName,
   teamId,
   dataroomId,
 }: DownloadProgressModalProps) {
@@ -67,6 +97,11 @@ export function DownloadProgressModal({
   const [existingDownloads, setExistingDownloads] = useState<DownloadJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewDownload, setShowNewDownload] = useState(false);
+  // Tracks the scope of the job currently on screen, not of the modal. A
+  // failed folder job offers "Back to Downloads", from where "Start New
+  // Download" always creates a whole-dataroom job, so the folder name has to
+  // stop being the title at that point.
+  const [scopeFolderName, setScopeFolderName] = useState(folderName);
   const [isStartingDownload, setIsStartingDownload] = useState(false);
   const [expandedDownloadId, setExpandedDownloadId] = useState<string | null>(
     null,
@@ -105,17 +140,18 @@ export function DownloadProgressModal({
         if (response.ok) {
           const downloads = await response.json();
           setExistingDownloads(downloads);
-
-          // If we have a current jobId, show the new download view
-          if (jobId) {
-            setShowNewDownload(true);
-          }
         } else {
           console.error("Failed to fetch existing downloads");
         }
       } catch (error) {
         console.error("Error fetching existing downloads:", error);
       } finally {
+        // A caller that hands us a jobId already started that job, so we go
+        // straight to progress. Independent of the job list loading, which
+        // would otherwise strand a running job behind an empty history view.
+        if (jobId) {
+          setShowNewDownload(true);
+        }
         setLoading(false);
       }
     };
@@ -185,6 +221,7 @@ export function DownloadProgressModal({
 
     setIsStartingDownload(true);
     setShowNewDownload(true);
+    setScopeFolderName(undefined);
 
     try {
       const endpoint = `/api/teams/${teamId}/datarooms/${dataroomId}/download/bulk`;
@@ -345,7 +382,11 @@ export function DownloadProgressModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            Download {dataroomName || status?.dataroomName || "Dataroom"}
+            Download{" "}
+            {scopeFolderName ||
+              dataroomName ||
+              status?.dataroomName ||
+              "Dataroom"}
           </DialogTitle>
           <DialogDescription>
             {showNewDownload
@@ -383,17 +424,7 @@ export function DownloadProgressModal({
                   : "text-muted-foreground",
               )}
             >
-              {!status
-                ? "Starting download..."
-                : status.status === "PENDING"
-                  ? "Preparing your download..."
-                  : status.status === "PROCESSING"
-                    ? `Processing ${status.processedFiles} of ${status.totalFiles} files...`
-                    : status.status === "COMPLETED"
-                      ? status.downloadUrls && status.downloadUrls.length > 1
-                        ? `Your download is ready! ${status.downloadUrls.length} ZIP files have been created.`
-                        : "Your download is ready!"
-                      : status.error || "Download failed. Please try again."}
+              {getProgressMessage(status)}
             </p>
 
             {/* Progress Bar */}
@@ -529,6 +560,11 @@ export function DownloadProgressModal({
                               {download.status}
                             </span>
                           </div>
+                          <div className="text-sm font-medium">
+                            {download.type === "folder"
+                              ? download.folderName
+                              : "Entire dataroom"}
+                          </div>
                           <div className="text-xs text-muted-foreground">
                             {formatDate(download.createdAt)}
                           </div>
@@ -624,7 +660,9 @@ export function DownloadProgressModal({
                               ) : (
                                 <>
                                   <Download className="mr-2 h-3 w-3" />
-                                  Download All ({download.downloadUrls.length}{" "}
+                                  Download All ({
+                                    download.downloadUrls.length
+                                  }{" "}
                                   parts)
                                 </>
                               )}

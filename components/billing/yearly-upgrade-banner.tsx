@@ -148,7 +148,7 @@ export default function YearlyUpgradeBanner({
         })()}
 
         <p
-          onClick={() => router.push("/settings/upgrade")}
+          onClick={() => router.push("/settings/billing/upgrade")}
           className="mt-4 cursor-pointer text-center text-xs text-gray-500 underline hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300"
         >
           Compare all plans

@@ -39,6 +39,7 @@ model Link {
   enableFeedback             Boolean?   @default(false) // Optional give user a option to enable the reactions toolbar
   enableQuestion             Boolean?   @default(false) // Optional give user a option to enable the question feedback
   enableScreenshotProtection Boolean?   @default(false) // Optional give user a option to enable the screenshot protection
+  enableConfidentialView     Boolean?   @default(false) // Optional give user a option to enable the confidential view
   feedback                   Feedback?
   enableAgreement            Boolean?   @default(false) // Optional give user a option to enable the terms and conditions
   agreement                  Agreement? @relation(fields: [agreementId], references: [id], onDelete: SetNull)
@@ -70,6 +71,9 @@ model Link {
   enableConversation Boolean        @default(false) // Controls if conversations are allowed on this link
   conversations      Conversation[]
 
+  // Buy-side Q&A: question assignments routed to this link
+  questionAssignments DataroomQuestionAssignment[]
+
   // FAQ system
   dataroomFaqItems DataroomFaqItem[]
 
@@ -80,13 +84,19 @@ model Link {
   // upload
   enableUpload      Boolean? @default(false) // Optional give user a option to enable the upload document function
   isFileRequestOnly Boolean? @default(false) // Optional give user a option to enable the file request only
-  uploadFolderId    String? // This can be nullable, indicating upload to root folder, either document folder or dataroom folder
+  /// Deprecated: replaced by `uploadFolderIds`. Retained in the DB only so old
+  /// rows can be inspected; no application code reads or writes this column.
+  uploadFolderId    String?
+  uploadFolderIds   String[] @default([]) // Allow-list of dataroom folder ids where visitors may upload. Empty = no restriction (visitor chooses).
   enableIndexFile   Boolean? @default(false)
 
   uploadedDocuments DocumentUpload[]
 
   teamId String?
   team   Team?   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  brandId String?
+  brand   Brand?  @relation(fields: [brandId], references: [id], onDelete: SetNull)
 
   ownerId String?
   owner   User?   @relation("LinkOwner", fields: [ownerId], references: [id], onDelete: SetNull)
@@ -99,6 +109,9 @@ model Link {
   // visitor groups for allow-list
   visitorGroups LinkVisitorGroup[]
 
+  // request list (task system) — link-targeted assignments
+  taskAssignments TaskAssignment[]
+
   // workflow entry link
   workflow Workflow?
 
@@ -109,6 +122,7 @@ model Link {
   @@index([permissionGroupId]) // Performance optimization for permission group queries
   @@index([deletedAt]) // Performance optimization for filtering deleted links
   @@index([ownerId]) // Performance optimization for link owner queries
+  @@index([brandId])
 }
 
 model LinkPreset {
@@ -134,6 +148,7 @@ model LinkPreset {
   denyList                   String[]
   expiresIn                  Int? // how many days from link creation until it expires in seconds
   enableScreenshotProtection Boolean?  @default(false)
+  enableConfidentialView     Boolean?  @default(false)
   expiresAt                  DateTime?
   enablePassword             Boolean?  @default(false)
   password                   String?

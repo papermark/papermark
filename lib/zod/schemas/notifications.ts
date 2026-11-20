@@ -45,6 +45,7 @@ export const TeamNotificationType = z.enum([
   "BLOCKED_ACCESS",
   "DATAROOM_UPLOAD",
   "CONVERSATION_MESSAGE",
+  "DATAROOM_TASK",
 ]);
 export type TeamNotificationType = z.infer<typeof TeamNotificationType>;
 export const TEAM_NOTIFICATION_TYPES = TeamNotificationType.options;
@@ -81,6 +82,7 @@ export const DEFAULT_ADMIN_PREFERENCES: Record<
   BLOCKED_ACCESS: { frequency: "IMMEDIATE", scope: "ALL" },
   DATAROOM_UPLOAD: { frequency: "IMMEDIATE", scope: "ALL" },
   CONVERSATION_MESSAGE: { frequency: "IMMEDIATE", scope: "ALL" },
+  DATAROOM_TASK: { frequency: "IMMEDIATE", scope: "ALL" },
 };
 
 export const DEFAULT_MEMBER_PREFERENCES: Record<
@@ -92,4 +94,5 @@ export const DEFAULT_MEMBER_PREFERENCES: Record<
   BLOCKED_ACCESS: { frequency: "IMMEDIATE", scope: "MINE_ONLY" },
   DATAROOM_UPLOAD: { frequency: "IMMEDIATE", scope: "MINE_ONLY" },
   CONVERSATION_MESSAGE: { frequency: "NEVER", scope: "MINE_ONLY" },
+  DATAROOM_TASK: { frequency: "IMMEDIATE", scope: "MINE_ONLY" },
 };

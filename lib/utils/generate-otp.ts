@@ -1,9 +1,10 @@
+import { randomInt } from "node:crypto";
+
 export function generateOTP(): string {
-  // Generate a random number between 0 and 999999
-  const randomNumber = Math.floor(Math.random() * 1000000);
+  // Use a CSPRNG to avoid predictable codes (CodeQL js/insecure-randomness).
+  // randomInt(min, max) returns a uniformly distributed integer in [min, max),
+  // avoiding the modulo bias you'd get from converting random bytes manually.
+  const randomNumber = randomInt(0, 1_000_000);
 
-  // Pad the number with leading zeros if necessary to ensure it is always 6 digits
-  const otp = randomNumber.toString().padStart(6, "0");
-
-  return otp;
+  return randomNumber.toString().padStart(6, "0");
 }

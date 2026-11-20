@@ -1,0 +1,56 @@
+{
+  "welcome": {
+    "fallback": "Votre action est requise pour continuer"
+  },
+  "buttons": {
+    "continue": "Continuer",
+    "verifying": "Vérification..."
+  },
+  "fields": {
+    "email": {
+      "label": "Adresse e-mail",
+      "placeholder": "Saisir l'e-mail",
+      "errorInvalid": "Veuillez saisir une adresse e-mail valide",
+      "sharedWithSender": "Ces informations seront partagées avec l'expéditeur.",
+      "sharedWithProvider": "Ces informations seront partagées avec le fournisseur du contenu."
+    },
+    "password": {
+      "label": "Code d'accès",
+      "placeholder": "Saisir le code d'accès"
+    },
+    "name": {
+      "label": "Nom",
+      "placeholder": "Saisir votre nom complet"
+    },
+    "url": {
+      "errorInvalid": "Veuillez saisir une URL valide commençant par https://"
+    },
+    "phone": {
+      "placeholderDefault": "+33 1 23 45 67 89"
+    }
+  },
+  "agreement": {
+    "fallbackPrefix": "J'ai pris connaissance et j'accepte les conditions de ce"
+  },
+  "verification": {
+    "title": "Vérifiez votre adresse e-mail",
+    "description": "Saisissez le code de vérification à six chiffres envoyé à <email>{{email}}</email>",
+    "errorInvalid": "Code invalide. Veuillez réessayer.",
+    "noEmail": "Vous n'avez pas reçu l'e-mail ?",
+    "resending": "Renvoi du code...",
+    "resendIn": "Renvoyer le code ({{seconds}} s)",
+    "resend": "Renvoyer le code"
+  },
+  "footer": {
+    "sharedSecurelyVia": "Ce document vous est partagé en toute sécurité via",
+    "sharedSecurelyViaDataroom": "Cette salle de données vous est partagée en toute sécurité via",
+    "papermark": "Papermark",
+    "seeHowWeProtect": "Découvrez comment nous protégeons vos données dans notre",
+    "privacyPolicy": "Politique de confidentialité"
+  },
+  "reauth": {
+    "title": "Vérifiez votre identité",
+    "description": "Ce fichier a été téléversé par vous. Pour le rouvrir, confirmez que vous contrôlez <email>{{email}}</email>.",
+    "otpDescription": "Nous avons envoyé un code à 6 chiffres à <email>{{email}}</email>. Saisissez-le ci-dessous pour accéder à votre fichier."
+  }
+}

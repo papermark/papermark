@@ -101,10 +101,10 @@ function RemoveDataroomItemsModal({
 
         // Call mutate only once, after all deletions
         await mutate(
-          `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}${folderPathName ? `/folders/documents/${folderPathName.join("/")}` : "/documents"}`,
+          `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}${folderPathName ? `/folder-documents/${folderPathName.join("/")}` : "/documents"}`,
         );
         mutate(
-          `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/folders${folderPathName ? `/${folderPathName.join(" / ")}` : "?root=true"}`,
+          `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/folders${folderPathName ? `/${folderPathName.join("/")}` : "?root=true"}`,
         );
         mutate(
           `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/folders`,

@@ -1,18 +1,22 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { isTeamPausedById } from "@/ee/features/billing/cancellation/lib/is-team-paused";
+import type { convertFilesToPdfTask } from "@/ee/features/conversions/lib/trigger/convert-files";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { tasks } from "@trigger.dev/sdk";
 import { getServerSession } from "next-auth/next";
 
 import { hashToken } from "@/lib/api/auth/token";
-import { copyFileToBucketServer } from "@/lib/files/copy-file-to-bucket-server";
+import { enforceDocumentMemberScope } from "@/lib/api/rbac/guard";
+import { getFeatureFlags } from "@/lib/featureFlags";
 import prisma from "@/lib/prisma";
-import { convertFilesToPdfTask } from "@/lib/trigger/convert-files";
 import { processVideo } from "@/lib/trigger/optimize-video-files";
 import { convertPdfToImageRoute } from "@/lib/trigger/pdf-to-image-route";
 import { CustomUser } from "@/lib/types";
 import { log } from "@/lib/utils";
+import { isMarkdownFile } from "@/lib/utils/get-content-type";
 import { conversionQueueName } from "@/lib/utils/trigger-utils";
+import { videoProcessingMode } from "@/lib/video/processing-plan";
 import { documentUploadSchema } from "@/lib/zod/url-validation";
 
 export default async function handle(
@@ -56,6 +60,11 @@ export default async function handle(
       userId = (session.user as CustomUser).id;
     }
 
+    // Scoped members may only add versions to documents in their rooms.
+    if (await enforceDocumentMemberScope({ userId, teamId, documentId, res })) {
+      return;
+    }
+
     // Validate request body using Zod schema for security
     const validationResult = await documentUploadSchema.safeParseAsync({
       ...req.body,
@@ -93,6 +102,15 @@ export default async function handle(
 
       if (!team) {
         return res.status(401).end("Unauthorized");
+      }
+
+      if (type === "html") {
+        const featureFlags = await getFeatureFlags({ teamId });
+        if (!featureFlags.htmlDocuments) {
+          return res.status(403).json({
+            error: "HTML documents are not enabled for this team.",
+          });
+        }
       }
 
       // Check if team is paused
@@ -154,8 +172,18 @@ export default async function handle(
         },
       });
 
-      if (type === "docs" || type === "slides") {
-        await convertFilesToPdfTask.trigger(
+      const isDownloadOnlyByExtension =
+        /\.(log|err|prj|jgw|tif|tiff|ecw|bak)$/i.test(url);
+
+      const isMarkdown = isMarkdownFile({ name: url, contentType });
+
+      if (
+        (type === "docs" || type === "slides") &&
+        !isDownloadOnlyByExtension &&
+        !isMarkdown
+      ) {
+        await tasks.trigger<typeof convertFilesToPdfTask>(
+          "convert-files-to-pdf",
           {
             documentVersionId: version.id,
             teamId,
@@ -174,21 +202,15 @@ export default async function handle(
         );
       }
 
-      if (
-        type === "video" &&
-        contentType !== "video/mp4" &&
-        contentType?.startsWith("video/")
-      ) {
+      const videoMode = videoProcessingMode({ type, contentType });
+      if (videoMode) {
         await processVideo.trigger(
           {
-            videoUrl: url,
-            teamId,
-            docId: url.split("/")[1], // Extract doc_xxxx from teamId/doc_xxxx/filename
             documentVersionId: version.id,
-            fileSize: fileSize || 0,
+            mode: videoMode,
           },
           {
-            idempotencyKey: `${teamId}-${version.id}`,
+            idempotencyKey: `${teamId}-${version.id}-${videoMode}`,
             tags: [
               `team_${teamId}`,
               `document_${documentId}`,
@@ -221,15 +243,6 @@ export default async function handle(
             concurrencyKey: teamId,
           },
         );
-      }
-
-      if (type === "sheet" && document?.advancedExcelEnabled) {
-        console.log("copying file to bucket server");
-        await copyFileToBucketServer({
-          filePath: version.file,
-          storageType: version.storageType,
-          teamId,
-        });
       }
 
       res.status(200).json({ id: documentId });

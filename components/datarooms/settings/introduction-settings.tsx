@@ -3,23 +3,18 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
-import { BookOpenIcon, EyeIcon } from "lucide-react";
+import { CrownIcon, EyeIcon } from "lucide-react";
 import { toast } from "sonner";
 import { mutate } from "swr";
 
+import { useSelfMembership } from "@/lib/hooks/use-self-membership";
 import { usePlan } from "@/lib/swr/use-billing";
-import { uploadImage } from "@/lib/utils";
+import { cn, uploadImage } from "@/lib/utils";
 
-import PlanBadge from "@/components/billing/plan-badge";
+import { PlanEnum } from "@/ee/stripe/constants";
+
+import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -31,12 +26,7 @@ import LoadingSpinner from "@/components/ui/loading-spinner";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { ButtonTooltip } from "@/components/ui/tooltip";
 
 interface IntroductionSettingsProps {
   dataroomId: string;
@@ -490,6 +480,7 @@ export default function IntroductionSettings({
   const teamInfo = useTeam();
   const teamId = teamInfo?.currentTeam?.id;
   const { isDataroomsPlus, isTrial } = usePlan();
+  const { isDataroomMember } = useSelfMembership();
 
   const [isFetching, setIsFetching] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -647,9 +638,6 @@ export default function IntroductionSettings({
       return;
     }
     setIntroductionEnabled(checked);
-    if (checked) {
-      toast.success("Introduction page enabled");
-    }
   };
 
   const hasContent =
@@ -657,69 +645,106 @@ export default function IntroductionSettings({
 
   if (isFetching) {
     return (
-      <Card className="bg-transparent">
-        <CardContent className="flex items-center justify-center py-10">
-          <LoadingSpinner className="h-6 w-6" />
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center py-10">
+        <LoadingSpinner className="h-6 w-6" />
+      </div>
     );
   }
 
   return (
-    <Card className="bg-transparent">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          Introduction Page{" "}
-          {!isFeatureAvailable && <PlanBadge plan="data rooms plus" />}
+    <div className="space-y-6">
+      <div
+        className={cn(
+          "flex flex-col gap-4 rounded-lg border p-4 transition-colors sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-5",
+          introductionEnabled && isFeatureAvailable
+            ? "border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/20"
+            : "border-border bg-muted/30",
+        )}
+      >
+        <div className="flex items-start gap-3">
+          <span
+            className={cn(
+              "mt-1.5 inline-flex h-2 w-2 shrink-0 rounded-full ring-4 transition-colors",
+              introductionEnabled && isFeatureAvailable
+                ? "bg-emerald-500 ring-emerald-500/15"
+                : "bg-muted-foreground/40 ring-muted-foreground/10",
+            )}
+            aria-hidden="true"
+          />
+          <div className="space-y-0.5">
+            <Label
+              htmlFor="introduction-toggle"
+              className="block cursor-pointer text-sm font-medium text-foreground"
+            >
+              {introductionEnabled && isFeatureAvailable
+                ? "Introduction page is on"
+                : "Introduction page is off"}
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              {introductionEnabled && isFeatureAvailable
+                ? "Viewers see this page when they first open the data room."
+                : "Turn on to show this page to viewers on their first visit."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-3">
           {isSaving && (
-            <span className="text-xs font-normal text-muted-foreground">
-              Saving...
+            <span
+              className="text-xs text-muted-foreground"
+              aria-live="polite"
+            >
+              Saving…
             </span>
           )}
-        </CardTitle>
-        <CardDescription>
-          Create an introduction page that will be shown to viewers when they
-          first access your data room. Write your message based on the premade
-          template below. You can edit, add and remove sections as you see fit.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Toggle and Preview */}
-        <div className="flex items-center justify-between">
-          <Label
-            htmlFor="introduction-toggle"
-            className="flex items-center gap-2"
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowPreview(true)}
+            disabled={!hasContent}
           >
-            <BookOpenIcon className="h-4 w-4" />
-            Show introduction on first visit
-          </Label>
-          <div className="flex items-center gap-2">
-            <TooltipProvider delayDuration={0}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowPreview(true)}
-                    disabled={!hasContent}
-                    className="h-8 w-8"
-                  >
-                    <EyeIcon className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Preview introduction</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <EyeIcon className="mr-1.5 h-4 w-4" />
+            Preview
+          </Button>
+          {isFeatureAvailable ? (
             <Switch
               id="introduction-toggle"
               checked={introductionEnabled}
               onCheckedChange={handleToggle}
-              disabled={!isFeatureAvailable}
+              aria-label={
+                introductionEnabled
+                  ? "Disable introduction page"
+                  : "Enable introduction page"
+              }
             />
-          </div>
+          ) : isDataroomMember ? (
+            <ButtonTooltip content="Only team admins can upgrade the plan. Contact a team admin to enable this feature.">
+              <span tabIndex={0}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled
+                >
+                  <CrownIcon className="h-4 w-4" />
+                  Upgrade to enable
+                </Button>
+              </span>
+            </ButtonTooltip>
+          ) : (
+            <UpgradePlanModal
+              clickedPlan={PlanEnum.DataRoomsPlus}
+              trigger="dataroom_introduction_settings"
+              highlightItem={["introduction"]}
+            >
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <CrownIcon className="h-4 w-4" />
+                Upgrade to enable
+              </Button>
+            </UpgradePlanModal>
+          )}
         </div>
+      </div>
 
         {/* Rich Text Editor */}
         <div className="space-y-2">
@@ -754,13 +779,6 @@ export default function IntroductionSettings({
             </div>
           </DialogContent>
         </Dialog>
-      </CardContent>
-      <CardFooter className="flex items-center rounded-b-lg border-t bg-muted px-6 py-4">
-        <p className="text-sm text-muted-foreground">
-          This page will appear as a welcome popup when visitors first open the
-          data room. Changes are saved automatically.
-        </p>
-      </CardFooter>
-    </Card>
+    </div>
   );
 }

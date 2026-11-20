@@ -53,9 +53,14 @@ export default async function handle(
               id: true,
               name: true,
               content: true,
+              contentType: true,
+              signingProvider: true,
               requireName: true,
               createdAt: true,
               updatedAt: true,
+              signingExternalId: true,
+              signingEnvelopeId: true,
+              signingTemplateId: true,
               _count: {
                 select: {
                   links: true,
@@ -208,11 +213,20 @@ AGREEMENT DETAILS
 ================
 
 Name: ${agreement.name}
+Signing Provider: ${agreement.signingProvider}
+Content Type: ${agreement.contentType}
 URL: ${agreement.content}
 Requires Name: ${agreement.requireName ? "Yes" : "No"}
 Created: ${agreement.createdAt.toLocaleDateString()} at ${agreement.createdAt.toLocaleTimeString()}
 Last Updated: ${agreement.updatedAt.toLocaleDateString()} at ${agreement.updatedAt.toLocaleTimeString()}
 Team: ${team.name}
+
+SIGNING METADATA
+================
+
+External ID: ${agreement.signingExternalId || "N/A"}
+Envelope ID: ${agreement.signingEnvelopeId || "N/A"}
+Template ID: ${agreement.signingTemplateId || "N/A"}
 
 USAGE STATISTICS
 ===============

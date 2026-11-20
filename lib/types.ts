@@ -66,8 +66,9 @@ export interface LinkWithViews extends Link {
   feedback: { id: true; data: { question: string; type: string } } | null;
   customFields: CustomField[];
   tags: TagProps[];
-  uploadFolderName: string | undefined;
+  uploadFolders?: { id: string; name: string; path: string | null }[];
   visitorGroups?: { visitorGroupId: string }[];
+  dataroom?: { brandId: string | null } | null;
 }
 
 export interface LinkWithDocument extends Link {
@@ -312,11 +313,13 @@ export interface Team {
   replicateDataroomFolders?: boolean;
 }
 
+export type TeamRole = "ADMIN" | "MANAGER" | "MEMBER" | "DATAROOM_MEMBER";
+
 export interface TeamDetail {
   id: string;
   name: string;
   users: {
-    role: "ADMIN" | "MANAGER" | "MEMBER";
+    role: TeamRole;
     status: "ACTIVE" | "BLOCKED_TRIAL_EXPIRED";
     teamId: string;
     userId: string;
@@ -330,6 +333,11 @@ export interface TeamDetail {
       name: string;
       id: string;
     };
+  }[];
+  // Per-member dataroom assignments (scoped DATAROOM_MEMBER role).
+  userDatarooms?: {
+    userId: string;
+    dataroomId: string;
   }[];
 }
 

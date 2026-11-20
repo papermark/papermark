@@ -3,9 +3,15 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
+import { enforceDocumentMemberScope } from "@/lib/api/rbac/guard";
 import prisma from "@/lib/prisma";
 import { getVideoEventsByView } from "@/lib/tinybird/pipes";
 import { CustomUser } from "@/lib/types";
+import {
+  countablePlaybackEvents,
+  resolveVideoLength,
+  viewPlaybackTimeline,
+} from "@/lib/video-analytics/playback";
 
 export default async function handler(
   req: NextApiRequest,
@@ -31,6 +37,18 @@ export default async function handler(
       viewId: string;
     };
     const userId = (session.user as CustomUser).id;
+
+    // Scoped members may only read views for documents in their assigned rooms.
+    if (
+      await enforceDocumentMemberScope({
+        userId,
+        teamId,
+        documentId,
+        res,
+      })
+    ) {
+      return;
+    }
 
     // Check document access
     const doc = await prisma.document.findFirst({
@@ -61,12 +79,8 @@ export default async function handler(
       return res.status(404).json({ error: "Document not found" });
     }
 
-    const videoLength = doc.versions[0]?.length;
-    if (!videoLength) {
-      return res.status(400).json({ error: "Video length not found" });
-    }
+    const storedLength = doc.versions[0]?.length ?? 0;
 
-    // Fetch video events from Tinybird
     const response = await getVideoEventsByView({
       view_id: viewId,
       document_id: documentId,
@@ -76,41 +90,11 @@ export default async function handler(
       return res.status(200).json({ data: [] });
     }
 
-    // Filter for valid events and ensure valid time ranges > 1 second
-    const validEvents = response.data.filter(
-      (event) =>
-        (event.event_type === "played" ||
-          event.event_type === "muted" ||
-          event.event_type === "unmuted" ||
-          event.event_type === "rate_changed") &&
-        event.end_time > event.start_time &&
-        event.end_time - event.start_time >= 1,
-    );
-
-    // Create a baseline array with zeros for every second
-    const viewDistributionMap = new Map<number, number>();
-    for (let t = 0; t <= videoLength; t++) {
-      viewDistributionMap.set(t, 0);
-    }
-
-    // Fill in the actual playback periods
-    validEvents.forEach((event) => {
-      // For each second in the duration, increment the view count
-      for (let t = event.start_time; t < event.end_time; t++) {
-        viewDistributionMap.set(t, (viewDistributionMap.get(t) || 0) + 1);
-      }
-    });
-
-    // Convert to sorted array
-    const distributionArray = Array.from(viewDistributionMap.entries())
-      .map(([start_time, views]) => ({
-        start_time,
-        views,
-      }))
-      .sort((a, b) => a.start_time - b.start_time);
+    const validEvents = countablePlaybackEvents(response.data);
+    const videoLength = resolveVideoLength(storedLength, validEvents);
 
     return res.status(200).json({
-      data: distributionArray,
+      data: viewPlaybackTimeline(validEvents, videoLength),
     });
   } catch (error) {
     console.error("Error fetching video stats:", error);

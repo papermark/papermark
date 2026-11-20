@@ -28,10 +28,35 @@ export default async function handle(
     const { teamId } = req.query as { teamId: string };
     const userId = (session.user as CustomUser).id;
 
-    const { email } = req.body;
+    const { email, role: rawRole, dataroomIds: rawDataroomIds } = req.body as {
+      email?: string;
+      role?: string;
+      dataroomIds?: string[];
+    };
 
     if (!email) {
       return res.status(400).json("Email is missing in request body");
+    }
+
+    const ALLOWED_INVITE_ROLES = [
+      "ADMIN",
+      "MANAGER",
+      "MEMBER",
+      "DATAROOM_MEMBER",
+    ] as const;
+    const role =
+      rawRole && ALLOWED_INVITE_ROLES.includes(rawRole as any)
+        ? (rawRole as (typeof ALLOWED_INVITE_ROLES)[number])
+        : "MEMBER";
+    const dataroomIds =
+      role === "DATAROOM_MEMBER" && Array.isArray(rawDataroomIds)
+        ? Array.from(new Set(rawDataroomIds.filter((id) => typeof id === "string")))
+        : [];
+
+    if (role === "DATAROOM_MEMBER" && dataroomIds.length === 0) {
+      return res
+        .status(400)
+        .json("Select at least one data room for a data room member.");
     }
 
     try {
@@ -121,6 +146,19 @@ export default async function handle(
         return;
       }
 
+      // Validate that any selected datarooms belong to this team.
+      if (dataroomIds.length > 0) {
+        const validDatarooms = await prisma.dataroom.findMany({
+          where: { id: { in: dataroomIds }, teamId },
+          select: { id: true },
+        });
+        if (validDatarooms.length !== dataroomIds.length) {
+          return res
+            .status(400)
+            .json("One or more selected data rooms are invalid.");
+        }
+      }
+
       const token = newId("inv");
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 168); // 7 days // invitation expires in 24 hour
@@ -132,6 +170,8 @@ export default async function handle(
           token,
           expires: expiresAt,
           teamId,
+          role,
+          dataroomIds,
         },
       });
 

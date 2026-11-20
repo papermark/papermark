@@ -1,6 +1,6 @@
 import { JSXElementConstructor, ReactElement } from "react";
 
-import { render, toPlainText } from "@react-email/render";
+import { render, toPlainText } from "react-email";
 import { Resend } from "resend";
 
 import prisma from "@/lib/prisma";
@@ -23,6 +23,7 @@ export const sendEmail = async ({
   replyTo,
   scheduledAt,
   unsubscribeUrl,
+  idempotencyKey,
 }: {
   to: string;
   subject: string;
@@ -36,6 +37,7 @@ export const sendEmail = async ({
   replyTo?: string;
   scheduledAt?: string;
   unsubscribeUrl?: string;
+  idempotencyKey?: string;
 }) => {
   if (!resend) {
     // Throw an error if resend is not initialized
@@ -58,25 +60,30 @@ export const sendEmail = async ({
             : "Marc from Papermark <marc@papermark.com>");
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: fromAddress,
-      to: test ? "delivered@resend.dev" : to,
-      cc: cc,
-      replyTo: marketing ? "marc@papermark.com" : replyTo,
-      subject,
-      react,
-      scheduledAt,
-      text: plainText,
-      headers: {
-        "X-Entity-Ref-ID": nanoid(),
-        ...(unsubscribeUrl
-          ? {
-              "List-Unsubscribe": `<${unsubscribeUrl}>`,
-              "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-            }
-          : {}),
+    const { data, error } = await resend.emails.send(
+      {
+        from: fromAddress,
+        to: test ? "delivered@resend.dev" : to,
+        cc: cc,
+        replyTo: marketing ? "marc@papermark.com" : replyTo,
+        subject,
+        react,
+        scheduledAt,
+        text: plainText,
+        headers: {
+          // Reusing an idempotency key with a changed payload is a 409, so the
+          // ref id has to come from the key rather than a fresh nanoid.
+          "X-Entity-Ref-ID": idempotencyKey ?? nanoid(),
+          ...(unsubscribeUrl
+            ? {
+                "List-Unsubscribe": `<${unsubscribeUrl}>`,
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+              }
+            : {}),
+        },
       },
-    });
+      { idempotencyKey },
+    );
 
     // Check if the email sending operation returned an error and throw it
     if (error) {

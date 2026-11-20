@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { useTeam } from "@/context/team-context";
+import { SnowflakeIcon } from "lucide-react";
 import { toast } from "sonner";
 import { mutate } from "swr";
 
@@ -122,12 +123,18 @@ export function AddFolderToDataroomModal({
               <SelectItem
                 key={dataroom.id}
                 value={dataroom.id}
-                disabled={dataroom.id === dataroomId}
+                disabled={dataroom.id === dataroomId || dataroom.isFrozen}
                 className="break-words"
               >
-                <span className="break-words line-clamp-1">
-                  {dataroom.name}
-                  {dataroom.id === dataroomId ? " (current)" : ""}
+                <span className="flex items-center gap-1.5 break-words line-clamp-1">
+                  {dataroom.isFrozen && (
+                    <SnowflakeIcon className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+                  )}
+                  <span className={dataroom.isFrozen ? "text-muted-foreground" : ""}>
+                    {dataroom.name}
+                    {dataroom.id === dataroomId ? " (current)" : ""}
+                    {dataroom.isFrozen ? " (frozen)" : ""}
+                  </span>
                 </span>
               </SelectItem>
             ))}

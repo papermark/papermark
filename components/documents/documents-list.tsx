@@ -403,7 +403,7 @@ export function DocumentsList({
           `/api/teams/${teamInfo?.currentTeam?.id}/folders/${folderPathName.join("/")}`,
         );
         mutate(
-          `/api/teams/${teamInfo?.currentTeam?.id}/folders/documents/${folderPathName.join("/")}`,
+          `/api/teams/${teamInfo?.currentTeam?.id}/folder-documents/${folderPathName.join("/")}`,
         );
       }
 

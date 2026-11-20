@@ -58,6 +58,17 @@ const SearchBox = forwardRef(
 
     const onKeyDown = useCallback((e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
+
+      // Cmd+K (macOS) / Ctrl+K (Windows/Linux) focuses the search input and
+      // selects any existing text so the field is highlighted. This works
+      // even while typing in another input, just like a global command.
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+        return;
+      }
+
       // only focus on filter input when:
       // - user is not typing in an input or textarea
       // - there is no existing modal backdrop (i.e. no other modal is open)
@@ -137,6 +148,20 @@ export function SearchBoxPersisted({
   const [debouncedValue, setDebouncedValue] = useState(initial);
 
   useEffect(() => {
+    // Wait until the router has hydrated its dynamic route params (e.g. [id],
+    // [...name]). Pushing to `router.pathname` while `router.query` is still
+    // empty would leave the dynamic segments un-interpolated and throw a
+    // Next.js "href interpolation failed" error on dynamic routes.
+    if (!router.isReady) return;
+
+    const currentValue =
+      typeof router.query[urlParam] === "string"
+        ? (router.query[urlParam] as string)
+        : "";
+
+    // Skip no-op pushes (also avoids a redundant push on initial mount).
+    if (currentValue === debouncedValue) return;
+
     const currentQuery = { ...router.query };
 
     if (debouncedValue === "") {
@@ -158,10 +183,11 @@ export function SearchBoxPersisted({
       isCustomDomain ? `/${router.query.slug}` : undefined, // Preserve custom domain URL
       { shallow: true },
     );
-    // This is intentionally keyed only by debounced input value.
-    // Adding router/query deps can cause feedback loops with shallow routing.
+    // This is intentionally keyed on the debounced input value and the router
+    // ready state. Adding the full router/query objects can cause feedback
+    // loops with shallow routing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedValue]);
+  }, [debouncedValue, router.isReady]);
 
   useEffect(() => {
     const queryValue =

@@ -22,6 +22,7 @@ interface ConversationsNotEnabledBannerProps {
   teamId: string;
   isConversationsEnabled: boolean;
   onConversationsToggled?: (enabled: boolean) => void;
+  isPlanWithConversations?: boolean;
 }
 
 export function ConversationsNotEnabledBanner({
@@ -29,6 +30,7 @@ export function ConversationsNotEnabledBanner({
   teamId,
   isConversationsEnabled,
   onConversationsToggled,
+  isPlanWithConversations,
 }: ConversationsNotEnabledBannerProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLocallyEnabled, setIsLocallyEnabled] = useState(
@@ -64,6 +66,13 @@ export function ConversationsNotEnabledBanner({
     setIsLocallyEnabled(isConversationsEnabled);
   }, [isConversationsEnabled]);
 
+  // Auto-enable conversations for plans that include them
+  useEffect(() => {
+    if (isPlanWithConversations && !isConversationsEnabled && !isProcessing) {
+      handleToggleConversations(true, { silent: true });
+    }
+  }, [isPlanWithConversations, isConversationsEnabled]);
+
   // Save collapsed state to localStorage
   useEffect(() => {
     localStorage.setItem(
@@ -72,7 +81,10 @@ export function ConversationsNotEnabledBanner({
     );
   }, [isCollapsed, dataroomId]);
 
-  const handleToggleConversations = async (newValue: boolean) => {
+  const handleToggleConversations = async (
+    newValue: boolean,
+    { silent = false }: { silent?: boolean } = {},
+  ) => {
     setIsProcessing(true);
     try {
       const dataroomIdParsed = z.string().cuid().parse(dataroomId);
@@ -95,11 +107,12 @@ export function ConversationsNotEnabledBanner({
         );
 
       setIsLocallyEnabled(newValue);
-      toast.success(
-        `Conversations ${newValue ? "enabled" : "disabled"} successfully`,
-      );
+      if (!silent) {
+        toast.success(
+          `Conversations ${newValue ? "enabled" : "disabled"} successfully`,
+        );
+      }
 
-      // Notify parent component if provided
       if (onConversationsToggled) {
         onConversationsToggled(newValue);
       }
@@ -108,7 +121,11 @@ export function ConversationsNotEnabledBanner({
         `Error ${newValue ? "enabling" : "disabling"} conversations:`,
         error,
       );
-      toast.error(`Failed to ${newValue ? "enable" : "disable"} conversations`);
+      if (!silent) {
+        toast.error(
+          `Failed to ${newValue ? "enable" : "disable"} conversations`,
+        );
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -124,6 +141,41 @@ export function ConversationsNotEnabledBanner({
 
   if (isDismissed) {
     return null;
+  }
+
+  // For plans with conversations included, show simplified banner
+  if (isPlanWithConversations) {
+    return (
+      <Card className="mb-6 border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+        <CardHeader className="py-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium">
+              Q&A Conversations
+            </CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={handleDismiss}
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Dismiss</span>
+            </Button>
+          </div>
+          <CardDescription>
+            Conversations will appear as soon as you enable them on a share link
+            to the data room. Go to{" "}
+            <Link
+              href={`/datarooms/${dataroomId}/permissions`}
+              className="underline hover:text-foreground"
+            >
+              Permissions
+            </Link>{" "}
+            to set up conversations for specific links.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
   }
 
   // Show collapsed version

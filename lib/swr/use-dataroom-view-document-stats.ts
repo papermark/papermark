@@ -10,6 +10,7 @@ export type DocumentViewStats = {
   pagesViewed: number;
   totalPages: number;
   completionRate: number;
+  documentType?: string | null;
 };
 
 export function useDataroomViewDocumentStats({

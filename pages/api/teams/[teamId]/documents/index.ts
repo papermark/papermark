@@ -6,6 +6,7 @@ import { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
 import { hashToken } from "@/lib/api/auth/token";
+import { isDataroomScopedRole } from "@/lib/api/rbac/permissions";
 import { processDocument } from "@/lib/api/documents/process-document";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
@@ -50,6 +51,14 @@ export default async function handle(
 
       if (!teamAccess) {
         return res.status(401).end("Unauthorized");
+      }
+
+      // The team-wide "All Documents" list is not part of the dataroom-scoped
+      // surface; scoped members must never enumerate every team document.
+      if (isDataroomScopedRole(teamAccess.role)) {
+        return res
+          .status(403)
+          .json({ error: "You do not have permission to perform this action." });
       }
 
       let orderBy: Prisma.DocumentOrderByWithRelationInput;

@@ -14,7 +14,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from "@react-email/components";
+} from "react-email";
 import { UploadIcon } from "lucide-react";
 
 interface PapermarkYearInReviewEmailProps {

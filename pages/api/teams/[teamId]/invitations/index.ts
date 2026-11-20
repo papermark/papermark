@@ -81,6 +81,10 @@ export default async function handle(
         return res.status(403).json("You are not part of this team");
       }
 
+      if (userTeam.role !== "ADMIN") {
+        return res.status(403).json("Only admins can revoke invitations");
+      }
+
       // delete invitation
       await prisma.invitation.delete({
         where: {

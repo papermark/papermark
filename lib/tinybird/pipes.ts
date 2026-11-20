@@ -4,8 +4,18 @@ import { z } from "zod";
 import { VIDEO_EVENT_TYPES } from "../constants";
 import { WEBHOOK_TRIGGERS } from "../webhook/constants";
 
-const tb = new Tinybird({ token: process.env.TINYBIRD_TOKEN! });
+const tb = new Tinybird({
+  token: process.env.TINYBIRD_TOKEN!,
+  // Tinybird is region-hosted; zod-bird defaults to the US API host.
+  baseUrl: process.env.TINYBIRD_BASE_URL,
+});
 
+// A parameter declared here is only a client-side contract: Tinybird silently
+// ignores query params the deployed pipe's SQL doesn't reference. So adding
+// `until` below is a no-op until the matching endpoints/*.pipe is pushed
+// (`tb push --force`). Keep the two in lockstep — an `until` that exists here
+// but not in the SQL reads as a working time filter while returning all-time
+// numbers.
 export const getTotalAvgPageDuration = tb.buildPipe({
   pipe: "get_total_average_page_duration__v5",
   parameters: z.object({
@@ -13,6 +23,7 @@ export const getTotalAvgPageDuration = tb.buildPipe({
     excludedLinkIds: z.string().describe("Comma separated linkIds"),
     excludedViewIds: z.string().describe("Comma separated viewIds"),
     since: z.number(),
+    until: z.number().optional(),
   }),
   data: z.object({
     versionNumber: z.number().int(),
@@ -127,6 +138,7 @@ export const getTotalDataroomDuration = tb.buildPipe({
     excludedLinkIds: z.array(z.string()),
     excludedViewIds: z.array(z.string()),
     since: z.number(),
+    until: z.number().optional(),
   }),
   data: z.object({
     viewId: z.string(),

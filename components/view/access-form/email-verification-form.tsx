@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { Brand, DataroomBrand } from "@prisma/client";
+import { Trans, useTranslation } from "react-i18next";
 
 import { useMediaQuery } from "@/lib/utils/use-media-query";
 
@@ -36,6 +37,7 @@ export default function EmailVerificationMessage({
 }) {
   const { isMobile } = useMediaQuery();
   const theme = createAccessFormTheme(brand?.accentColor);
+  const { t } = useTranslation("access-form");
   const [isResendLoading, setIsResendLoading] = useState(false);
   const [delaySeconds, setDelaySeconds] = useState(60);
 
@@ -63,16 +65,22 @@ export default function EmailVerificationMessage({
             className="mt-10 text-2xl font-bold leading-9 tracking-tight"
             style={{ color: theme.textColor }}
           >
-            Verify your email address
+            {t("verification.title", "Verify your email address")}
           </h2>
           <p
             className="text-pretty text-sm leading-6"
             style={{ color: theme.textColor }}
           >
-            Enter the six digit verification code sent to{" "}
-            <strong className="font-medium" title={data.email ?? ""}>
-              {data.email}
-            </strong>
+            <Trans
+              ns="access-form"
+              i18nKey="verification.description"
+              values={{ email: data.email ?? "" }}
+              components={{
+                email: (
+                  <strong className="font-medium" title={data.email ?? ""} />
+                ),
+              }}
+            />
           </p>
           <form onSubmit={onSubmitHandler} translate="no">
             <InputOTP
@@ -96,7 +104,7 @@ export default function EmailVerificationMessage({
 
             {isInvalidCode && (
               <p className="mb-6 mt-2 text-sm text-red-500">
-                Invalid code. Please try again.
+                {t("verification.errorInvalid", "Invalid code. Please try again.")}
               </p>
             )}
 
@@ -110,7 +118,9 @@ export default function EmailVerificationMessage({
                 color: theme.ctaTextColor,
               }}
             >
-              {isLoading && !isResendLoading ? "Verifying..." : "Continue"}
+              {isLoading && !isResendLoading
+                ? t("buttons.verifying", "Verifying...")
+                : t("buttons.continue", "Continue")}
             </Button>
           </form>
 
@@ -120,7 +130,7 @@ export default function EmailVerificationMessage({
                 className="text-xs"
                 style={{ color: theme.subtleTextColor }}
               >
-                Didn&apos;t receive the email?
+                {t("verification.noEmail", "Didn't receive the email?")}
               </p>{" "}
               <Button
                 variant="link"
@@ -140,10 +150,10 @@ export default function EmailVerificationMessage({
                 }}
               >
                 {isResendLoading && !isLoading
-                  ? "Resending code..."
+                  ? t("verification.resending", "Resending code...")
                   : delaySeconds > 0
-                    ? `Resend Code (${delaySeconds}s)`
-                    : "Resend Code"}
+                    ? t("verification.resendIn", "Resend Code ({{seconds}}s)", { seconds: delaySeconds })
+                    : t("verification.resend", "Resend Code")}
               </Button>
             </div>
           </div>

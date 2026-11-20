@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 
 import { DataroomFolder } from "@prisma/client";
 import { HomeIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 import {
@@ -195,12 +196,14 @@ const HomeLink = memo(
     setFolderId: React.Dispatch<React.SetStateAction<string | null>>;
   }) => {
     const { usesLightText, palette } = useViewerSurfaceTheme();
+    const { t } = useTranslation("dataroom");
+    const homeLabel = t("breadcrumb.home", "Home");
 
     return (
       <li
         className={cn(
-          "flex list-none",
-          "rounded-md transition-all duration-200 ease-in-out",
+          "flex list-none rounded-md",
+          "transition-all duration-200 ease-in-out",
           usesLightText
             ? "text-[var(--viewer-text)] hover:bg-[var(--viewer-control-bg)]"
             : "text-foreground hover:bg-gray-100 hover:shadow-sm hover:dark:bg-muted",
@@ -221,15 +224,15 @@ const HomeLink = memo(
         }
       >
         <span
-          className="inline-flex w-full cursor-pointer items-center"
+          className="flex w-full min-w-0 cursor-pointer items-center"
           onClick={(e) => {
             e.preventDefault();
             setFolderId(null);
           }}
         >
           <HomeIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
-          <span className="ml-2 w-fit truncate" title="Home">
-            Dataroom Home
+          <span className="ml-2 min-w-0 flex-1 truncate" title={homeLabel}>
+            {homeLabel}
           </span>
         </span>
       </li>

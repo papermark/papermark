@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { stripeInstance } from "@/ee/stripe";
 import { isOldAccount } from "@/ee/stripe/utils";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { waitUntil } from "@vercel/functions";
 import { getServerSession } from "next-auth/next";
 

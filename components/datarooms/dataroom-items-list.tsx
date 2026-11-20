@@ -40,7 +40,10 @@ import { useMediaQuery } from "@/lib/utils/use-media-query";
 
 import { useRemoveDataroomItemsModal } from "@/components/datarooms/actions/remove-document-modal";
 import DataroomDocumentCard from "@/components/datarooms/dataroom-document-card";
-import { SetUnifiedPermissionsModal } from "@/components/datarooms/groups/set-unified-permissions-modal";
+import {
+  SetUnifiedPermissionsModal,
+  type UnifiedPermissionItem,
+} from "@/components/datarooms/groups/set-unified-permissions-modal";
 import { useDeleteFolderModal } from "@/components/documents/actions/delete-folder-modal";
 import { DraggableItem } from "@/components/documents/drag-and-drop/draggable-item";
 import { DroppableFolder } from "@/components/documents/drag-and-drop/droppable-folder";
@@ -95,12 +98,8 @@ export function DataroomItemsList({
   } = useUploadCallbacks();
 
   const [showGroupPermissions, setShowGroupPermissions] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<
-    {
-      documentId: string;
-      dataroomDocumentId: string;
-      fileName: string;
-    }[]
+  const [permissionItems, setPermissionItems] = useState<
+    UnifiedPermissionItem[]
   >([]);
 
   const [moveFolderOpen, setMoveFolderOpen] = useState<boolean>(false);
@@ -556,7 +555,9 @@ export function DataroomItemsList({
       fileName: string;
       documentId: string;
       dataroomDocumentId: string;
+      topLevelDataroomFolderId?: string;
     }[],
+    folders?: { dataroomFolderId: string; name: string }[],
   ) => {
     // Check if there are any groups to apply permissions to
     const hasAnyGroups =
@@ -566,28 +567,67 @@ export function DataroomItemsList({
     if (!hasAnyGroups) return;
 
     const documentIds = files.map((file) => file.documentId);
-    const strategy =
+    const groupStrategy =
+      dataroom?.defaultGroupPermissionStrategy ||
+      DefaultPermissionStrategy.INHERIT_FROM_PARENT;
+    const linkStrategy =
       dataroom?.defaultPermissionStrategy ||
       DefaultPermissionStrategy.INHERIT_FROM_PARENT;
 
-    if (strategy === DefaultPermissionStrategy.ASK_EVERY_TIME) {
-      setShowGroupPermissions(true);
-      setUploadedFiles(files);
-    } else if (strategy === DefaultPermissionStrategy.INHERIT_FROM_PARENT) {
-      const isRootLevel = !folderPathName || folderPathName.length === 0;
+    // The unified modal handles both viewer-group and permission-group
+    // configuration in one pass, so prompt if either side requests it.
+    const shouldAsk =
+      groupStrategy === DefaultPermissionStrategy.ASK_EVERY_TIME ||
+      linkStrategy === DefaultPermissionStrategy.ASK_EVERY_TIME;
 
-      applyPermissions(
-        dataroomId,
-        documentIds,
-        "INHERIT_FROM_PARENT",
-        isRootLevel ? undefined : folderPathName?.join("/"),
-        (message: string) => toast.error(message),
-      ).catch((error: any) => {
-        console.error("Failed to apply permissions:", error);
-        toast.error("Failed to apply permissions");
-      });
+    if (shouldAsk) {
+      // Build the list of items to configure. For folder uploads we show the
+      // folder itself (which cascades to every file/sub-folder inside)
+      // instead of every individual file — one decision instead of N.
+      const folderItems: UnifiedPermissionItem[] = (folders ?? []).map(
+        (folder) => ({
+          fileName: folder.name,
+          itemType: "folder" as const,
+          dataroomFolderId: folder.dataroomFolderId,
+        }),
+      );
+      // Standalone files (those NOT uploaded as part of a top-level folder)
+      // still get their own row so users can configure them individually.
+      const looseFileItems: UnifiedPermissionItem[] = files
+        .filter((file) => !file.topLevelDataroomFolderId)
+        .map((file) => ({
+          fileName: file.fileName,
+          itemType: "document" as const,
+          documentId: file.documentId,
+          dataroomDocumentId: file.dataroomDocumentId,
+        }));
+
+      const combined = [...folderItems, ...looseFileItems];
+      if (combined.length === 0) return;
+      setShowGroupPermissions(true);
+      setPermissionItems(combined);
+      return;
     }
-    // strategy === DefaultPermissionStrategy.HIDDEN_BY_DEFAULT - do nothing
+
+    if (
+      groupStrategy === DefaultPermissionStrategy.HIDDEN_BY_DEFAULT &&
+      linkStrategy === DefaultPermissionStrategy.HIDDEN_BY_DEFAULT
+    ) {
+      return;
+    }
+
+    const isRootLevel = !folderPathName || folderPathName.length === 0;
+
+    // applyPermissions never rejects — it returns { success, error } and routes
+    // failures through the onError callback below — so there's nothing to
+    // .catch(). Errors surface as a toast via onError.
+    void applyPermissions(
+      dataroomId,
+      documentIds,
+      { groupStrategy, linkStrategy },
+      isRootLevel ? undefined : folderPathName?.join("/"),
+      (message: string) => toast.error(message),
+    );
   };
 
   return (
@@ -604,6 +644,7 @@ export function DataroomItemsList({
         cancelledItemIdsRef={cancelledItemIdsRef}
         dataroomId={dataroomId}
         dataroomName={dataroom?.name}
+        disabled={dataroom?.isFrozen ?? false}
       >
         {isMobile ? (
           <div>
@@ -712,10 +753,10 @@ export function DataroomItemsList({
           open={showGroupPermissions}
           setOpen={setShowGroupPermissions}
           dataroomId={dataroomId}
-          uploadedFiles={uploadedFiles}
+          uploadedFiles={permissionItems}
           onComplete={() => {
             setShowGroupPermissions(false);
-            setUploadedFiles([]);
+            setPermissionItems([]);
           }}
         />
       )}

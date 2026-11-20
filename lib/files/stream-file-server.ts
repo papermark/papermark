@@ -3,7 +3,7 @@ import { DocumentStorageType } from "@prisma/client";
 import path from "node:path";
 import { Readable } from "stream";
 
-import { safeSlugify } from "@/lib/utils";
+import { buildContentDisposition, safeSlugify } from "@/lib/utils";
 
 import { getTeamS3ClientAndConfig } from "./aws-client";
 
@@ -38,7 +38,10 @@ export const streamFileServer = async ({
       Key: key,
       Body: file.stream,
       ContentType: file.type,
-      ContentDisposition: `attachment; filename="${slugifiedName}"; filename*=UTF-8''${encodeURIComponent(originalFileName)}`,
+      ContentDisposition: buildContentDisposition(
+        originalFileName,
+        slugifiedName,
+      ),
     },
   };
 

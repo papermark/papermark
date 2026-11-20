@@ -1,10 +1,12 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
+import { tasks } from "@trigger.dev/sdk";
+
 import { getServerSession } from "next-auth/next";
 
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
-import { convertFilesToPdfTask } from "@/lib/trigger/convert-files";
+import type { convertFilesToPdfTask } from "@/ee/features/conversions/lib/trigger/convert-files";
 import { convertPdfToImageRoute } from "@/lib/trigger/pdf-to-image-route";
 import { CustomUser } from "@/lib/types";
 import { getExtension, log, serializeFileSize } from "@/lib/utils";
@@ -130,8 +132,12 @@ export default async function handle(
         },
       });
 
-      if (type === "docs") {
-        await convertFilesToPdfTask.trigger(
+      const isDownloadOnlyByExtension =
+        /\.(log|err|prj|jgw|tif|tiff|ecw|bak)$/i.test(name);
+
+      if (type === "docs" && !isDownloadOnlyByExtension) {
+        await tasks.trigger<typeof convertFilesToPdfTask>(
+          "convert-files-to-pdf",
           {
             documentId: document.id,
             documentVersionId: document.versions[0].id,

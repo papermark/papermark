@@ -80,9 +80,12 @@ const VerifyEmailChange = async ({ params: { token } }: PageProps) => {
   }
 
   const currentUserId = (session.user as CustomUser).id;
+  const tokenUserId = tokenFound.identifier;
+
+  if (tokenUserId !== currentUserId) return <NotFound />;
 
   const data = await redis.get<{ email: string; newEmail: string }>(
-    `email-change-request:user:${currentUserId}`,
+    `email-change-request:user:${tokenUserId}`,
   );
 
   if (!data) return <NotFound />;
@@ -91,7 +94,7 @@ const VerifyEmailChange = async ({ params: { token } }: PageProps) => {
 
   await prisma.user.update({
     where: {
-      id: currentUserId,
+      id: tokenUserId,
     },
     data: {
       email: data.newEmail,

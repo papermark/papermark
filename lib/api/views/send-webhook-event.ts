@@ -29,12 +29,8 @@ export async function sendLinkViewWebhook({
       select: { plan: true },
     });
 
-    if (
-      team?.plan === "free" ||
-      team?.plan === "pro" ||
-      team?.plan.includes("trial")
-    ) {
-      // team is not on paid plan, so we don't need to send webhooks
+    if (team?.plan === "free" || team?.plan === "pro") {
+      // team is not on a webhook-eligible plan, so we don't send webhooks
       return;
     }
 
@@ -96,6 +92,7 @@ export async function sendLinkViewWebhook({
       enabledFeedback: link.enableFeedback ?? false,
       enabledQuestion: link.enableQuestion ?? false,
       enabledScreenshotProtection: link.enableScreenshotProtection ?? false,
+      enabledConfidentialView: link.enableConfidentialView ?? false,
       enabledAgreement: link.enableAgreement ?? false,
       enabledWatermark: link.enableWatermark ?? false,
       metaTitle: link.metaTitle,

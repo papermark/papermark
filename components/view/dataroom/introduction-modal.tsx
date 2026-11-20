@@ -9,6 +9,7 @@ import React, {
 } from "react";
 
 import { InfoIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -53,6 +54,7 @@ export const useIntroduction = () => useContext(IntroductionContext);
 // Info button component to be placed inline (e.g., next to dataroom name)
 export function IntroductionInfoButton() {
   const { openIntroduction, hasIntroduction, hasSeen } = useIntroduction();
+  const { t } = useTranslation("dataroom");
 
   if (!hasIntroduction) return null;
 
@@ -64,16 +66,16 @@ export function IntroductionInfoButton() {
             onClick={openIntroduction}
             className={`inline-flex items-center justify-center rounded-full p-1.5 transition-colors ${
               hasSeen
-                ? "text-muted-foreground hover:bg-muted hover:text-foreground"
-                : "border-2 border-gray-900 text-gray-900 hover:bg-gray-100 dark:border-white dark:text-white dark:hover:bg-gray-800"
+                ? "text-[var(--viewer-muted-text)] hover:bg-[var(--viewer-panel-bg-hover)] hover:text-[var(--viewer-text)]"
+                : "border-2 border-[var(--viewer-control-border-strong)] text-[var(--viewer-text)] hover:bg-[var(--viewer-panel-bg-hover)]"
             }`}
-            aria-label="View introduction"
+            aria-label={t("intro.viewIntroduction", "View introduction")}
           >
             <InfoIcon className="h-5 w-5" />
           </button>
         </TooltipTrigger>
         <TooltipContent side="left">
-          <p>View introduction</p>
+          <p>{t("intro.viewIntroduction", "View introduction")}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -236,6 +238,7 @@ export function IntroductionProvider({
   viewerId,
   children,
 }: IntroductionProviderProps) {
+  const { t } = useTranslation("dataroom");
   const [isOpen, setIsOpen] = useState(false);
   const [hasSeen, setHasSeen] = useState(true); // Default to true, will be updated on mount
 
@@ -294,7 +297,9 @@ export function IntroductionProvider({
           <DialogContent className="max-h-[85vh] max-w-2xl overflow-hidden border-0 p-0 shadow-2xl sm:max-w-xl sm:rounded-2xl md:max-w-2xl">
             <DialogHeader className="border-b border-gray-100 bg-gray-50 px-6 py-6 dark:border-gray-800 dark:bg-gray-900">
               <DialogTitle className="text-xl font-semibold">
-                Welcome to {dataroom.name || "Data Room"}
+                {t("intro.title", "Welcome to {{name}}", {
+                  name: dataroom.name || t("intro.defaultName", "Data Room"),
+                })}
               </DialogTitle>
             </DialogHeader>
             <ScrollArea className="max-h-[60vh] px-6 py-5">
@@ -304,7 +309,7 @@ export function IntroductionProvider({
             </ScrollArea>
             <div className="flex justify-end border-t border-gray-100 bg-gray-50 px-6 py-4 dark:border-gray-800 dark:bg-gray-900">
               <Button onClick={handleClose} size="lg">
-                Continue to Data Room
+                {t("intro.continueButton", "Continue to Data Room")}
               </Button>
             </div>
           </DialogContent>

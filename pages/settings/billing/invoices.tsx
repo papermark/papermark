@@ -1,15 +1,12 @@
+import Link from "next/link";
 import { useRouter } from "next/router";
 
-import { useEffect } from "react";
+import { ArrowLeft, Download, FileText, Loader2 } from "lucide-react";
 
-import { Download, FileText, Loader2 } from "lucide-react";
-
-import { useIsAdmin } from "@/lib/hooks/use-is-admin";
 import { useInvoices } from "@/lib/swr/use-invoices";
 
 import AppLayout from "@/components/layouts/app";
 import { SettingsHeader } from "@/components/settings/settings-header";
-import { TabMenu } from "@/components/tab-menu";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -23,14 +20,6 @@ import {
 export default function Invoices() {
   const router = useRouter();
   const { invoices, loading, error } = useInvoices();
-  const { isAdmin, loading: isAdminLoading } = useIsAdmin();
-
-  // Redirect non-admin users to general settings
-  useEffect(() => {
-    if (!isAdminLoading && !isAdmin) {
-      router.replace("/settings/general");
-    }
-  }, [isAdmin, isAdminLoading, router]);
 
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat("en-US", {
@@ -59,45 +48,28 @@ export default function Invoices() {
     }
   };
 
-  // Show nothing while checking admin status
-  if (isAdminLoading || !isAdmin) {
-    return (
-      <AppLayout>
-        <div />
-      </AppLayout>
-    );
-  }
-
   return (
     <AppLayout>
       <main className="relative mx-2 mb-10 mt-4 space-y-8 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
         <SettingsHeader />
 
-        <TabMenu
-          navigation={[
-            {
-              label: "Subscription",
-              href: "/settings/billing",
-              value: "subscription",
-              currentValue: "invoices",
-            },
-            {
-              label: "Invoices",
-              href: "/settings/billing/invoices",
-              value: "invoices",
-              currentValue: "invoices",
-            },
-          ]}
-        />
-
         <div className="space-y-4">
-          <div className="space-y-1">
-            <h3 className="text-2xl font-semibold tracking-tight text-foreground">
-              Invoices
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              A history of all your invoices
-            </p>
+          <div className="space-y-2">
+            <Link
+              href="/settings/billing"
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to subscription
+            </Link>
+            <div className="space-y-1">
+              <h3 className="text-2xl font-semibold tracking-tight text-foreground">
+                Invoices
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                A history of all your invoices
+              </p>
+            </div>
           </div>
 
           <div className="rounded-lg border bg-white">

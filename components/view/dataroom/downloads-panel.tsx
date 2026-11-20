@@ -9,6 +9,8 @@ import {
   FolderOpen,
   Loader2,
 } from "lucide-react";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +19,7 @@ import { DownloadOtpVerification } from "@/components/view/dataroom/download-otp
 type Job = {
   id: string;
   status: string;
+  phase?: "VALIDATING" | "BUILDING" | "ZIPPING";
   progress: number;
   totalFiles: number;
   processedFiles: number;
@@ -29,9 +32,34 @@ type Job = {
   expiresAt?: string;
 };
 
+function getJobStatusLabel(job: Job, t: TFunction<"dataroom">): string {
+  if (job.status === "COMPLETED") return t("downloadsPanel.ready", "Ready");
+  if (job.status === "FAILED")
+    return job.error || t("downloadsPanel.failedFallback", "Failed");
+  if (job.status === "PROCESSING") {
+    if (job.totalFiles > 0) {
+      return t("downloadsPanel.filesCount", "{{processed}} / {{total}} files", {
+        processed: job.processedFiles,
+        total: job.totalFiles,
+      });
+    }
+    return t("downloadsPanel.creatingZip", "Creating ZIP...");
+  }
+  // PENDING — break out the sub-phase so users see meaningful progress.
+  switch (job.phase) {
+    case "VALIDATING":
+      return t("downloadsPanel.verifying", "Verifying access...");
+    case "BUILDING":
+      return t("downloadsPanel.buildingFileList", "Building file list...");
+    default:
+      return t("downloadsPanel.preparing", "Preparing...");
+  }
+}
+
 const POLL_INTERVAL_MS = 5_000;
 
 export function DownloadsPanel({ linkId }: { linkId: string }) {
+  const { t } = useTranslation("dataroom");
   const [loading, setLoading] = useState(true);
   const [hasSession, setHasSession] = useState<boolean | null>(null);
   const [email, setEmail] = useState("");
@@ -160,23 +188,21 @@ export function DownloadsPanel({ linkId }: { linkId: string }) {
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 404) {
-        setError(
-          "No access found for this email. Use the email you used to open the dataroom.",
-        );
+        setError(t("downloadsPage.errors.noAccess", "No access found for this email. Use the email you used to open the dataroom."));
         return;
       }
       if (res.status === 429) {
-        setError(data.error ?? "Too many requests. Please try again later.");
+        setError(data.error ?? t("downloadsPage.errors.rateLimit", "Too many requests. Please try again later."));
         return;
       }
       if (!res.ok) {
-        setError(data.error ?? "Something went wrong.");
+        setError(data.error ?? t("downloadsPage.errors.generic", "Something went wrong."));
         return;
       }
       // OTP sent successfully — move to verification step
       setStep("otp");
     } catch {
-      setError("Something went wrong.");
+      setError(t("downloadsPage.errors.generic", "Something went wrong."));
     } finally {
       setEmailSubmitting(false);
     }
@@ -225,15 +251,18 @@ export function DownloadsPanel({ linkId }: { linkId: string }) {
     if (!expiresAt) return "";
     const exp = new Date(expiresAt);
     const now = new Date();
-    if (exp.getTime() <= now.getTime()) return "expired";
+    if (exp.getTime() <= now.getTime()) return t("downloadsPage.expired", "expired");
     const d = Math.floor(
       (exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
     );
-    if (d > 0) return `${d} day${d > 1 ? "s" : ""}`;
+    // i18next handles `_one` vs `_other` plural keys via the `count` arg.
+    if (d > 0) return t("download.expiresDays", "{{count}} days", { count: d });
     const h = Math.floor(
       (exp.getTime() - now.getTime()) / (1000 * 60 * 60),
     );
-    return h > 0 ? `${h} hour${h > 1 ? "s" : ""}` : "soon";
+    return h > 0
+      ? t("download.expiresHours", "{{count}} hours", { count: h })
+      : t("download.expiresSoon", "soon");
   };
 
   const getJobTitle = (job: Job) => {
@@ -244,7 +273,7 @@ export function DownloadsPanel({ linkId }: { linkId: string }) {
           <span className="text-muted-foreground">
             {" "}
             — <FolderOpen className="mr-0.5 inline h-3.5 w-3" />
-            Folder: {job.folderName}
+            {t("downloadsPage.jobFolderPrefix", "Folder:")} {job.folderName}
           </span>
         </>
       );
@@ -253,7 +282,10 @@ export function DownloadsPanel({ linkId }: { linkId: string }) {
       <>
         <span className="font-medium">{job.dataroomName}</span>
         {job.type === "bulk" && (
-          <span className="text-muted-foreground"> — Full dataroom</span>
+          <span className="text-muted-foreground">
+            {" "}
+            — {t("downloadsPage.jobFullDataroom", "Full dataroom")}
+          </span>
         )}
       </>
     );
@@ -272,21 +304,25 @@ export function DownloadsPanel({ linkId }: { linkId: string }) {
   if (step === "email") {
     return (
       <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4">
-        <h1 className="text-xl font-semibold">View your downloads</h1>
+        <h1 className="text-xl font-semibold">
+          {t("downloadsPage.emailHeading", "View your downloads")}
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Enter the email you used to access this dataroom.
+          {t("downloadsPage.emailDescription", "Enter the email you used to access this dataroom.")}
         </p>
         <form onSubmit={handleEmailSubmit} className="mt-6 space-y-4">
           <Input
             type="email"
-            placeholder="you@example.com"
+            placeholder={t("downloadsPage.emailPlaceholder", "you@example.com")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" className="w-full" disabled={emailSubmitting}>
-            {emailSubmitting ? "Sending code..." : "Continue"}
+            {emailSubmitting
+              ? t("downloadsPage.sendingCode", "Sending code...")
+              : t("downloadsPage.continueButton", "Continue")}
           </Button>
         </form>
       </div>
@@ -296,7 +332,9 @@ export function DownloadsPanel({ linkId }: { linkId: string }) {
   if (step === "otp") {
     return (
       <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4">
-        <h1 className="text-xl font-semibold">Verify your email</h1>
+        <h1 className="text-xl font-semibold">
+          {t("downloadsPage.verifyEmailHeading", "Verify your email")}
+        </h1>
         <DownloadOtpVerification
           linkId={linkId}
           email={email.trim()}
@@ -308,9 +346,9 @@ export function DownloadsPanel({ linkId }: { linkId: string }) {
 
   return (
     <div className="mx-auto min-h-screen max-w-2xl px-4 py-10">
-      <h1 className="text-xl font-semibold">Your downloads</h1>
+      <h1 className="text-xl font-semibold">{t("downloadsPage.title", "Your downloads")}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Download your prepared files below. Links expire after 3 days.
+        {t("downloadsPage.description", "Download your prepared files below. Links expire after 3 days.")}
       </p>
 
       {jobsLoading && jobs.length === 0 ? (
@@ -319,8 +357,7 @@ export function DownloadsPanel({ linkId }: { linkId: string }) {
         </div>
       ) : jobs.length === 0 ? (
         <p className="mt-8 text-sm text-muted-foreground">
-          You have no downloads yet. Start a download from the dataroom to see
-          it here.
+          {t("downloadsPage.empty", "You have no downloads yet. Start a download from the dataroom to see it here.")}
         </p>
       ) : (
         <ul className="mt-6 space-y-4">
@@ -346,11 +383,7 @@ export function DownloadsPanel({ linkId }: { linkId: string }) {
                   <FileArchive className="h-4 w-4 shrink-0 text-muted-foreground" />
                 )}
                 <span className="text-muted-foreground">
-                  {job.status === "COMPLETED"
-                    ? "Ready"
-                    : job.status === "PROCESSING"
-                      ? `${job.processedFiles} / ${job.totalFiles} files`
-                      : job.status}
+                  {getJobStatusLabel(job, t)}
                 </span>
               </div>
               {job.status === "COMPLETED" &&
@@ -363,7 +396,7 @@ export function DownloadsPanel({ linkId }: { linkId: string }) {
                         onClick={() => handleDownload(job.downloadUrls![0])}
                       >
                         <Download className="mr-1 h-3 w-3" />
-                        Download
+                        {t("cards.download", "Download")}
                       </Button>
                     ) : (
                       <>
@@ -379,12 +412,14 @@ export function DownloadsPanel({ linkId }: { linkId: string }) {
                           {expandedJobId === job.id ? (
                             <>
                               <ChevronUp className="mr-1 h-3 w-3" />
-                              Hide parts
+                              {t("downloadsPage.hideParts", "Hide parts")}
                             </>
                           ) : (
                             <>
                               <ChevronDown className="mr-1 h-3 w-3" />
-                              Show parts ({job.downloadUrls!.length})
+                              {t("downloadsPage.showParts", "Show parts ({{count}})", {
+                                count: job.downloadUrls!.length,
+                              })}
                             </>
                           )}
                         </Button>
@@ -401,18 +436,22 @@ export function DownloadsPanel({ linkId }: { linkId: string }) {
                               {downloadProgress?.jobId === job.id ? (
                                 <>
                                   <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                                  Downloading {downloadProgress.current} of{" "}
-                                  {downloadProgress.total}...
+                                  {t("download.downloadingProgress", "Downloading {{current}} of {{total}}...", {
+                                    current: downloadProgress.current,
+                                    total: downloadProgress.total,
+                                  })}
                                 </>
                               ) : (
                                 <>
                                   <Download className="mr-2 h-3 w-3" />
-                                  Download all ({job.downloadUrls!.length} parts)
+                                  {t("download.downloadAll", "Download all ({{count}} parts)", {
+                                    count: job.downloadUrls!.length,
+                                  })}
                                 </>
                               )}
                             </Button>
                             <p className="text-xs text-muted-foreground">
-                              Or download individually:
+                              {t("downloadsPage.orIndividual", "Or download individually:")}
                             </p>
                             <div className="max-h-32 space-y-1 overflow-y-auto">
                               {job.downloadUrls!.map((url, i) => (
@@ -424,7 +463,10 @@ export function DownloadsPanel({ linkId }: { linkId: string }) {
                                   onClick={() => handleDownload(url)}
                                 >
                                   <FileArchive className="mr-2 h-3 w-3" />
-                                  Part {i + 1} of {job.downloadUrls!.length}
+                                  {t("downloadsPage.partOf", "Part {{index}} of {{total}}", {
+                                    index: i + 1,
+                                    total: job.downloadUrls!.length,
+                                  })}
                                 </Button>
                               ))}
                             </div>
@@ -434,7 +476,9 @@ export function DownloadsPanel({ linkId }: { linkId: string }) {
                     )}
                     {job.expiresAt && (
                       <span className="text-xs text-muted-foreground">
-                        Expires {formatExpiration(job.expiresAt)}
+                        {t("downloadsPage.expiresPrefix", "Expires {{time}}", {
+                          time: formatExpiration(job.expiresAt),
+                        })}
                       </span>
                     )}
                   </div>

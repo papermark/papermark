@@ -72,7 +72,7 @@ export default function Welcome() {
   return (
     <>
       <GTMComponent />
-      <div className="mx-auto flex h-screen max-w-3xl flex-col items-center justify-center overflow-x-hidden">
+      <div className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center overflow-x-hidden overflow-y-auto py-10">
         <AnimatePresence mode="wait">
           {router.query.type ? (
             <>
@@ -131,7 +131,10 @@ export default function Welcome() {
               />
             )}
           {router.query.type === "dataroom-ai-generate" && (
-            <DataroomAIGenerate key="dataroom-ai-generate" />
+            <DataroomAIGenerate
+              key="dataroom-ai-generate"
+              dataroomId={router.query.dataroomId as string | undefined}
+            />
           )}
         </AnimatePresence>
       </div>

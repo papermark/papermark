@@ -97,7 +97,7 @@ export function LinkOptionContainer({
 
   return (
     <motion.div
-      className="z-10 flex flex-col space-y-10 text-center"
+      className="z-10 flex flex-col space-y-10 px-5 text-center sm:px-0"
       variants={{
         hidden: { opacity: 0, scale: 0.95 },
         show: {
@@ -120,7 +120,7 @@ export function LinkOptionContainer({
         <h1
           className={
             `font-display mx-auto text-center text-3xl font-semibold text-foreground transition-colors sm:text-4xl ` +
-            (showLinkSettings ? "whitespace-nowrap" : "max-w-md")
+            (showLinkSettings ? "" : "max-w-md")
           }
         >
           {showLinkSettings

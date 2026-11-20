@@ -8,7 +8,6 @@ import { useAnalytics } from "@/lib/analytics";
 
 import { SlackIcon } from "@/components/shared/icons/slack-icon";
 import X from "@/components/shared/icons/x";
-import { Button } from "@/components/ui/button";
 
 export default function SlackBanner({
   setShowSlackBanner,
@@ -34,30 +33,24 @@ export default function SlackBanner({
   };
 
   return (
-    <aside className="relative mb-2 flex w-full flex-col justify-center rounded-lg border border-gray-700 bg-background p-4 text-foreground">
+    <aside className="relative mb-2 flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-background px-3 py-2 text-foreground">
+      <SlackIcon className="h-4 w-4 shrink-0" />
+      <span className="grow text-sm text-foreground">Connect Slack</span>
+      <button
+        type="button"
+        onClick={handleConnectSlack}
+        className="shrink-0 rounded-sm text-sm font-medium text-foreground ring-offset-background transition-colors hover:text-foreground/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        Set up
+      </button>
       <button
         type="button"
         onClick={handleHideBanner}
-        className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+        className="shrink-0 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
       >
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </button>
-      <div className="flex items-center space-x-2">
-        <SlackIcon className="h-5 w-5" />
-        <span className="text-sm font-bold">Connect Slack</span>
-      </div>
-      <p className="my-4 text-sm">Get visit notifications in Slack channel.</p>
-      <div className="flex">
-        <Button
-          type="button"
-          variant="outline"
-          className="grow"
-          onClick={handleConnectSlack}
-        >
-          Set up Slack
-        </Button>
-      </div>
     </aside>
   );
 }

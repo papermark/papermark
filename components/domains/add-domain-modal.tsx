@@ -2,7 +2,7 @@ import { type ElementType, useEffect, useRef, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
 import { PlanEnum } from "@/ee/stripe/constants";
-import { LinkType } from "@prisma/client";
+import { Domain, LinkType } from "@prisma/client";
 import { AlertTriangleIcon, CircleCheckIcon, InfoIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useDebounce } from "use-debounce";
@@ -99,7 +99,7 @@ export function AddDomainModal({
 }: {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  onAddition?: (newDomain: string) => void;
+  onAddition?: (newDomain: Domain) => void;
   linkType?: Omit<LinkType, "WORKFLOW_LINK">;
   children?: React.ReactNode;
 }) {

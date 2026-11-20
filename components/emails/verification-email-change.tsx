@@ -1,3 +1,5 @@
+import React from "react";
+
 import {
   Body,
   Container,
@@ -5,11 +7,10 @@ import {
   Heading,
   Html,
   Link,
-  Preview,
   Section,
   Tailwind,
   Text,
-} from "@react-email/components";
+} from "react-email";
 
 import { Footer } from "./shared/footer";
 
@@ -27,7 +28,6 @@ export function ConfirmEmailChange({
   return (
     <Html>
       <Head />
-      <Preview>Confirm your email address change</Preview>
       <Tailwind>
         <Body className="mx-auto my-auto bg-white font-sans">
           <Container className="mx-auto my-10 max-w-[500px] rounded border border-solid border-gray-200 px-10 py-5">
@@ -36,15 +36,13 @@ export function ConfirmEmailChange({
                 <span className="font-bold tracking-tighter">Papermark</span>
               </Text>
               <Heading className="mx-0 my-7 p-0 text-center text-xl font-semibold text-black">
-                Your Papermark Email Change Confirmation Link
+                Confirm your email address change
               </Heading>
             </Section>
-            <Heading className="text-sm leading-6 text-black">
-              Confirm your email address change
-            </Heading>
             <Text className="text-sm leading-6 text-black">
-              Follow this link to confirm the update to your email from{" "}
-              <strong>{email}</strong> to <strong>{newEmail}</strong>.
+              An email address change was requested for Papermark. Follow the
+              link below to confirm the update from <strong>{email}</strong> to{" "}
+              <strong>{newEmail}</strong>.
             </Text>
             <Section className="my-8 text-center">
               <Link

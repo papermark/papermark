@@ -4,7 +4,6 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
 import { errorhandler } from "@/lib/errorHandler";
-import { copyFileToBucketServer } from "@/lib/files/copy-file-to-bucket-server";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 import { supportsAdvancedExcelMode } from "@/lib/utils/get-content-type";
@@ -77,15 +76,6 @@ export default async function handle(
         return res.status(400).json({
           message:
             "Advanced mode is only available for Excel files (.xls, .xlsx, .xlsm).",
-        });
-      }
-
-      // If enabling advanced mode, copy file to bucket
-      if (enabled && !document.advancedExcelEnabled) {
-        await copyFileToBucketServer({
-          filePath: documentVersion.file,
-          storageType: documentVersion.storageType,
-          teamId,
         });
       }
 

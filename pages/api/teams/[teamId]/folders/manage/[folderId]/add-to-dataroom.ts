@@ -135,6 +135,17 @@ export default async function handle(
         });
       }
 
+      const dataroom = await prisma.dataroom.findUnique({
+        where: { id: dataroomId, teamId },
+        select: { isFrozen: true },
+      });
+      if (dataroom?.isFrozen) {
+        return res.status(403).json({
+          message:
+            "This data room is frozen. You cannot add folders to a frozen data room.",
+        });
+      }
+
       try {
         const folderContents = await fetchFolderContents(folderId);
         await createDataroomStructure(dataroomId, folderContents);

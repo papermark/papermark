@@ -33,6 +33,10 @@ import {
 import { FADE_IN_ANIMATION_SETTINGS } from "@/lib/constants";
 import { WatermarkConfig, WatermarkConfigSchema } from "@/lib/types";
 
+import WatermarkPreview from "./watermark-preview";
+
+const PREVIEW_PLACEHOLDER_TEXT = "Confidential {{email}}";
+
 interface WatermarkConfigSheetProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -49,6 +53,16 @@ export default function WatermarkConfigSheet({
   const [formValues, setFormValues] =
     useState<Partial<WatermarkConfig>>(initialConfig);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const previewConfig: WatermarkConfig = {
+    text: formValues.text?.trim() ? formValues.text : PREVIEW_PLACEHOLDER_TEXT,
+    isTiled: formValues.isTiled ?? false,
+    position: formValues.position ?? "middle-center",
+    rotation: formValues.rotation ?? 45,
+    color: formValues.color ?? "#000000",
+    fontSize: formValues.fontSize ?? 24,
+    opacity: formValues.opacity ?? 0.5,
+  };
 
   useEffect(() => {
     setFormValues(initialConfig);
@@ -85,7 +99,7 @@ export default function WatermarkConfigSheet({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent className="flex h-full flex-col">
+      <SheetContent className="flex h-full flex-col sm:max-w-6xl">
         <SheetHeader>
           <SheetTitle>Watermark Configuration</SheetTitle>
           <SheetDescription>
@@ -93,7 +107,9 @@ export default function WatermarkConfigSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <ScrollArea className="flex-1">
+        <div className="flex min-h-0 flex-1 flex-col gap-6 lg:flex-row lg:gap-8">
+          {/* Settings column */}
+          <ScrollArea className="min-h-0 flex-1 lg:w-[360px] lg:flex-none lg:pr-4">
           <motion.div
             className="relative mt-4 space-y-3"
             {...FADE_IN_ANIMATION_SETTINGS}
@@ -305,7 +321,16 @@ export default function WatermarkConfigSheet({
               </div>
             </div>
           </motion.div>
-        </ScrollArea>
+          </ScrollArea>
+
+          {/* Separator */}
+          <div className="hidden lg:block lg:w-px lg:self-stretch lg:bg-border" />
+
+          {/* Preview column */}
+          <div className="min-h-0 flex-1 overflow-y-auto lg:pl-2">
+            <WatermarkPreview config={previewConfig} />
+          </div>
+        </div>
 
         <SheetFooter className="flex-shrink-0">
           <Button onClick={validateAndSave}>Save Watermark</Button>

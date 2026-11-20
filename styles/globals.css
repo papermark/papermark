@@ -137,3 +137,145 @@
     contain: paint; /* Optimize rendering */
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Scroll mask utilities — adapted from https://twilson.net/scroll-mask
+ *
+ * Adds a soft mask-image fade to scroll containers so users can tell there is
+ * more content to scroll to. Pure CSS using scroll-driven animations: the
+ * `--scroll-mask-*-from` custom properties are interpolated by
+ * `animation-timeline: scroll(self ...)`, so the fade appears on the trailing
+ * edge of the scroll axis and disappears as you reach each end. No JS, no
+ * resize/scroll observers.
+ *
+ * Classes:
+ *   .scroll-mask-y / .scroll-mask-x  — fade both ends of an axis
+ *   .scroll-mask-t / .scroll-mask-b  — fade a single vertical edge
+ *   .scroll-mask-l / .scroll-mask-r  — fade a single horizontal edge
+ *
+ * Progressively enhanced via @supports — browsers without scroll-driven
+ * animations (Safari, Firefox at the time of writing) get the unmasked
+ * scroll container with no fallback, no degraded UX.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+@property --scroll-mask-t-from {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+@property --scroll-mask-b-from {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+@property --scroll-mask-l-from {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+@property --scroll-mask-r-from {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+
+@keyframes scroll-mask-y-scroll {
+  0% {
+    --scroll-mask-t-from: 100%;
+  }
+  10%,
+  100% {
+    --scroll-mask-t-from: var(--scroll-mask-fade-from-t, 100%);
+  }
+  0%,
+  90% {
+    --scroll-mask-b-from: var(--scroll-mask-fade-from-b, 100%);
+  }
+  100% {
+    --scroll-mask-b-from: 100%;
+  }
+}
+
+@keyframes scroll-mask-x-scroll {
+  0% {
+    --scroll-mask-l-from: 100%;
+  }
+  10%,
+  100% {
+    --scroll-mask-l-from: var(--scroll-mask-fade-from-l, 100%);
+  }
+  0%,
+  90% {
+    --scroll-mask-r-from: var(--scroll-mask-fade-from-r, 100%);
+  }
+  100% {
+    --scroll-mask-r-from: 100%;
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  :where(
+      [class^="scroll-mask-"],
+      [class*=" scroll-mask-"]
+    ) {
+    --scroll-mask-t: linear-gradient(
+      to top,
+      black,
+      black var(--scroll-mask-t-from),
+      transparent
+    );
+    --scroll-mask-b: linear-gradient(
+      to bottom,
+      black,
+      black var(--scroll-mask-b-from),
+      transparent
+    );
+    --scroll-mask-l: linear-gradient(
+      to left,
+      black,
+      black var(--scroll-mask-l-from),
+      transparent
+    );
+    --scroll-mask-r: linear-gradient(
+      to right,
+      black,
+      black var(--scroll-mask-r-from),
+      transparent
+    );
+    -webkit-mask-image: var(--scroll-mask-t), var(--scroll-mask-b),
+      var(--scroll-mask-l), var(--scroll-mask-r);
+    mask-image: var(--scroll-mask-t), var(--scroll-mask-b),
+      var(--scroll-mask-l), var(--scroll-mask-r);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+    animation:
+      scroll-mask-y-scroll linear,
+      scroll-mask-x-scroll linear;
+    animation-timeline:
+      scroll(self block),
+      scroll(self inline);
+  }
+}
+
+@layer utilities {
+  .scroll-mask-t {
+    --scroll-mask-fade-from-t: 80%;
+  }
+  .scroll-mask-b {
+    --scroll-mask-fade-from-b: 80%;
+  }
+  .scroll-mask-y {
+    --scroll-mask-fade-from-t: 80%;
+    --scroll-mask-fade-from-b: 80%;
+  }
+  .scroll-mask-l {
+    --scroll-mask-fade-from-l: 80%;
+  }
+  .scroll-mask-r {
+    --scroll-mask-fade-from-r: 80%;
+  }
+  .scroll-mask-x {
+    --scroll-mask-fade-from-l: 80%;
+    --scroll-mask-fade-from-r: 80%;
+  }
+}

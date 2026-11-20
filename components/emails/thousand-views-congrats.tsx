@@ -8,7 +8,7 @@ import {
   Preview,
   Tailwind,
   Text,
-} from "@react-email/components";
+} from "react-email";
 
 interface ThousandViewsCongratsEmailProps {
   name: string | null | undefined;

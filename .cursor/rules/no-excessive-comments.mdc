@@ -1,0 +1,15 @@
+---
+description: Keep comments and docstrings minimal and intentional
+globs: *,**/*
+alwaysApply: true
+---
+
+# Comments & docstrings
+
+- Do NOT add comments that merely narrate what the code does. The code should be self-explanatory through clear naming.
+- Avoid obvious, redundant comments like `// import the module`, `// loop over items`, `// return the result`, `// set state`.
+- Do NOT add a comment or docstring above every function, type, or block by default.
+- Only write a comment when it adds information the code cannot convey: non-obvious intent, a tricky edge case, a workaround, a perf/security trade-off, an external constraint, or a link to context.
+- Never use comments to explain the change you just made or to talk to the reviewer. Use the PR/commit message for that.
+- Prefer deleting a stale or wrong comment over leaving it.
+- Match the surrounding file: if a module already documents public APIs with docstrings, follow that convention; otherwise don't introduce new boilerplate docs.

@@ -2,6 +2,7 @@ import { useCallback } from "react";
 
 import { DocumentStorageType } from "@prisma/client";
 import { FileRejection, useDropzone } from "react-dropzone";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
 import { VIEWER_ACCEPTED_FILE_TYPES } from "@/lib/constants";
@@ -23,6 +24,7 @@ export default function ViewerUploadZone({
   onUploadRejected,
   viewerData,
   teamId,
+  taskId,
   maxFileSize = 350, // 350 MB default, matches paid admin document limits
   disabled = false,
 }: {
@@ -39,23 +41,34 @@ export default function ViewerUploadZone({
     dataroomId?: string;
   };
   teamId: string;
+  /** When set, uploads fulfill a Request List task and bypass the link's
+   *  generic upload toggle (gated by task assignment server-side). */
+  taskId?: string;
   maxFileSize?: number;
   disabled?: boolean;
 }) {
+  // Viewer-only component: it is mounted exclusively inside the data room
+  // viewer tree, so the `dataroom` namespace is always available.
+  const { t } = useTranslation("dataroom");
+
   const onDropRejected = useCallback(
     (rejectedFiles: FileRejection[]) => {
       const rejected = rejectedFiles.map(({ file, errors }) => {
         let message = "";
         if (errors.find(({ code }) => code === "file-too-large")) {
-          message = `File size too big (max. ${maxFileSize} MB).`;
+          message = t(
+            "uploadZone.rejectedTooLarge",
+            "File size too big (max. {{size}} MB).",
+            { size: maxFileSize },
+          );
         } else if (errors.find(({ code }) => code === "file-invalid-type")) {
-          message = `File type not supported.`;
+          message = t("uploadZone.rejectedType", "File type not supported.");
         }
         return { fileName: file.name, message };
       });
       onUploadRejected(rejected);
     },
-    [onUploadRejected, maxFileSize],
+    [onUploadRejected, maxFileSize, t],
   );
 
   const onDrop = useCallback(
@@ -92,11 +105,16 @@ export default function ViewerUploadZone({
           },
           onError: (error) => {
             console.error("Upload error:", error);
-            toast.error(`Failed to upload ${file.name}`);
+            toast.error(
+              t("uploadZone.toastFileFailed", "Failed to upload {{name}}", {
+                name: file.name,
+              }),
+            );
           },
           viewerData,
           teamId,
           numPages,
+          taskId,
         });
 
         const uploadResult = await complete;
@@ -104,9 +122,35 @@ export default function ViewerUploadZone({
         let contentType = uploadResult.fileType;
         let supportedFileType = getSupportedContentType(contentType) ?? "";
 
+        if (
+          uploadResult.fileName.toLowerCase().endsWith(".md") ||
+          uploadResult.fileName.toLowerCase().endsWith(".markdown")
+        ) {
+          supportedFileType = "docs";
+          contentType = "text/markdown";
+        }
+
         if (uploadResult.fileName.endsWith(".xlsm")) {
           supportedFileType = "sheet";
           contentType = "application/vnd.ms-excel.sheet.macroEnabled.12";
+        }
+
+        if (
+          uploadResult.fileName.endsWith(".tif") ||
+          uploadResult.fileName.endsWith(".tiff")
+        ) {
+          supportedFileType = "other";
+          contentType = "image/tiff";
+        }
+
+        if (uploadResult.fileName.endsWith(".ecw")) {
+          supportedFileType = "other";
+          contentType = "image/x-ecw";
+        }
+
+        if (uploadResult.fileName.endsWith(".bak")) {
+          supportedFileType = "other";
+          contentType = "application/x-bak";
         }
 
         const documentData: DocumentData = {
@@ -128,13 +172,23 @@ export default function ViewerUploadZone({
 
       try {
         await Promise.all(uploadPromises);
-        toast.success("File upload complete!");
+        toast.success(t("uploadZone.toastComplete", "File upload complete!"));
       } catch (error) {
         console.error("Upload error:", error);
-        toast.error("An error occurred during upload");
+        toast.error(
+          t("uploadZone.toastError", "An error occurred during upload"),
+        );
       }
     },
-    [onUploadStart, onUploadProgress, onUploadComplete, viewerData, teamId],
+    [
+      onUploadStart,
+      onUploadProgress,
+      onUploadComplete,
+      viewerData,
+      teamId,
+      taskId,
+      t,
+    ],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -147,7 +201,7 @@ export default function ViewerUploadZone({
   });
 
   return (
-    <div {...getRootProps()} className="relative min-w-0 min-h-[200px]">
+    <div {...getRootProps()} className="relative min-h-[200px] min-w-0">
       <div
         className={cn(
           "absolute inset-0 z-40 -m-1 rounded-lg border-2 border-dashed",
@@ -167,10 +221,13 @@ export default function ViewerUploadZone({
           <div className="flex h-full items-center justify-center">
             <div className="inline-flex flex-col rounded-lg bg-background/95 px-6 py-4 text-center ring-1 ring-gray-900/5 dark:bg-gray-900/95 dark:ring-white/10">
               <span className="font-medium text-foreground">
-                Drop your file(s) here
+                {t("uploadZone.dropActive", "Drop your file(s) here")}
               </span>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                PDF, Office, images, ZIP, and more
+                {t(
+                  "uploadZone.dropActiveHint",
+                  "PDF, Office, images, ZIP, and more",
+                )}
               </p>
             </div>
           </div>

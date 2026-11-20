@@ -103,19 +103,19 @@ export const BASE_FEATURES: Record<PlanEnum, PlanFeatures> = {
         isUsers: true,
         usersIncluded: 3,
       },
+      { id: "folder-sharing", text: "Folder sharing" },
       { 
         id: "datarooms", 
         text: "Multi-file sharing",
         tooltip: "Allow you to share multiple files and folders in a single links. Simplified data rooms settings for sharing multiple files and folders. "
       },
       { id: "documents", text: "1000 documents" },
+      { id: "custom-branding", text: "Custom branding" },
       {
         id: "custom-domain",
         text: "Custom domain for documents",
         isCustomDomain: true,
       },
-     
-      
       { id: "custom-social-cards", text: "Custom social media cards" },
       { id: "screenshot", text: "Screenshot protection" },
       { id: "email-verify", text: "Require email verification" },
@@ -164,6 +164,7 @@ export const BASE_FEATURES: Record<PlanEnum, PlanFeatures> = {
         isUsers: true,
         usersIncluded: 5,
       },
+      { id: "datarooms", text: "Unlimited data rooms" },
       { id: "documents", text: "Unlimited documents in data rooms" },
       {
         id: "custom-domain",
@@ -172,15 +173,16 @@ export const BASE_FEATURES: Record<PlanEnum, PlanFeatures> = {
         highlight: true,
       },
       { id: "audit", text: "Audit log for visitors" },
-      { id: "email-invite", text: "Email invite viewers" },
+      { id: "email-invite", text: "Invite data room visitors via email" },
 
+      { id: "introduction", text: "Data room introduction page" },
       { id: "qa", text: "Q&A module with custom permissions" },
       { id: "requests", text: "File requests with permissions" },
       { id: "indexing", text: "Automatic file indexing" },
       { id: "invite", text: "Dataroom update notifications" },
       { id: "soc2", text: "SOC 2 Type II certified" },
-      { id: "account-manager", text: "Dedicated account manager" },
-      { id: "support", text: "24/7 priority support" },
+      { id: "account-manager", text: "Dedicated account manager & 24/7 support" },
+      // { id: "support", text: "24/7 priority support" },
       // { id: "retention", text: "3-year analytics retention" },
     ],
   },
@@ -197,6 +199,7 @@ export const BASE_FEATURES: Record<PlanEnum, PlanFeatures> = {
         isUsers: true,
         usersIncluded: 10,
       },
+      { id: "datarooms", text: "Unlimited data rooms" },
       { id: "storage", text: "Unlimited encrypted storage", highlight: true },
       { id: "file-size", text: "No file size limit" },
       { id: "workflows", text: "Workflows" },
@@ -205,8 +208,8 @@ export const BASE_FEATURES: Record<PlanEnum, PlanFeatures> = {
       { id: "whitelabel", text: "White labeling" },
       { id: "api", text: "Full API access" },
       { id: "security", text: "Advanced security and certification" },
-      { id: "onboarding", text: "Priority onboarding & training" },
-      { id: "support", text: "Dedicated support team" },
+      { id: "onboarding", text: "Priority onboarding & Dedicated support team" },
+  
     ],
   },
   [PlanEnum.DataRoomsUnlimited]: {

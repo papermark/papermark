@@ -5,6 +5,7 @@ import ErrorPage from "next/error";
 import { Suspense, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
+import { RedactionLauncher } from "@/ee/features/redaction/components/redaction-launcher";
 import { PlanEnum } from "@/ee/stripe/constants";
 
 import { useDocumentLinks } from "@/lib/swr/use-document";
@@ -63,6 +64,14 @@ const VisitorsTable = dynamic(
   },
 );
 
+const BulkImportLinksModal = dynamic(
+  () =>
+    import("@/components/links/bulk-import-modal").then((mod) => ({
+      default: mod.BulkImportLinksModal,
+    })),
+  { ssr: false },
+);
+
 export default function DocumentPage() {
   const {
     data: overview,
@@ -82,6 +91,7 @@ export default function DocumentPage() {
   const teamId = teamInfo?.currentTeam?.id;
 
   const [isLinkSheetOpen, setIsLinkSheetOpen] = useState<boolean>(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState<boolean>(false);
 
   // Mutate function that updates both overview and links
   const mutateDocument = () => {
@@ -107,12 +117,14 @@ export default function DocumentPage() {
       );
     } else {
       return (
-        <Button
-          className="flex h-8 whitespace-nowrap text-xs lg:h-9 lg:text-sm"
-          onClick={() => setIsLinkSheetOpen(true)}
-        >
-          Create Link
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            className="flex h-8 whitespace-nowrap text-xs lg:h-9 lg:text-sm"
+            onClick={() => setIsLinkSheetOpen(true)}
+          >
+            Create Link
+          </Button>
+        </div>
       );
     }
   };
@@ -121,7 +133,7 @@ export default function DocumentPage() {
   if (overviewLoading) {
     return (
       <AppLayout>
-        <main className="relative mx-2 mb-10 mt-4 space-y-8 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
+        <main className="relative mx-2 mb-10 mt-4 space-y-8 px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
           <div className="flex h-screen items-center justify-center">
             <LoadingSpinner className="mr-1 h-20 w-20" />
           </div>
@@ -133,7 +145,7 @@ export default function DocumentPage() {
   if (!prismaDocument || !primaryVersion || !teamId) {
     return (
       <AppLayout>
-        <main className="relative mx-2 mb-10 mt-4 space-y-8 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
+        <main className="relative mx-2 mb-10 mt-4 space-y-8 px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
           <div className="flex h-screen items-center justify-center">
             <LoadingSpinner className="mr-1 h-20 w-20" />
           </div>
@@ -144,12 +156,13 @@ export default function DocumentPage() {
 
   return (
     <AppLayout>
-      <main className="relative mx-2 mb-10 mt-4 space-y-8 overflow-hidden px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
+      <main className="relative mx-2 mb-10 mt-4 space-y-8 px-1 sm:mx-3 md:mx-5 md:mt-5 lg:mx-7 lg:mt-8 xl:mx-10">
         {/* Action Header - Shows immediately */}
         <DocumentHeader
           primaryVersion={primaryVersion}
           prismaDocument={prismaDocument}
           teamId={teamId}
+          onBulkImportLinks={() => setIsBulkImportOpen(true)}
           actions={[
             <NotionAccessibilityIndicator
               key={"notion-status"}
@@ -170,8 +183,14 @@ export default function DocumentPage() {
               advancedExcelEnabled={prismaDocument.advancedExcelEnabled}
               variant="outline"
               size="default"
-              showTooltip={false}
+              showTooltip
               className="h-8 whitespace-nowrap text-xs lg:h-9 lg:text-sm"
+            />,
+            <RedactionLauncher
+              key={"redaction-launcher"}
+              documentId={prismaDocument.id}
+              documentName={prismaDocument.name}
+              documentType={primaryVersion.type}
             />,
             <AddLinkButton key={"create-link"} />,
           ]}
@@ -219,6 +238,7 @@ export default function DocumentPage() {
               targetType={"DOCUMENT"}
               primaryVersion={primaryVersion}
               mutateDocument={mutateDocument}
+              onBulkImportOpen={() => setIsBulkImportOpen(true)}
             />
 
             {/* Visitors - Always show */}
@@ -234,6 +254,14 @@ export default function DocumentPage() {
           linkType="DOCUMENT_LINK"
           setIsOpen={setIsLinkSheetOpen}
           existingLinks={links}
+        />
+
+        <BulkImportLinksModal
+          isOpen={isBulkImportOpen}
+          setIsOpen={setIsBulkImportOpen}
+          targetType="DOCUMENT"
+          targetId={prismaDocument.id}
+          onImported={mutateDocument}
         />
       </main>
     </AppLayout>

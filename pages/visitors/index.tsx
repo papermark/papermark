@@ -7,10 +7,10 @@ import useViewers from "@/lib/swr/use-viewers";
 
 import AppLayout from "@/components/layouts/app";
 import { SearchBoxPersisted } from "@/components/search-box";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContactsTable } from "@/components/visitors/contacts-table";
 import { VisitorGroupsSection } from "@/components/visitors/visitor-groups-section";
+import { VisitorStatusFilter } from "@/components/visitors/visitor-status-filter";
 
 export default function Visitors() {
   const router = useRouter();
@@ -22,12 +22,14 @@ export default function Visitors() {
   const [activeTab, setActiveTab] = useState(
     (router.query.tab as string) || "visitors",
   );
+  const [status, setStatus] = useState("all");
 
-  const { viewers, pagination, isValidating } = useViewers(
+  const { viewers, anonymous, pagination, isValidating } = useViewers(
     currentPage,
     pageSize,
     sortBy,
     sortOrder,
+    status,
   );
 
   const handlePageChange = (page: number) => {
@@ -47,7 +49,7 @@ export default function Visitors() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [router.query.search]);
+  }, [router.query.search, status]);
 
   useEffect(() => {
     if (isFree && !isTrial) router.push("/documents");
@@ -77,35 +79,41 @@ export default function Visitors() {
               All visitors
             </h2>
             <p className="text-xs text-muted-foreground sm:text-sm">
-              See all your visitors and manage visitor groups.
+              See everyone who visited, was invited, or is on a link allow list,
+              and manage visitor groups.
             </p>
           </div>
         </section>
 
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="visitors">Visitors</TabsTrigger>
-            <TabsTrigger value="groups">Visitor Groups</TabsTrigger>
-          </TabsList>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <TabsList>
+              <TabsTrigger value="visitors">Visitors</TabsTrigger>
+              <TabsTrigger value="groups">Visitor Groups</TabsTrigger>
+            </TabsList>
+
+            {activeTab === "visitors" ? (
+              <div className="flex items-center gap-x-2">
+                <VisitorStatusFilter value={status} onChange={setStatus} />
+                <div className="relative w-full sm:max-w-xs">
+                  <SearchBoxPersisted
+                    loading={isValidating}
+                    placeholder="Search visitors..."
+                    inputClassName="h-10"
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
 
           <TabsContent value="visitors">
-            <div className="mb-2 flex justify-end gap-x-2">
-              <div className="relative w-full sm:max-w-xs">
-                <SearchBoxPersisted
-                  loading={isValidating}
-                  placeholder="Search visitors..."
-                  inputClassName="h-10"
-                />
-              </div>
-            </div>
-
-            <Separator className="bg-gray-200 dark:bg-gray-800" />
-
-            <div className="relative pt-4">
+            <div className="relative">
               <ContactsTable
                 viewers={viewers}
+                anonymous={anonymous}
                 pagination={pagination}
                 sorting={{ sortBy, sortOrder }}
+                isFiltered={!!router.query.search || status !== "all"}
                 onPageChange={handlePageChange}
                 onPageSizeChange={handlePageSizeChange}
                 onSortChange={handleSortChange}

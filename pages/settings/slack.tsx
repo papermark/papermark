@@ -65,6 +65,7 @@ export default function SlackSettings() {
     loading: loadingChannels,
     error: channelsError,
     mutate: mutateChannels,
+    refresh: refreshChannels,
   } = useSlackChannels({
     enabled: !!integration,
   });
@@ -363,14 +364,14 @@ export default function SlackSettings() {
   const handleRefreshChannels = useCallback(async () => {
     setRefreshingChannels(true);
     try {
-      await mutateChannels();
+      await refreshChannels();
       toast.success("Channel list refreshed");
     } catch (error) {
       toast.error("Failed to refresh channel list");
     } finally {
       setRefreshingChannels(false);
     }
-  }, [mutateChannels]);
+  }, [refreshChannels]);
 
   return (
     <AppLayout>

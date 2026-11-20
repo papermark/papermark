@@ -10,7 +10,7 @@ export async function getDubDiscountForExternalUserId(externalId: string) {
       externalId,
       includeExpandedFields: true,
     });
-    const first = customers[0];
+    const first = customers.result[0];
     const couponId =
       process.env.NODE_ENV !== "production" && first?.discount?.couponTestId
         ? first.discount.couponTestId

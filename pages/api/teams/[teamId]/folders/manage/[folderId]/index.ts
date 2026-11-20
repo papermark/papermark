@@ -50,17 +50,13 @@ export default async function handle(
         });
       }
 
-      const folder = await prisma.folder.findUnique({
+      const folder = await prisma.folder.findFirst({
         where: {
           id: folderId,
+          teamId,
         },
         select: {
-          _count: {
-            select: {
-              documents: true,
-              childFolders: true,
-            },
-          },
+          id: true,
         },
       });
 
@@ -70,8 +66,7 @@ export default async function handle(
         });
       }
 
-      // Delete the folder and its contents
-      await deleteFolderAndContents(folderId, teamId);
+      await deleteFolderAndContents(folder.id, teamId);
 
       return res.status(204).end(); // 204 No Content response for successful deletes
     } catch (error) {
@@ -90,6 +85,10 @@ async function deleteFolderAndContents(folderId: string, teamId: string) {
   const childFoldersToDelete = await prisma.folder.findMany({
     where: {
       parentId: folderId,
+      teamId,
+    },
+    select: {
+      id: true,
     },
   });
 
@@ -97,12 +96,15 @@ async function deleteFolderAndContents(folderId: string, teamId: string) {
     await deleteFolderAndContents(childFolder.id, teamId);
   }
 
-  // Delete all documents in the folder
+  // Delete all documents in the folder. Notion and web-link documents store an
+  // external URL rather than a real storage object, so they're excluded from
+  // the storage cleanup below (deleteFile would fail on their URL).
   const documents = await prisma.document.findMany({
     where: {
       folderId: folderId,
+      teamId,
       type: {
-        not: "notion",
+        notIn: ["notion", "link"],
       },
     },
     include: {
@@ -117,7 +119,7 @@ async function deleteFolderAndContents(folderId: string, teamId: string) {
     },
   });
 
-  documents.map(async (documentVersions: { versions: any }) => {
+  for (const documentVersions of documents) {
     for (const version of documentVersions.versions) {
       await deleteFile({
         type: version.storageType,
@@ -125,18 +127,19 @@ async function deleteFolderAndContents(folderId: string, teamId: string) {
         teamId,
       });
     }
-  });
+  }
 
   await prisma.document.deleteMany({
     where: {
       folderId: folderId,
+      teamId,
     },
   });
 
-  // Delete the folder itself
-  await prisma.folder.delete({
+  await prisma.folder.deleteMany({
     where: {
       id: folderId,
+      teamId,
     },
   });
 }

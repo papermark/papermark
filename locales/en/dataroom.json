@@ -1,0 +1,233 @@
+{
+  "shell": {
+    "dataRoomEyebrow": "Data room",
+    "updatedOn": "Updated {{date}}",
+    "lastUpdated": "Last updated {{date}}",
+    "secureFooter": "Secured by",
+    "papermark": "Papermark",
+    "copyright": "© {{year}}{{name}}"
+  },
+  "tabs": {
+    "documents": "Documents",
+    "myUploads": "My Uploads"
+  },
+  "search": {
+    "placeholder": "Search...",
+    "results": "Search results for \"{{query}}\"",
+    "resultCount_one": "({{count}} result across all folders)",
+    "resultCount_other": "({{count}} results across all folders)",
+    "noMatches": "No documents match your search."
+  },
+  "breadcrumb": {
+    "home": "Home"
+  },
+  "empty": {
+    "noItems": "No items available.",
+    "noUploads": "No uploads yet. Upload documents using the \"Add Document\" button."
+  },
+  "cards": {
+    "updated": "Updated {{when}}",
+    "processing": "(Processing...)",
+    "actionsLabel": "Actions",
+    "download": "Download",
+    "openMenu": "Open menu",
+    "openDocument": "Open document {{name}}",
+    "openFolder": "Open folder {{name}}",
+    "documents": "Documents",
+    "folder": "Folder",
+    "folderBadge": "FOLDER"
+  },
+  "compactList": {
+    "name": "Name",
+    "updated": "Updated",
+    "settings": "Settings"
+  },
+  "trailingActions": {
+    "viewQA": "View Q&A",
+    "downloadDataroom": "Download Dataroom",
+    "teamMemberTooltip": "Skipped verification because you are a team member; no analytics will be collected"
+  },
+  "navToasts": {
+    "cannotDownloadPreview": "You cannot download datarooms in preview mode.",
+    "cannotDownloadDocPreview": "You cannot download dataroom document in preview mode.",
+    "cannotDownloadFolderPreview": "You cannot download dataroom folders in preview mode.",
+    "foldersNotAllowed": "Downloading folders is not allowed.",
+    "enterEmailFirst": "Enter your email in the dataroom to download.",
+    "documentStillProcessing": "Document is still processing. Please wait a moment and try again.",
+    "downloadPreparing": "Preparing download...",
+    "downloadSuccess": "File downloaded successfully",
+    "downloadFailed": "Failed to download file"
+  },
+  "intro": {
+    "viewIntroduction": "View introduction",
+    "title": "Welcome to {{name}}",
+    "defaultName": "Data Room",
+    "continueButton": "Continue to Data Room"
+  },
+  "upload": {
+    "trigger": "Add Document",
+    "title": "Upload Document to Dataroom",
+    "description": "Your document will appear immediately in the dataroom and will be processed in the background.",
+    "destinationLabel": "Destination folder",
+    "selectDestination": "Select destination folder",
+    "uploadingTo": "Uploading to:",
+    "setByOwner": "(set by the dataroom owner)",
+    "success": "Document uploaded successfully!",
+    "successDescription": "Your document is now visible in the dataroom.",
+    "previewDisabled": "Uploading files isn't available in preview mode."
+  },
+  "download": {
+    "folderTitle": "Download folder: {{name}}",
+    "dataroomTitle": "Download {{name}}",
+    "defaultName": "Dataroom",
+    "chooseDescription": "Start the download. You can optionally get an email when it's ready.",
+    "otpDescription": "Verify your email to receive download notifications.",
+    "ready": "Your files are ready to download.",
+    "preparing": "Preparing your files...",
+    "notifyByEmail": "Notify me by email when the download is ready",
+    "needsVerification": "You'll need to verify your email with a one-time code first.",
+    "starting": "Starting...",
+    "start": "Start download",
+    "cancel": "Cancel",
+    "viewDownloads": "View your downloads",
+    "openDownloads": "Open downloads page",
+    "preparingShort": "Preparing...",
+    "processingFiles": "Processing {{processed}} of {{total}} files...",
+    "complete": "Your download is ready!",
+    "failed": "Download failed.",
+    "downloadZip": "Download ZIP",
+    "downloadAll": "Download all ({{count}} parts)",
+    "downloadingProgress": "Downloading {{current}} of {{total}}...",
+    "part": "Part {{index}}",
+    "expiresIn": "Expires in {{time}}",
+    "expiresLessThanHour": "less than an hour",
+    "expiresDays_one": "{{count}} day",
+    "expiresDays_other": "{{count}} days",
+    "expiresHours_one": "{{count}} hour",
+    "expiresHours_other": "{{count}} hours",
+    "willEmailWhenReady": "You can close this. We'll email you when it's ready.",
+    "checkBackOnDownloads": "You can close this. Check back on the downloads page when it's ready.",
+    "tryAgain": "Try again",
+    "startFailed": "Failed to start download",
+    "statusFetchFailed": "Failed to fetch status",
+    "expiresSoon": "soon"
+  },
+  "downloadsPage": {
+    "title": "Your downloads",
+    "description": "Download your prepared files below. Links expire after 3 days.",
+    "emailHeading": "View your downloads",
+    "emailDescription": "Enter the email you used to access this dataroom.",
+    "emailPlaceholder": "you@example.com",
+    "sendingCode": "Sending code...",
+    "continueButton": "Continue",
+    "verifyEmailHeading": "Verify your email",
+    "empty": "You have no downloads yet. Start a download from the dataroom to see it here.",
+    "jobFolderPrefix": "Folder:",
+    "jobFullDataroom": "Full dataroom",
+    "expired": "expired",
+    "expiresPrefix": "Expires {{time}}",
+    "hideParts": "Hide parts",
+    "showParts": "Show parts ({{count}})",
+    "orIndividual": "Or download individually:",
+    "partOf": "Part {{index}} of {{total}}",
+    "errors": {
+      "noAccess": "No access found for this email. Use the email you used to open the dataroom.",
+      "rateLimit": "Too many requests. Please try again later.",
+      "generic": "Something went wrong."
+    }
+  },
+  "downloadOtp": {
+    "defaultDescription": "We sent a 6-digit code to <email>{{email}}</email>. Enter it below to verify and receive download notifications.",
+    "verify": "Verify",
+    "verifying": "Verifying...",
+    "noEmail": "Didn't receive the email?",
+    "resending": "Sending...",
+    "resend": "Resend code",
+    "resendIn": "Resend code ({{seconds}}s)",
+    "sendFailed": "Failed to send code",
+    "invalidCode": "Invalid code"
+  },
+  "downloadsPanel": {
+    "ready": "Ready",
+    "failedFallback": "Failed",
+    "creatingZip": "Creating ZIP...",
+    "filesCount": "{{processed}} / {{total}} files",
+    "verifying": "Verifying access...",
+    "buildingFileList": "Building file list...",
+    "preparing": "Preparing..."
+  },
+  "folderPicker": {
+    "home": "Home"
+  },
+  "indexFile": {
+    "trigger": "Generate Index File",
+    "title": "Generate Dataroom Index File",
+    "description": "Select a format to generate the index file.",
+    "selectFormat": "Select Format",
+    "generate": "Generate",
+    "generating": "Generating...",
+    "successToast": "Index file generated successfully",
+    "errorToast": "Failed to generate index",
+    "genericError": "Something went wrong. Please try again.",
+    "previewDisabled": "Generating an index file isn't available in preview mode."
+  },
+  "requestList": {
+    "trigger": "Request List",
+    "title": "Request List",
+    "summaryEmpty": "Requests assigned to you appear here.",
+    "summaryPending_one": "{{count}} request needs your attention.",
+    "summaryPending_other": "{{count}} requests need your attention.",
+    "summaryDone": "You're all caught up. Awaiting host review.",
+    "emptyTitle": "Nothing to action",
+    "emptyDescription": "No requests are assigned to you right now.",
+    "due": "Due {{date}}",
+    "overdue": "overdue",
+    "lockedByHost": "Marked completed by the host",
+    "commentPlaceholder": "Add a note for the host (optional)…",
+    "commentPlaceholderLocked": "Add a comment…",
+    "submitComment": "Add comment",
+    "submitStatus": "Update request",
+    "submitDefault": "Send update",
+    "activityHeading": "Activity",
+    "uploadsHeading": "Your files",
+    "uploadRequired": "File required",
+    "uploadProcessing": "Processing",
+    "toastUpdated": "Request updated",
+    "toastCommented": "Comment added",
+    "toastFailed": "Failed to update",
+    "status": {
+      "OPEN": "Open",
+      "IN_PROGRESS": "In progress",
+      "SUBMITTED": "Submitted",
+      "COMPLETED": "Completed"
+    },
+    "activity": {
+      "you": "You",
+      "someone": "Someone",
+      "empty": "No activity yet.",
+      "created": "created the request",
+      "assigned": "updated the assignees",
+      "uploaded": "uploaded {{name}}",
+      "uploadedFallback": "uploaded a file",
+      "statusFromTo": "changed status from {{from}} to {{to}}",
+      "statusTo": "set status to {{status}}",
+      "statusChanged": "changed the status",
+      "updated": "updated the request"
+    }
+  },
+  "uploadZone": {
+    "dropzoneTitle": "Drag & drop files here, or click to select files",
+    "dropzoneHint": "Supported: PDF, Office, spreadsheets, images, ZIP, and more",
+    "dropActive": "Drop your file(s) here",
+    "dropActiveHint": "PDF, Office, images, ZIP, and more",
+    "rejectedTitle": "Some files were rejected:",
+    "rejectedTooLarge": "File size too big (max. {{size}} MB).",
+    "rejectedType": "File type not supported.",
+    "toastComplete": "File upload complete!",
+    "toastError": "An error occurred during upload",
+    "toastFileFailed": "Failed to upload {{name}}",
+    "toastUploadFailed": "Failed to upload document",
+    "errorProcessFailed": "Failed to process upload",
+    "errorMissingMetadata": "Upload response missing document metadata"
+  }
+}

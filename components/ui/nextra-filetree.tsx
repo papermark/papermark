@@ -71,7 +71,7 @@ function Tree({
         className={cn("nextra-filetree !mt-0 w-full select-none text-sm")}
         style={style}
       >
-        <div className="block space-y-1 rounded-lg">{children}</div>
+        <div className="block space-y-1">{children}</div>
       </div>
     </prefersLightTextCtx.Provider>
   );
@@ -82,7 +82,7 @@ function Ident(): ReactElement {
   return (
     <>
       {Array.from({ length }, (_, i) => (
-        <span className="w-5" key={i} />
+        <span className="w-5 shrink-0" key={i} />
       ))}
     </>
   );
@@ -133,15 +133,15 @@ const Folder = memo<FolderProps>(
     return (
       <li
         className={cn(
-          "flex w-full list-none flex-col",
+          "flex w-full min-w-0 list-none flex-col",
           hasChildren && "space-y-1",
         )}
       >
         <div
           title={name}
           className={cn(
-            "inline-flex w-full cursor-pointer items-center overflow-hidden",
-            "rounded-md duration-100",
+            "flex w-full min-w-0 cursor-pointer items-center rounded-md",
+            "duration-100",
             prefersLightText
               ? "text-[var(--viewer-text)] hover:bg-[var(--viewer-control-bg)]"
               : "text-foreground hover:bg-gray-100 hover:dark:bg-muted",
@@ -157,7 +157,7 @@ const Folder = memo<FolderProps>(
         >
           <Ident />
           <div
-            className="-m-1 -ml-2 flex h-full items-center justify-center rounded p-2"
+            className="-m-1 -ml-2 flex h-full shrink-0 items-center justify-center p-2"
             onClick={handleChevronClick}
           >
             <ChevronRightIcon
@@ -173,11 +173,13 @@ const Folder = memo<FolderProps>(
             <FolderIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
           )}
           <span
-            className="ml-2 truncate whitespace-nowrap"
-            style={{
-              maxWidth: `${Math.max(150, 300 - indent * 30)}px`,
-            }}
-            title={(label ?? name) as string}
+            className={cn(
+              "ml-2 min-w-0 flex-1",
+              // A label does its own truncation; clipping here would cut off whatever
+              // it places after the name.
+              label ? "flex items-center gap-2" : "truncate whitespace-nowrap",
+            )}
+            title={name}
           >
             {label ?? name}
           </span>
@@ -194,7 +196,6 @@ const Folder = memo<FolderProps>(
 Folder.displayName = "Folder";
 
 const File = memo<FileProps>(({ label, name, active, onToggle }) => {
-  const indent = useIndent();
   const prefersLightText = usePrefersLightText();
   const toggle = useCallback(() => {
     onToggle?.(!active);
@@ -203,30 +204,30 @@ const File = memo<FileProps>(({ label, name, active, onToggle }) => {
   return (
     <li
       className={cn(
-        "flex list-none",
-        "rounded-md duration-100",
+        "flex min-w-0 list-none rounded-md",
+        "duration-100",
         prefersLightText
           ? "text-[var(--viewer-muted-text)] hover:bg-[var(--viewer-control-bg)]"
           : "text-foreground hover:bg-gray-100 hover:dark:bg-muted",
         "px-3 py-1.5 leading-6",
         active &&
           (prefersLightText
-            ? "bg-[var(--viewer-panel-active)] text-[var(--viewer-text)] font-semibold"
+            ? "bg-[var(--viewer-panel-active)] font-semibold text-[var(--viewer-text)]"
             : "bg-gray-100 font-semibold dark:bg-muted"),
       )}
     >
       <span
-        className="ml-5 inline-flex w-full cursor-default items-center overflow-hidden"
+        className="ml-5 flex w-full min-w-0 cursor-default items-center"
         onClick={toggle}
       >
         <Ident />
         <FileIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
         <span
-          className="ml-2 truncate whitespace-nowrap"
-          style={{
-            maxWidth: `${Math.max(150, 280 - indent * 30)}px`,
-          }}
-          title={(label ?? name) as string}
+          className={cn(
+            "ml-2 min-w-0 flex-1",
+            label ? "flex items-center gap-2" : "truncate whitespace-nowrap",
+          )}
+          title={name}
         >
           {label ?? name}
         </span>

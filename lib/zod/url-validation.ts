@@ -8,9 +8,11 @@ import {
 import {
   getNotionPageIdFromSlug,
   isCustomNotionDomain,
+  isStandardNotionHostname,
 } from "@/lib/notion/utils";
-import { sanitizePlainText } from "@/lib/utils/sanitize-html";
+import { isPublicHostnameLiteral } from "@/lib/utils/ssrf-protection";
 import { getSupportedContentType } from "@/lib/utils/get-content-type";
+import { sanitizePlainText } from "@/lib/utils/sanitize-html";
 
 /**
  * Validates basic security aspects of paths and URLs
@@ -42,33 +44,13 @@ export const validatePathSecurity = (pathOrUrl: string): boolean => {
 export const validateUrlSSRFProtection = (url: string): boolean => {
   try {
     const urlObj = new URL(url);
-    const hostname = urlObj.hostname;
-
-    // Block localhost/loopback
-    if (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "::1"
-    ) {
+    if (urlObj.username || urlObj.password) {
       return false;
     }
 
-    // Block private IP ranges (simplified check)
-    if (hostname.match(/^10\.|^172\.(1[6-9]|2[0-9]|3[01])\.|^192\.168\./)) {
-      return false;
-    }
-
-    // Block link-local addresses
-    if (hostname.match(/^169\.254\./)) {
-      return false;
-    }
-
-    // Block IPv6 link-local addresses (fe80::/10)
-    if (hostname.toLowerCase().startsWith("fe80:")) {
-      return false;
-    }
-
-    return true;
+    // Synchronous validation only catches literal hosts. Network fetchers must
+    // resolve DNS and re-check redirect targets before connecting.
+    return isPublicHostnameLiteral(urlObj.hostname);
   } catch {
     return false;
   }
@@ -96,12 +78,7 @@ const createFilePathValidator = () => {
             const urlObj = new URL(path);
             const hostname = urlObj.hostname;
 
-            // Valid notion domains
-            const validNotionDomains = ["www.notion.so", "notion.so"];
-
-            // Check for notion.site subdomains (e.g., example-something.notion.site)
-            const isNotionSite = hostname.endsWith(".notion.site");
-            const isValidNotionDomain = validNotionDomains.includes(hostname);
+            const isValidNotionDomain = isStandardNotionHostname(hostname);
 
             // Check for vercel blob storage
             let isVercelBlob = false;
@@ -110,7 +87,7 @@ const createFilePathValidator = () => {
             }
 
             // If it's not a standard Notion domain or Vercel blob, check if it's a custom Notion domain
-            if (!isNotionSite && !isValidNotionDomain && !isVercelBlob) {
+            if (!isValidNotionDomain && !isVercelBlob) {
               try {
                 let pageId = parsePageId(path);
                 if (!pageId) {
@@ -125,7 +102,7 @@ const createFilePathValidator = () => {
               }
             }
 
-            return isNotionSite || isValidNotionDomain || isVercelBlob;
+            return isValidNotionDomain || isVercelBlob;
           } catch {
             return false;
           }
@@ -168,13 +145,10 @@ export const notionUrlUpdateSchema = z
         const urlObj = new URL(url);
         const hostname = urlObj.hostname;
 
-        // Valid notion domains
-        const validNotionDomains = ["www.notion.so", "notion.so"];
-        const isNotionSite = hostname.endsWith(".notion.site");
-        const isValidNotionDomain = validNotionDomains.includes(hostname);
+        const isValidNotionDomain = isStandardNotionHostname(hostname);
 
         // If it's a standard Notion domain, try to extract page ID
-        if (isNotionSite || isValidNotionDomain) {
+        if (isValidNotionDomain) {
           let pageId = parsePageId(url);
           if (!pageId) {
             try {
@@ -204,7 +178,7 @@ export const notionUrlUpdateSchema = z
     },
     {
       message:
-        "Must be a valid Notion URL (supports notion.so, notion.site, and custom domains)",
+        "Must be a valid Notion URL (supports app.notion.com, notion.com, notion.so, notion.site, and custom domains)",
     },
   )
   .refine(
@@ -328,12 +302,7 @@ export const documentUploadSchema = z
           try {
             const urlObj = new URL(data.url);
             const hostname = urlObj.hostname;
-            const isStandardNotion =
-              hostname === "www.notion.so" ||
-              hostname === "notion.so" ||
-              hostname.endsWith(".notion.site");
-
-            if (isStandardNotion) {
+            if (isStandardNotionHostname(hostname)) {
               return true;
             }
 
@@ -362,12 +331,8 @@ export const documentUploadSchema = z
           try {
             const urlObj = new URL(data.url);
             const hostname = urlObj.hostname;
-            const isStandardNotion =
-              hostname === "www.notion.so" ||
-              hostname === "notion.so" ||
-              hostname.endsWith(".notion.site");
 
-            if (isStandardNotion) {
+            if (isStandardNotionHostname(hostname)) {
               return true;
             }
 

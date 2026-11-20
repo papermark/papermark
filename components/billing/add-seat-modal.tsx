@@ -181,7 +181,7 @@ export function AddSeatModal({
 
           {minQuantity > 1 && (
             <p className="mt-2 text-center text-sm text-muted-foreground">
-              Minimum quantity for {planName}: {minQuantity} users
+              Your {planName} plan includes {minQuantity} seats
             </p>
           )}
         </div>
@@ -191,7 +191,7 @@ export function AddSeatModal({
             {loading ? "Redirecting..." : "Proceed to checkout"}
           </Button>
           <Link
-            href="/settings/upgrade"
+            href="/settings/billing/upgrade"
             className="block w-full text-center text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
             onClick={() => setOpen(false)}
           >

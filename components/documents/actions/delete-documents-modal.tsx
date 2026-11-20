@@ -139,7 +139,7 @@ function DeleteItemsModal({
           await mutate(
             `/api/teams/${
               teamInfo?.currentTeam?.id
-            }/folders/documents/${folderPathName.join("/")}`,
+            }/folder-documents/${folderPathName.join("/")}`,
           );
         } else {
           const { search, sort, page, limit } = router.query;

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { isViewerAssigned } from "@/ee/features/request-lists/lib/assignments";
 import { MultiRegionS3Store } from "@/ee/features/storage/s3-store";
 import { CopyObjectCommand } from "@aws-sdk/client-s3";
 import { Server } from "@tus/server";
@@ -7,7 +8,7 @@ import path from "node:path";
 
 import { verifyDataroomSessionInPagesRouter } from "@/lib/auth/dataroom-auth";
 import { getTeamS3ClientAndConfig } from "@/lib/files/aws-client";
-import { safeSlugify } from "@/lib/utils";
+import { buildContentDisposition, safeSlugify } from "@/lib/utils";
 import { RedisLocker } from "@/lib/files/tus-redis-locker";
 import { newId } from "@/lib/id-helper";
 import prisma from "@/lib/prisma";
@@ -25,6 +26,95 @@ const locker = new RedisLocker({
   redisClient: lockerRedisClient,
 });
 
+/**
+ * Validates a viewer upload and resolves the team the file belongs to.
+ *
+ * Shared by `namingFunction` and `onUploadCreate` so the same authorization is
+ * enforced when the transfer starts and when the upload record is created.
+ *
+ * Request List task uploads are gated by task assignment rather than the link's
+ * generic `enableUpload` toggle — mirroring `/api/links/[id]/upload` — so a file
+ * required by an assigned UPLOAD task can be sent even when the link/group does
+ * not otherwise allow visitor uploads. Throws when the upload is not permitted.
+ */
+async function resolveViewerUploadTeamId(metadata: {
+  teamId: string;
+  viewerId: string;
+  linkId: string;
+  dataroomId: string;
+  taskId?: string;
+}): Promise<string> {
+  const { teamId, viewerId, linkId, dataroomId, taskId } = metadata;
+
+  if (teamId !== "visitor-upload") {
+    throw new Error("Unauthorized to access this team");
+  }
+
+  const link = await prisma.link.findUnique({
+    where: {
+      id: linkId,
+      dataroomId: dataroomId || null,
+    },
+    select: { teamId: true, enableUpload: true },
+  });
+
+  if (!link || !link.teamId) {
+    throw new Error("Upload not allowed");
+  }
+
+  const viewer = await prisma.viewer.findUnique({
+    where: { id: viewerId },
+    select: {
+      teamId: true,
+      email: true,
+      groups: { select: { groupId: true } },
+    },
+  });
+
+  if (!viewer || viewer.teamId !== link.teamId) {
+    throw new Error("Unauthorized to access this team");
+  }
+
+  const isTaskUpload = typeof taskId === "string" && taskId.length > 0;
+
+  if (!link.enableUpload) {
+    if (!isTaskUpload) {
+      throw new Error("Upload not allowed");
+    }
+
+    const task = await prisma.task.findFirst({
+      where: { id: taskId, dataroomId },
+      select: {
+        type: true,
+        assignments: {
+          select: {
+            email: true,
+            viewerId: true,
+            groupId: true,
+            linkId: true,
+          },
+        },
+      },
+    });
+
+    const assigned =
+      !!task &&
+      task.type === "UPLOAD" &&
+      isViewerAssigned(task.assignments, {
+        viewerId,
+        email: viewer.email ?? null,
+        linkId,
+        groupIds: new Set(viewer.groups.map((g) => g.groupId)),
+      });
+
+    if (!assigned) {
+      throw new Error("Upload not allowed");
+    }
+  }
+
+  return link.teamId;
+}
+
 const tusServer = new Server({
   // `path` needs to match the route declared by the next file router
   path: "/api/file/tus-viewer",
@@ -34,43 +124,26 @@ const tusServer = new Server({
   datastore: new MultiRegionS3Store(),
   async namingFunction(req, metadata) {
     // Extract viewer data from metadata
-    const { teamId, fileName, viewerId, linkId, dataroomId } = metadata as {
-      teamId: string;
-      fileName: string;
-      viewerId: string;
-      linkId: string;
-      dataroomId: string;
-    };
+    const { teamId, fileName, viewerId, linkId, dataroomId, taskId } =
+      metadata as {
+        teamId: string;
+        fileName: string;
+        viewerId: string;
+        linkId: string;
+        dataroomId: string;
+        taskId?: string;
+      };
 
     // Validate the viewer exists and has permission
-    let teamIdToUse = teamId;
+    let teamIdToUse: string;
     try {
-      if (teamId !== "visitor-upload") {
-        throw new Error("Unauthorized to access this team");
-      }
-
-      const link = await prisma.link.findUnique({
-        where: {
-          id: linkId,
-          dataroomId: dataroomId || null,
-        },
-        select: { teamId: true, enableUpload: true },
+      teamIdToUse = await resolveViewerUploadTeamId({
+        teamId,
+        viewerId,
+        linkId,
+        dataroomId,
+        taskId,
       });
-
-      if (!link || !link.enableUpload || !link.teamId) {
-        throw new Error("Upload not allowed");
-      }
-
-      const viewer = await prisma.viewer.findUnique({
-        where: { id: viewerId },
-        select: { teamId: true },
-      });
-
-      if (!viewer || viewer.teamId !== link.teamId) {
-        throw new Error("Unauthorized to access this team");
-      }
-
-      teamIdToUse = link.teamId;
     } catch (error) {
       console.error("Error validating viewer:", error);
       throw new Error("Unauthorized");
@@ -100,41 +173,25 @@ const tusServer = new Server({
   },
   async onUploadCreate(req, res, upload) {
     // Extract viewer data from metadata
-    const { teamId, fileName, viewerId, linkId, dataroomId } =
+    const { teamId, viewerId, linkId, dataroomId, taskId } =
       upload.metadata as {
         teamId: string;
         fileName: string;
         viewerId: string;
         dataroomId: string;
         linkId: string;
+        taskId?: string;
       };
 
     // Validate the viewer exists and has permission
     try {
-      if (teamId !== "visitor-upload") {
-        throw new Error("Unauthorized to access this team");
-      }
-
-      const link = await prisma.link.findUnique({
-        where: {
-          id: linkId,
-          dataroomId: dataroomId || null,
-        },
-        select: { teamId: true, enableUpload: true },
+      await resolveViewerUploadTeamId({
+        teamId,
+        viewerId,
+        linkId,
+        dataroomId,
+        taskId,
       });
-
-      if (!link || !link.enableUpload || !link.teamId) {
-        throw new Error("Upload not allowed");
-      }
-
-      const viewer = await prisma.viewer.findUnique({
-        where: { id: viewerId },
-        select: { teamId: true },
-      });
-
-      if (!viewer || viewer.teamId !== link.teamId) {
-        throw new Error("Unauthorized to access this team");
-      }
 
       return res;
     } catch (error) {
@@ -148,7 +205,10 @@ const tusServer = new Server({
       const contentType = metadata.contentType || "application/octet-stream";
       const { name, ext } = path.parse(metadata.fileName!);
       const originalFileName = `${name}${ext}`;
-      const contentDisposition = `attachment; filename="${safeSlugify(name)}${ext}"; filename*=UTF-8''${encodeURIComponent(originalFileName)}`;
+      const contentDisposition = buildContentDisposition(
+        originalFileName,
+        `${safeSlugify(name)}${ext}`,
+      );
 
       // The Key (object path) where the file was uploaded
       const objectKey = upload.id;

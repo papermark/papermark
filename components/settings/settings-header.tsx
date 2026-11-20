@@ -12,7 +12,7 @@ export function SettingsHeader() {
       <section className="mb-4 flex items-center justify-between md:mb-8 lg:mb-12">
         <div className="space-y-1">
           <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-            Settings
+            General Settings
           </h1>
           <p className="text-xs text-muted-foreground sm:text-sm">
             Manage your account settings
@@ -53,11 +53,6 @@ export function SettingsHeader() {
             segment: "agreements",
           },
           {
-            label: "Webhooks",
-            href: `/settings/webhooks`,
-            segment: "webhooks",
-          },
-          {
             label: "Notifications",
             href: `/settings/notifications`,
             segment: "notifications",
@@ -74,16 +69,14 @@ export function SettingsHeader() {
             disabled: !features?.ai,
           },
           {
-            label: "Tokens",
-            href: `/settings/tokens`,
-            segment: "tokens",
-            disabled: !features?.tokens,
+            label: "Webhooks",
+            href: `/settings/webhooks`,
+            segment: "webhooks",
           },
           {
-            label: "API",
-            href: `/settings/incoming-webhooks`,
-            segment: "incoming-webhooks",
-            disabled: !features?.incomingWebhooks,
+            label: "API Keys",
+            href: `/settings/tokens`,
+            segment: "tokens",
           },
           {
             label: "Security",
@@ -95,7 +88,6 @@ export function SettingsHeader() {
             label: "Billing",
             href: `/settings/billing`,
             segment: "billing",
-            disabled: !isAdmin,
           },
         ]}
       />

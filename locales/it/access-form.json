@@ -1,0 +1,56 @@
+{
+  "welcome": {
+    "fallback": "È richiesta la tua azione per continuare"
+  },
+  "buttons": {
+    "continue": "Continua",
+    "verifying": "Verifica in corso..."
+  },
+  "fields": {
+    "email": {
+      "label": "Indirizzo e-mail",
+      "placeholder": "Inserisci l'e-mail",
+      "errorInvalid": "Inserisci un indirizzo e-mail valido",
+      "sharedWithSender": "Questi dati saranno condivisi con il mittente.",
+      "sharedWithProvider": "Questi dati saranno condivisi con il fornitore del contenuto."
+    },
+    "password": {
+      "label": "Codice di accesso",
+      "placeholder": "Inserisci il codice di accesso"
+    },
+    "name": {
+      "label": "Nome",
+      "placeholder": "Inserisci il tuo nome completo"
+    },
+    "url": {
+      "errorInvalid": "Inserisci un URL valido che inizi con https://"
+    },
+    "phone": {
+      "placeholderDefault": "+39 02 1234 5678"
+    }
+  },
+  "agreement": {
+    "fallbackPrefix": "Ho letto e accetto i termini di questo"
+  },
+  "verification": {
+    "title": "Verifica il tuo indirizzo e-mail",
+    "description": "Inserisci il codice di verifica di sei cifre inviato a <email>{{email}}</email>",
+    "errorInvalid": "Codice non valido. Riprova.",
+    "noEmail": "Non hai ricevuto l'e-mail?",
+    "resending": "Invio nuovo codice...",
+    "resendIn": "Invia nuovo codice ({{seconds}} s)",
+    "resend": "Invia nuovo codice"
+  },
+  "footer": {
+    "sharedSecurelyVia": "Questo documento è condiviso con te in modo sicuro tramite",
+    "sharedSecurelyViaDataroom": "Questa data room è condivisa con te in modo sicuro tramite",
+    "papermark": "Papermark",
+    "seeHowWeProtect": "Scopri come proteggiamo i tuoi dati nella nostra",
+    "privacyPolicy": "Informativa sulla privacy"
+  },
+  "reauth": {
+    "title": "Verifica che sei tu",
+    "description": "Questo file è stato caricato da te. Per riaprirlo, conferma di controllare <email>{{email}}</email>.",
+    "otpDescription": "Abbiamo inviato un codice di 6 cifre a <email>{{email}}</email>. Inseriscilo di seguito per accedere al tuo file."
+  }
+}

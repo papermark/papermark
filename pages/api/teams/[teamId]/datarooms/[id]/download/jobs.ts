@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth";
 
+import { enforceDataroomMemberScope } from "@/lib/api/rbac/guard";
 import { generateFreshPresignedUrl } from "@/lib/files/bulk-download-presign";
 import prisma from "@/lib/prisma";
 import {
@@ -37,11 +38,25 @@ export default async function handler(
             teamId: teamId,
           },
         },
-        select: { teamId: true },
+        select: { teamId: true, role: true },
       });
 
       if (!teamAccess) {
         return res.status(403).end("Unauthorized to access this team");
+      }
+
+      // Team membership alone would expose the download history of a room a
+      // scoped member was never assigned to.
+      if (
+        await enforceDataroomMemberScope({
+          userId,
+          teamId,
+          dataroomId,
+          res,
+          role: teamAccess.role,
+        })
+      ) {
+        return;
       }
 
       // Get download jobs for this dataroom

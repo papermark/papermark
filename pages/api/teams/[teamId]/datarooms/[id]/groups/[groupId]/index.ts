@@ -48,6 +48,7 @@ export default async function handle(
         where: {
           id: groupId,
           dataroomId: dataroomId,
+          teamId: teamId,
         },
         include: {
           members: {
@@ -70,6 +71,10 @@ export default async function handle(
           accessControls: true,
         },
       });
+
+      if (!group) {
+        return res.status(404).end("Group not found");
+      }
 
       return res.status(200).json(group);
     } catch (error) {
@@ -177,22 +182,25 @@ export default async function handle(
         return res.status(401).end("Unauthorized");
       }
 
-      // delete links associated with the group
-      await prisma.link.deleteMany({
-        where: {
-          groupId: groupId,
-          dataroomId: dataroomId,
-        },
-      });
+      await prisma.$transaction([
+        // delete links associated with the group
+        prisma.link.deleteMany({
+          where: {
+            groupId: groupId,
+            dataroomId: dataroomId,
+            teamId: teamId,
+          },
+        }),
 
-      // delete group
-      await prisma.viewerGroup.delete({
-        where: {
-          id: groupId,
-          dataroomId: dataroomId,
-          teamId: teamId,
-        },
-      });
+        // delete group
+        prisma.viewerGroup.delete({
+          where: {
+            id: groupId,
+            dataroomId: dataroomId,
+            teamId: teamId,
+          },
+        }),
+      ]);
 
       res.status(200).json({ success: true });
       return;

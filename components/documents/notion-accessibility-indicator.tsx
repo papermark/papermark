@@ -271,7 +271,7 @@ export default function NotionAccessibilityIndicator({
                 id="notion-url"
                 value={newUrl}
                 onChange={(e) => setNewUrl(e.target.value)}
-                placeholder="https://www.notion.so/your-page-url"
+                placeholder="https://www.notion.com/your-page-url"
                 className="w-full"
               />
             </div>

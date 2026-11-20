@@ -1,4 +1,4 @@
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { useState } from "react";
 
@@ -13,24 +13,34 @@ import StatsChart from "./stats-chart";
 export const StatsComponent = ({
   documentId,
   numPages,
+  dataroomId,
 }: {
   documentId: string;
   numPages: number;
+  /**
+   * When set, the stats are scoped to this data room's visits only (used on the
+   * dataroom-scoped document page).
+   */
+  dataroomId?: string;
 }) => {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const router = useRouter();
 
   const initialExclude = searchParams?.get("excludeInternal") === "true";
   const [excludeTeamMembers, setExcludeTeamMembers] =
     useState<boolean>(initialExclude);
 
-  const statsData = useStats({ excludeTeamMembers });
+  const statsData = useStats({ excludeTeamMembers, documentId, dataroomId });
 
   const onToggle = (checked: boolean) => {
     setExcludeTeamMembers(checked);
     const params = new URLSearchParams(searchParams?.toString());
     params.set("excludeInternal", checked.toString());
-    router.push(`${documentId}/?${params.toString()}`);
+    // Update the query on the current route. Keep the pathname explicit so this
+    // works both on /documents/[id] and the dataroom-scoped document page where
+    // the route's last segment is not the document id.
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   return (

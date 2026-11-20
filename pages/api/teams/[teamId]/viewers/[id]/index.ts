@@ -4,6 +4,7 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
 import { errorhandler } from "@/lib/errorHandler";
+import { getVisitors } from "@/lib/api/visitors/get-visitors";
 import prisma from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import { getDocumentDurationPerViewer } from "@/lib/tinybird";
@@ -246,8 +247,8 @@ export default async function handle(
           const durationCacheKey = `durations:${teamId}:${id}:${currentPage}:${limit}:${sort}:${order}`;
           const durationsMap = await fetchAndCacheDurations(groupedViews, teamId, id, durationCacheKey);
 
-          // Add cache headers
-          res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+          // Per-viewer data behind auth: keep it out of shared/CDN caches.
+          res.setHeader("Cache-Control", "private, no-store");
           return res.status(200).json({ durations: durationsMap });
 
         } catch (error) {
@@ -274,8 +275,24 @@ export default async function handle(
         totalDuration: view.totalDuration || 0,
       }));
 
+      // How this person can reach the team's content: groups, allow lists,
+      // invitations, blocks. Never fatal — the profile still renders without it.
+      let access: Awaited<ReturnType<typeof getVisitors>>["visitors"][number] | null =
+        null;
+      try {
+        const { visitors } = await getVisitors({
+          teamId,
+          email: viewer.email ?? undefined,
+          pageSize: 1,
+        });
+        access = visitors[0] ?? null;
+      } catch (accessError) {
+        access = null;
+      }
+
       const newViewer = {
         ...viewer,
+        access,
         views: formattedViews,
         pagination: {
           currentPage,
@@ -294,7 +311,8 @@ export default async function handle(
       if (withDuration !== "true") {
         await redis.set(cacheKey, JSON.stringify(formattedViews), { ex: 600 }); // 10 min cache
       }
-      res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=300');
+      // Per-viewer data behind auth: keep it out of shared/CDN caches.
+      res.setHeader("Cache-Control", "private, no-store");
 
       return res.status(200).json(newViewer);
     } catch (error) {

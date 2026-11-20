@@ -1,6 +1,25 @@
 import Link from "next/link";
 
-export default function NotFound({ message }: { message?: string }) {
+/**
+ * Next.js's global 404 page, also reused by `pages/view/**` to render blocked
+ * or expired links.
+ *
+ * The label props exist so the viewer can hand in translated copy (see
+ * `components/view/viewer-not-found.tsx`). Next.js renders this page itself for
+ * genuine 404s, where no translation context exists, so every prop falls back
+ * to English.
+ */
+export default function NotFound({
+  message,
+  eyebrow = "404 error",
+  title = "Page not found.",
+  homeLabel = "Go back home",
+}: {
+  message?: string;
+  eyebrow?: string;
+  title?: string;
+  homeLabel?: string;
+}) {
   return (
     <>
       <div className="flex min-h-screen flex-col pb-12 pt-16">
@@ -8,10 +27,10 @@ export default function NotFound({ message }: { message?: string }) {
           <div className="py-16">
             <div className="text-center">
               <p className="text-sm font-semibold uppercase tracking-wide text-indigo-600">
-                404 error
+                {eyebrow}
               </p>
               <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-950 dark:text-gray-100 sm:text-5xl">
-                Page not found.
+                {title}
               </h1>
               <p className="mt-2 text-base text-gray-600">
                 {message ||
@@ -22,7 +41,7 @@ export default function NotFound({ message }: { message?: string }) {
                   href="/"
                   className="text-base font-medium text-indigo-600 hover:text-indigo-500"
                 >
-                  Go back home <span aria-hidden="true"> &rarr;</span>
+                  {homeLabel} <span aria-hidden="true"> &rarr;</span>
                 </Link>
               </div>
             </div>

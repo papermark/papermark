@@ -69,6 +69,12 @@ export default async function handle(
               select: {
                 id: true,
                 name: true,
+                type: true,
+                versions: {
+                  where: { isPrimary: true },
+                  take: 1,
+                  select: { type: true },
+                },
               },
             },
           },

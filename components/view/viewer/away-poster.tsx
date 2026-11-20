@@ -1,4 +1,5 @@
 import { Play } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 
@@ -19,17 +20,18 @@ export function AwayPoster({
   onDismiss,
   className,
 }: AwayPosterProps) {
+  const { t } = useTranslation("viewer");
   const formatTime = (ms: number) => {
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
-    
+
     if (minutes > 0) {
       return remainingSeconds > 0
-        ? `${minutes}min ${remainingSeconds}sec`
-        : `${minutes}min`;
+        ? t("awayPoster.minSec", "{{minutes}}min {{seconds}}sec", { minutes, seconds: remainingSeconds })
+        : t("awayPoster.minOnly", "{{minutes}}min", { minutes });
     }
-    return `${seconds}sec`;
+    return t("awayPoster.secOnly", "{{seconds}}sec", { seconds });
   };
 
   if (!isVisible) return null;
@@ -54,12 +56,11 @@ export function AwayPoster({
         )}
       >
         <h2 id="away-poster-title" className="sr-only">
-          Auto-paused session notification
+          {t("awayPoster.ariaTitle", "Auto-paused session notification")}
         </h2>
 
         <p id="away-poster-description" className="sr-only">
-          Your session was paused due to inactivity. Click continue or move your
-          mouse to resume.
+          {t("awayPoster.ariaDescription", "Your session was paused due to inactivity. Click continue or move your mouse to resume.")}
         </p>
 
         <div className="space-y-5">
@@ -68,32 +69,33 @@ export function AwayPoster({
               variant="outline"
               className="border-orange-400 bg-orange-100 text-orange-600"
             >
-              Auto-paused
+              {t("awayPoster.badge", "Auto-paused")}
             </Badge>
             <span className="mr-6 text-xs text-muted-foreground">
-              {formatTime(inactivityThreshold)} idle
+              {t("awayPoster.idleFor", "{{duration}} idle", {
+                duration: formatTime(inactivityThreshold),
+              })}
             </span>
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold">
-              We paused to protect your session
-            </h3>
+            <h3 className="text-lg font-semibold">{t("awayPoster.title", "We paused to protect your session")}</h3>
             <p className="text-sm text-muted-foreground">
-              You were inactive since {formatTime(inactivityThreshold)}, so we
-              paused the document preview to keep session safe.
+              {t("awayPoster.description", "You were inactive since {{duration}}, so we paused the document preview to keep session safe.", {
+                duration: formatTime(inactivityThreshold),
+              })}
             </p>
           </div>
 
           <div className="pt-2">
             <Button onClick={onDismiss} className="w-full">
               <Play className="mr-2 h-4 w-4" />
-              Continue where you left off
+              {t("awayPoster.resume", "Continue where you left off")}
             </Button>
           </div>
 
           <p className="text-center text-[11px] text-muted-foreground">
-            Or just move your mouse or press any key to continue
+            {t("awayPoster.moveHint", "Or just move your mouse or press any key to continue")}
           </p>
         </div>
       </div>

@@ -7,12 +7,21 @@ type FileSizeLimits = {
   maxPages: number;
 };
 
+type PartialFileSizeLimits = Partial<{
+  [K in keyof FileSizeLimits]: FileSizeLimits[K] | null;
+}>;
+
+const resolveFileSizeLimit = (
+  limit: number | null | undefined,
+  fallback: number,
+) => (limit === null ? Infinity : limit ?? fallback);
+
 export function getFileSizeLimits({
   limits,
   isFree,
   isTrial,
 }: {
-  limits?: { fileSizeLimits?: Partial<FileSizeLimits> } | null;
+  limits?: { fileSizeLimits?: PartialFileSizeLimits } | null;
   isFree: boolean;
   isTrial: boolean;
 }): FileSizeLimits {
@@ -33,12 +42,21 @@ export function getFileSizeLimits({
 
   // Merge custom limits with defaults
   return {
-    video: limits.fileSizeLimits.video ?? defaultLimits.video,
-    document: limits.fileSizeLimits.document ?? defaultLimits.document,
-    image: limits.fileSizeLimits.image ?? defaultLimits.image,
-    excel: limits.fileSizeLimits.excel ?? defaultLimits.excel,
-    maxFiles: limits.fileSizeLimits.maxFiles ?? defaultLimits.maxFiles,
-    maxPages: limits.fileSizeLimits.maxPages ?? defaultLimits.maxPages,
+    video: resolveFileSizeLimit(limits.fileSizeLimits.video, defaultLimits.video),
+    document: resolveFileSizeLimit(
+      limits.fileSizeLimits.document,
+      defaultLimits.document,
+    ),
+    image: resolveFileSizeLimit(limits.fileSizeLimits.image, defaultLimits.image),
+    excel: resolveFileSizeLimit(limits.fileSizeLimits.excel, defaultLimits.excel),
+    maxFiles: resolveFileSizeLimit(
+      limits.fileSizeLimits.maxFiles,
+      defaultLimits.maxFiles,
+    ),
+    maxPages: resolveFileSizeLimit(
+      limits.fileSizeLimits.maxPages,
+      defaultLimits.maxPages,
+    ),
   };
 }
 

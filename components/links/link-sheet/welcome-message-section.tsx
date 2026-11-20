@@ -10,15 +10,25 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { DEFAULT_LINK_TYPE } from ".";
 import LinkItem from "./link-item";
+import { LinkUpgradeOptions } from "./link-options";
 
 const MAX_WELCOME_MESSAGE_LENGTH = 80;
 
 export function WelcomeMessageSection({
   data,
   setData,
+  isAllowed,
+  handleUpgradeStateChange,
 }: {
   data: DEFAULT_LINK_TYPE;
   setData: React.Dispatch<React.SetStateAction<DEFAULT_LINK_TYPE>>;
+  isAllowed: boolean;
+  handleUpgradeStateChange: ({
+    state,
+    trigger,
+    plan,
+    highlightItem,
+  }: LinkUpgradeOptions) => void;
 }) {
   const { welcomeMessage } = data;
   const [enabled, setEnabled] = useState<boolean>(!!welcomeMessage);
@@ -33,9 +43,8 @@ export function WelcomeMessageSection({
   const handleWelcomeMessageToggle = () => {
     const updatedEnabled = !enabled;
     setEnabled(updatedEnabled);
-    
+
     if (!updatedEnabled) {
-      // Clear the welcome message when disabled
       setData({ ...data, welcomeMessage: null });
       setWelcomeMessageError(null);
     }
@@ -60,13 +69,23 @@ export function WelcomeMessageSection({
   return (
     <div className="pb-5">
       <LinkItem
-        title="Custom Welcome Message"
+        title="Custom welcome message"
         tooltipContent="Override the default welcome message for this link"
         enabled={enabled}
         action={handleWelcomeMessageToggle}
+        isAllowed={isAllowed}
+        requiredPlan="business"
+        upgradeAction={() =>
+          handleUpgradeStateChange({
+            state: true,
+            trigger: "link_sheet_welcome_message_section",
+            plan: "Business",
+            highlightItem: ["custom-welcome-message", "custom-cta"],
+          })
+        }
       />
 
-      {enabled && (
+      {enabled && isAllowed && (
         <motion.div
           className="relative mt-4 space-y-3"
           {...FADE_IN_ANIMATION_SETTINGS}
@@ -110,4 +129,3 @@ export function WelcomeMessageSection({
     </div>
   );
 }
-

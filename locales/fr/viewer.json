@@ -1,0 +1,141 @@
+{
+  "nav": {
+    "home": "Accueil",
+    "viewQA": "Voir les Q&R",
+    "linksOnPage": "Liens sur la page",
+    "linksOnCurrentPage": "Liens sur la page actuelle",
+    "zoomIn": "Zoom avant",
+    "zoomOut": "Zoom arrière",
+    "resetZoom": "Ajuster à l'écran",
+    "fullscreen": "Plein écran",
+    "exitFullscreen": "Quitter le plein écran",
+    "downloadDocument": "Télécharger le document",
+    "teamMemberTooltip": "Vérification ignorée car vous êtes membre de l'équipe ; aucune analyse ne sera collectée",
+    "changeLanguage": "Changer de langue"
+  },
+  "fullscreenControls": {
+    "rotate": "Pivoter",
+    "exitFullscreen": "Quitter le plein écran"
+  },
+  "toasts": {
+    "preparingDownload": "Préparation du téléchargement...",
+    "preparingDownloadWatermark": "Préparation du téléchargement avec filigrane...",
+    "downloadSuccess": "Fichier téléchargé avec succès",
+    "downloadFailed": "Échec du téléchargement du fichier",
+    "cannotDownloadPreview": "Vous ne pouvez pas télécharger de documents en mode aperçu."
+  },
+  "downloadOnly": {
+    "title": "Télécharger le document",
+    "description": "Ce document est disponible uniquement en téléchargement",
+    "button": "Télécharger maintenant"
+  },
+  "awayPoster": {
+    "title": "Nous avons mis en pause pour protéger votre session",
+    "description": "Vous êtes inactif depuis {{duration}}, nous avons donc mis en pause l'aperçu du document pour sécuriser la session.",
+    "ariaTitle": "Notification de session mise en pause automatiquement",
+    "ariaDescription": "Votre session a été mise en pause en raison d'inactivité. Cliquez sur continuer ou déplacez votre souris pour reprendre.",
+    "badge": "Mis en pause automatiquement",
+    "idleFor": "{{duration}} d'inactivité",
+    "minSec": "{{minutes}} min {{seconds}} s",
+    "minOnly": "{{minutes}} min",
+    "secOnly": "{{seconds}} s",
+    "resume": "Reprendre où vous en étiez",
+    "moveHint": "Ou déplacez simplement votre souris ou appuyez sur une touche pour continuer"
+  },
+  "poweredBy": {
+    "shareDocsVia": "Partager les documents via"
+  },
+  "report": {
+    "trigger": "Signaler un abus",
+    "title": "Signaler un problème",
+    "description": "Vous voyez quelque chose d'inapproprié ? Nous l'examinerons et, le cas échéant, prendrons des mesures.",
+    "submit": "Envoyer le signalement",
+    "successToast": "Signalement envoyé avec succès",
+    "selectTypeError": "Veuillez sélectionner un type d'abus.",
+    "types": {
+      "spam": "Spam, fraude ou arnaque",
+      "malware": "Logiciel malveillant ou virus",
+      "copyright": "Violation de droits d'auteur",
+      "harmful": "Contenu nuisible",
+      "notWorking": "Le contenu ne fonctionne pas correctement",
+      "other": "Autre"
+    }
+  },
+  "qa": {
+    "header": {
+      "title": "Poser une question à l'équipe",
+      "composeTitle": "Poser une nouvelle question",
+      "subtitleWithName": "Questions sur {{name}}",
+      "subtitle": "Questions sur cette salle de données",
+      "back": "Retour",
+      "close": "Fermer"
+    },
+    "tabs": {
+      "home": "Accueil",
+      "messages": "Questions",
+      "faq": "FAQ"
+    },
+    "home": {
+      "askNew": "Poser une nouvelle question",
+      "recentReply": "Réponse récente",
+      "openConversation": "Ouvrir la conversation",
+      "frequentlyAsked": "Questions fréquentes"
+    },
+    "messages": {
+      "emptyTitle": "Aucune question pour le moment",
+      "emptyDescription": "Posez une question à l'équipe et elle apparaîtra ici.",
+      "askQuestion": "Poser une question",
+      "newReply": "Nouvelle réponse"
+    },
+    "compose": {
+      "aboutPage": "À propos de cette page",
+      "subjectPlaceholder": "Objet (facultatif)",
+      "messagePlaceholder": "Saisissez votre question...",
+      "sending": "Envoi…",
+      "submit": "Envoyer la question"
+    },
+    "thread": {
+      "you": "Vous",
+      "team": "Équipe",
+      "page": "Page {{page}}",
+      "newDivider": "Nouveau",
+      "closed": "Cette conversation a été fermée par l'équipe.",
+      "messagePlaceholder": "Saisissez votre message...",
+      "sendReply": "Envoyer la réponse"
+    },
+    "status": {
+      "answered": "Répondue",
+      "awaiting": "En attente de réponse",
+      "closed": "Fermée"
+    },
+    "snippet": {
+      "team": "Équipe : ",
+      "you": "Vous : "
+    },
+    "time": {
+      "now": "maintenant",
+      "minutes": "{{n}} min",
+      "hours": "{{n}} h",
+      "days": "{{n}} j"
+    },
+    "toasts": {
+      "sendMessageFailed": "Échec de l'envoi du message",
+      "sendQuestionFailed": "Échec de l'envoi de la question"
+    },
+    "untitled": "Question sans titre",
+    "faqEmpty": "Aucune question publiée pour le moment."
+  },
+  "notFound": {
+    "eyebrow": "Erreur 404",
+    "title": "Page introuvable.",
+    "goHome": "Retour à l'accueil",
+    "reasons": {
+      "expired": "Le lien que vous recherchez a expiré.",
+      "archived": "Le lien que vous recherchez est archivé.",
+      "dataroomClosed": "Cette salle de données a été fermée et n'est plus disponible.",
+      "loadErrorRefresh": "Nous n'avons pas pu charger ce lien. Veuillez actualiser la page.",
+      "loadErrorRetry": "Nous n'avons pas pu charger ce lien. Veuillez réessayer dans un instant.",
+      "embedOnly": "Cette page est accessible uniquement lorsqu'elle est intégrée à un autre site web."
+    }
+  }
+}

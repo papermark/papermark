@@ -1,0 +1,233 @@
+{
+  "shell": {
+    "dataRoomEyebrow": "Salle de données",
+    "updatedOn": "Mis à jour le {{date}}",
+    "lastUpdated": "Dernière mise à jour {{date}}",
+    "secureFooter": "Sécurisé par",
+    "papermark": "Papermark",
+    "copyright": "© {{year}}{{name}}"
+  },
+  "tabs": {
+    "documents": "Documents",
+    "myUploads": "Mes envois"
+  },
+  "search": {
+    "placeholder": "Rechercher...",
+    "results": "Résultats de recherche pour « {{query}} »",
+    "resultCount_one": "({{count}} résultat dans tous les dossiers)",
+    "resultCount_other": "({{count}} résultats dans tous les dossiers)",
+    "noMatches": "Aucun document ne correspond à votre recherche."
+  },
+  "breadcrumb": {
+    "home": "Accueil"
+  },
+  "empty": {
+    "noItems": "Aucun élément disponible.",
+    "noUploads": "Aucun envoi pour le moment. Envoyez des documents avec le bouton « Ajouter un document »."
+  },
+  "cards": {
+    "updated": "Mis à jour {{when}}",
+    "processing": "(Traitement en cours...)",
+    "actionsLabel": "Actions",
+    "download": "Télécharger",
+    "openMenu": "Ouvrir le menu",
+    "openDocument": "Ouvrir le document {{name}}",
+    "openFolder": "Ouvrir le dossier {{name}}",
+    "documents": "Documents",
+    "folder": "Dossier",
+    "folderBadge": "DOSSIER"
+  },
+  "compactList": {
+    "name": "Nom",
+    "updated": "Mis à jour",
+    "settings": "Paramètres"
+  },
+  "trailingActions": {
+    "viewQA": "Voir les Q&R",
+    "downloadDataroom": "Télécharger la salle de données",
+    "teamMemberTooltip": "Vérification ignorée car vous êtes membre de l'équipe ; aucune analyse ne sera collectée"
+  },
+  "navToasts": {
+    "cannotDownloadPreview": "Vous ne pouvez pas télécharger de salles de données en mode aperçu.",
+    "cannotDownloadDocPreview": "Vous ne pouvez pas télécharger de documents de salle de données en mode aperçu.",
+    "cannotDownloadFolderPreview": "Vous ne pouvez pas télécharger de dossiers de salle de données en mode aperçu.",
+    "foldersNotAllowed": "Le téléchargement de dossiers n'est pas autorisé.",
+    "enterEmailFirst": "Saisissez votre e-mail dans la salle de données pour télécharger.",
+    "documentStillProcessing": "Le document est encore en cours de traitement. Veuillez patienter un instant et réessayer.",
+    "downloadPreparing": "Préparation du téléchargement...",
+    "downloadSuccess": "Fichier téléchargé avec succès",
+    "downloadFailed": "Échec du téléchargement du fichier"
+  },
+  "intro": {
+    "viewIntroduction": "Voir l'introduction",
+    "title": "Bienvenue dans {{name}}",
+    "defaultName": "Salle de données",
+    "continueButton": "Continuer vers la salle de données"
+  },
+  "upload": {
+    "trigger": "Ajouter un document",
+    "title": "Téléverser un document dans la salle de données",
+    "description": "Votre document apparaîtra immédiatement dans la salle de données et sera traité en arrière-plan.",
+    "destinationLabel": "Dossier de destination",
+    "selectDestination": "Sélectionner le dossier de destination",
+    "uploadingTo": "Envoi vers :",
+    "setByOwner": "(défini par le propriétaire de la salle de données)",
+    "success": "Document téléversé avec succès !",
+    "successDescription": "Votre document est désormais visible dans la salle de données.",
+    "previewDisabled": "Vous ne pouvez pas téléverser de fichiers en mode aperçu."
+  },
+  "download": {
+    "folderTitle": "Télécharger le dossier : {{name}}",
+    "dataroomTitle": "Télécharger {{name}}",
+    "defaultName": "Salle de données",
+    "chooseDescription": "Démarrer le téléchargement. Vous pouvez recevoir un e-mail lorsque c'est prêt.",
+    "otpDescription": "Vérifiez votre e-mail pour recevoir des notifications de téléchargement.",
+    "ready": "Vos fichiers sont prêts à être téléchargés.",
+    "preparing": "Préparation de vos fichiers...",
+    "notifyByEmail": "M'avertir par e-mail lorsque le téléchargement est prêt",
+    "needsVerification": "Vous devrez d'abord vérifier votre e-mail avec un code à usage unique.",
+    "starting": "Démarrage...",
+    "start": "Démarrer le téléchargement",
+    "cancel": "Annuler",
+    "viewDownloads": "Voir vos téléchargements",
+    "openDownloads": "Ouvrir la page des téléchargements",
+    "preparingShort": "Préparation...",
+    "processingFiles": "Traitement de {{processed}} sur {{total}} fichiers...",
+    "complete": "Votre téléchargement est prêt !",
+    "failed": "Échec du téléchargement.",
+    "downloadZip": "Télécharger le ZIP",
+    "downloadAll": "Tout télécharger ({{count}} parties)",
+    "downloadingProgress": "Téléchargement de {{current}} sur {{total}}...",
+    "part": "Partie {{index}}",
+    "expiresIn": "Expire dans {{time}}",
+    "expiresLessThanHour": "moins d'une heure",
+    "expiresDays_one": "{{count}} jour",
+    "expiresDays_other": "{{count}} jours",
+    "expiresHours_one": "{{count}} heure",
+    "expiresHours_other": "{{count}} heures",
+    "willEmailWhenReady": "Vous pouvez fermer cette fenêtre. Nous vous enverrons un e-mail lorsque ce sera prêt.",
+    "checkBackOnDownloads": "Vous pouvez fermer cette fenêtre. Revenez sur la page des téléchargements lorsque ce sera prêt.",
+    "tryAgain": "Réessayer",
+    "startFailed": "Impossible de démarrer le téléchargement",
+    "statusFetchFailed": "Impossible de récupérer le statut",
+    "expiresSoon": "bientôt"
+  },
+  "downloadsPage": {
+    "title": "Vos téléchargements",
+    "description": "Téléchargez vos fichiers préparés ci-dessous. Les liens expirent après 3 jours.",
+    "emailHeading": "Voir vos téléchargements",
+    "emailDescription": "Saisissez l'e-mail utilisé pour accéder à cette salle de données.",
+    "emailPlaceholder": "vous@exemple.com",
+    "sendingCode": "Envoi du code...",
+    "continueButton": "Continuer",
+    "verifyEmailHeading": "Vérifier votre e-mail",
+    "empty": "Vous n'avez pas encore de téléchargements. Démarrez un téléchargement depuis la salle de données pour le voir ici.",
+    "jobFolderPrefix": "Dossier :",
+    "jobFullDataroom": "Salle de données complète",
+    "expired": "expiré",
+    "expiresPrefix": "Expire {{time}}",
+    "hideParts": "Masquer les parties",
+    "showParts": "Afficher les parties ({{count}})",
+    "orIndividual": "Ou télécharger individuellement :",
+    "partOf": "Partie {{index}} sur {{total}}",
+    "errors": {
+      "noAccess": "Aucun accès trouvé pour cet e-mail. Utilisez l'e-mail avec lequel vous avez ouvert la salle de données.",
+      "rateLimit": "Trop de requêtes. Veuillez réessayer plus tard.",
+      "generic": "Une erreur s'est produite."
+    }
+  },
+  "downloadOtp": {
+    "defaultDescription": "Nous avons envoyé un code à 6 chiffres à <email>{{email}}</email>. Saisissez-le ci-dessous pour vous vérifier et recevoir des notifications de téléchargement.",
+    "verify": "Vérifier",
+    "verifying": "Vérification...",
+    "noEmail": "Vous n'avez pas reçu l'e-mail ?",
+    "resending": "Envoi...",
+    "resend": "Renvoyer le code",
+    "resendIn": "Renvoyer le code ({{seconds}} s)",
+    "sendFailed": "Échec de l'envoi du code",
+    "invalidCode": "Code invalide"
+  },
+  "downloadsPanel": {
+    "ready": "Prêt",
+    "failedFallback": "Échec",
+    "creatingZip": "Création du ZIP...",
+    "filesCount": "{{processed}} / {{total}} fichiers",
+    "verifying": "Vérification de l'accès...",
+    "buildingFileList": "Création de la liste des fichiers...",
+    "preparing": "Préparation..."
+  },
+  "folderPicker": {
+    "home": "Accueil"
+  },
+  "indexFile": {
+    "trigger": "Générer le fichier d'index",
+    "title": "Générer le fichier d'index du data room",
+    "description": "Sélectionnez un format pour générer le fichier d'index.",
+    "selectFormat": "Sélectionner le format",
+    "generate": "Générer",
+    "generating": "Génération...",
+    "successToast": "Fichier d'index généré avec succès",
+    "errorToast": "Échec de la génération de l'index",
+    "genericError": "Une erreur s'est produite. Veuillez réessayer.",
+    "previewDisabled": "Vous ne pouvez pas générer de fichier d'index en mode aperçu."
+  },
+  "requestList": {
+    "trigger": "Liste de demandes",
+    "title": "Liste de demandes",
+    "summaryEmpty": "Les demandes qui vous sont attribuées apparaissent ici.",
+    "summaryPending_one": "{{count}} demande requiert votre attention.",
+    "summaryPending_other": "{{count}} demandes requièrent votre attention.",
+    "summaryDone": "Vous êtes à jour. En attente de la vérification du propriétaire.",
+    "emptyTitle": "Rien à traiter",
+    "emptyDescription": "Aucune demande ne vous est attribuée pour le moment.",
+    "due": "Échéance {{date}}",
+    "overdue": "en retard",
+    "lockedByHost": "Marquée comme terminée par le propriétaire",
+    "commentPlaceholder": "Ajouter une note pour le propriétaire (facultatif)…",
+    "commentPlaceholderLocked": "Ajouter un commentaire…",
+    "submitComment": "Ajouter un commentaire",
+    "submitStatus": "Mettre à jour la demande",
+    "submitDefault": "Envoyer la mise à jour",
+    "activityHeading": "Activité",
+    "uploadsHeading": "Vos fichiers",
+    "uploadRequired": "Fichier requis",
+    "uploadProcessing": "Traitement en cours",
+    "toastUpdated": "Demande mise à jour",
+    "toastCommented": "Commentaire ajouté",
+    "toastFailed": "Échec de la mise à jour",
+    "status": {
+      "OPEN": "Ouverte",
+      "IN_PROGRESS": "En cours",
+      "SUBMITTED": "Envoyée",
+      "COMPLETED": "Terminée"
+    },
+    "activity": {
+      "you": "Vous",
+      "someone": "Quelqu'un",
+      "empty": "Aucune activité pour le moment.",
+      "created": "demande créée",
+      "assigned": "attributions mises à jour",
+      "uploaded": "{{name}} téléversé",
+      "uploadedFallback": "fichier téléversé",
+      "statusFromTo": "statut modifié de {{from}} à {{to}}",
+      "statusTo": "statut défini sur {{status}}",
+      "statusChanged": "statut modifié",
+      "updated": "demande mise à jour"
+    }
+  },
+  "uploadZone": {
+    "dropzoneTitle": "Glissez-déposez des fichiers ici, ou cliquez pour les sélectionner",
+    "dropzoneHint": "Pris en charge : PDF, Office, tableurs, images, ZIP et plus",
+    "dropActive": "Déposez vos fichiers ici",
+    "dropActiveHint": "PDF, Office, images, ZIP et plus",
+    "rejectedTitle": "Certains fichiers ont été refusés :",
+    "rejectedTooLarge": "Fichier trop volumineux (max. {{size}} Mo).",
+    "rejectedType": "Type de fichier non pris en charge.",
+    "toastComplete": "Téléversement terminé !",
+    "toastError": "Une erreur s'est produite lors du téléversement",
+    "toastFileFailed": "Échec du téléversement de {{name}}",
+    "toastUploadFailed": "Échec du téléversement du document",
+    "errorProcessFailed": "Échec du traitement du téléversement",
+    "errorMissingMetadata": "Les métadonnées du document sont absentes de la réponse de téléversement"
+  }
+}

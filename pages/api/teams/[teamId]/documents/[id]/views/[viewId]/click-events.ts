@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
+import { enforceDocumentMemberScope } from "@/lib/api/rbac/guard";
 import prisma from "@/lib/prisma";
 import { getClickEventsByView } from "@/lib/tinybird/pipes";
 import { CustomUser } from "@/lib/types";
@@ -28,6 +29,13 @@ export default async function handler(
   };
 
   const userId = (session.user as CustomUser).id;
+
+  // Scoped members may only read views for documents in their assigned rooms.
+  if (
+    await enforceDocumentMemberScope({ userId, teamId, documentId: id, res })
+  ) {
+    return;
+  }
 
   try {
     const team = await prisma.team.findUnique({

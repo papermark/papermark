@@ -1,0 +1,78 @@
+// OAuth 2.1 provider models.
+// See papermark-public-api-design.md §6 for the auth architecture.
+
+model OAuthClient {
+  id               String   @id @default(cuid())
+  clientId         String   @unique // public identifier shared with the client
+  clientName       String
+  clientUri        String?
+  logoUri          String?
+  redirectUris     String[] // allowed redirect URIs
+  grantTypes       String[] // e.g. ["authorization_code", "refresh_token", "urn:ietf:params:oauth:grant-type:device_code"]
+  scopes           String // space-separated allowed scopes
+  tokenAuthMethod  String // "none" for public clients (PKCE), "client_secret_basic" for confidential
+  hashedSecret     String? // null for public clients
+  registrationType String // "dynamic" (DCR) | "static" | "cimd"
+  metadataUrl      String? // for CIMD clients
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tokens RestrictedToken[]
+
+  @@index([clientId])
+}
+
+// Per-user-per-client approval for dynamically-registered (DCR) clients.
+// Linear's pattern: when a new MCP client (e.g. Claude) auto-registers via
+// /oauth/reg and then tries to start an OAuth authorize flow, we show an
+// interstitial on mcp.papermark.com asking the user to approve the client
+// before the usual login+scope consent runs on app.papermark.com. Once
+// approved, subsequent authorize requests from the same user skip the
+// interstitial. Only dynamic clients hit this table; static clients like
+// papermark-cli bypass the interstitial entirely.
+model OAuthClientApproval {
+  id                 String    @id @default(cuid())
+  userId             String
+  clientId           String // oidc-provider client_id (e.g. "dyn_abc...")
+  approvedAt         DateTime  @default(now())
+  revokedAt          DateTime?
+  clientMetadataHash String?
+
+  @@unique([userId, clientId])
+  @@index([clientId])
+}
+
+// Maps an oidc-provider Grant to the Papermark team it was consented for.
+// The authorization request only carries scopes (not a team id), so we store
+// the team selection made on the consent screen and read it back when an
+// access token is minted, syncing it onto RestrictedToken.teamId.
+model OAuthGrantTeam {
+  id        String   @id @default(cuid())
+  grantId   String   @unique
+  teamId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@index([grantId])
+}
+
+// Internal storage for node-oidc-provider. Holds authorization codes, grants,
+// sessions, device codes, interaction state, etc. The `kind` column
+// discriminates between record types.
+model OAuthRecord {
+  id         String    @id
+  kind       String
+  payload    Json
+  grantId    String?
+  userCode   String?
+  uid        String?
+  expiresAt  DateTime?
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([kind])
+  @@index([grantId])
+  @@index([userCode])
+  @@index([uid])
+  @@index([expiresAt])
+}

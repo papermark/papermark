@@ -11,6 +11,54 @@ export type SumData = {
   sum_duration: number;
 };
 
+export type PageDurationRow = {
+  versionNumber: number;
+  pageNumber: string;
+  avg_duration: number;
+};
+
+/** Lays averages over every page, so unopened pages still plot as empty bars. */
+export const buildPageDurationSeries = (
+  rows: PageDurationRow[],
+  totalPagesMax: number,
+): Data[] => {
+  const series: Data[] = Array.from({ length: totalPagesMax }, (_, index) => ({
+    pageNumber: (index + 1).toString(),
+    data: [{ versionNumber: 1, avg_duration: 0 }],
+  }));
+
+  const byPage = new Map(series.map((page) => [page.pageNumber, page]));
+
+  for (const row of rows) {
+    const page = byPage.get(row.pageNumber);
+    if (!page) {
+      const added: Data = {
+        pageNumber: row.pageNumber,
+        data: [
+          { versionNumber: row.versionNumber, avg_duration: row.avg_duration },
+        ],
+      };
+      series.push(added);
+      byPage.set(added.pageNumber, added);
+      continue;
+    }
+
+    const version = page.data.find(
+      (candidate) => candidate.versionNumber === row.versionNumber,
+    );
+    if (version) version.avg_duration = row.avg_duration;
+    else
+      page.data.push({
+        versionNumber: row.versionNumber,
+        avg_duration: row.avg_duration,
+      });
+  }
+
+  return series.sort(
+    (left, right) => parseInt(left.pageNumber) - parseInt(right.pageNumber),
+  );
+};
+
 export type TransformedData = {
   pageNumber: string;
   [key: string]: number | string; // Adjusted type to accommodate version keys

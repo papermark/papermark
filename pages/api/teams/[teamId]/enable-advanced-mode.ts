@@ -4,7 +4,6 @@ import { Session } from "next-auth";
 import { getServerSession } from "next-auth/next";
 
 import { errorhandler } from "@/lib/errorHandler";
-import { copyFileToBucketServer } from "@/lib/files/copy-file-to-bucket-server";
 import prisma from "@/lib/prisma";
 import { supportsAdvancedExcelMode } from "@/lib/utils/get-content-type";
 
@@ -96,13 +95,6 @@ export default async function handle(
         if (!primaryVersion) return;
 
         if (enableExcelAdvancedMode) {
-          // Copy file to bucket if enabling advanced mode
-          await copyFileToBucketServer({
-            filePath: primaryVersion.file,
-            storageType: primaryVersion.storageType,
-            teamId: teamId as string,
-          });
-
           // Update document and version when enabling
           await Promise.all([
             tx.document.update({

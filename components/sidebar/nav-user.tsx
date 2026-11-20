@@ -4,10 +4,12 @@ import Link from "next/link";
 
 import { useState } from "react";
 
+import { isReferralsEnabled } from "@/ee/features/partners/lib/referrals";
 import {
   ChevronsUpDown,
   CircleUserRound,
   FileTextIcon,
+  GiftIcon,
   LifeBuoyIcon,
   LogOut,
   MailIcon,
@@ -172,6 +174,14 @@ export function NavUser() {
                   <MailIcon />
                   Contact Support
                 </DropdownMenuItem>
+                {isReferralsEnabled() ? (
+                  <Link href="/partners">
+                    <DropdownMenuItem>
+                      <GiftIcon />
+                      Earn and Refer
+                    </DropdownMenuItem>
+                  </Link>
+                ) : null}
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuItem

@@ -1,0 +1,45 @@
+model Brand {
+  id                             String  @id @default(cuid())
+  logo                           String? // This should be a reference to where the file is stored (S3, Google Cloud Storage, etc.)
+  hideLogo                       Boolean @default(false) // Show no logo at all in the viewer, not even the Papermark fallback
+  banner                         String? // Banner image for dataroom view (fallback)
+  brandColor                     String? // This should be a reference to the brand color
+  accentColor                    String? // This should be a reference to the accent color (front-page background)
+  accentButtonColor              String? // Color used for CTA buttons (separate from brand/background)
+  applyAccentColorToDataroomView Boolean @default(false) // Global default for whether accentColor applies to dataroom list/tree viewer background
+  welcomeMessage                 String? // This should be a reference to the welcome message
+  ctaLabel                       String? // Default CTA button label (inherited by datarooms unless overridden)
+  ctaUrl                         String? // Default CTA button URL (inherited by datarooms unless overridden)
+  privacyPolicyUrl               String? // Access screen privacy link, custom domains only
+
+  cardLayout            String  @default("LIST")
+  showFolderTree        Boolean @default(true)
+  viewerLayoutPreset    String  @default("STANDARD")
+  viewerHeaderStyle     String  @default("DEFAULT")
+  hideFolderIconsInMain Boolean @default(false)
+
+  // Default Open Graph / social preview for shared links (per-link settings override)
+  customLinkPreviewEnabled Boolean @default(false)
+  linkPreviewTitle         String?
+  linkPreviewDescription   String?
+  linkPreviewImage         String?
+  linkPreviewFavicon       String?
+
+  // Visitor-side language (i18n) settings — applies to the access form and
+  // document viewer chrome shown to people who open a shared link.
+  defaultLanguage String @default("en") // BCP-47 tag from SUPPORTED_LOCALES; admin-chosen viewer language
+
+  name String @default("Default")
+
+  teamId String
+  team   Team   @relation("TeamBrands", fields: [teamId], references: [id], onDelete: Cascade)
+  defaultForTeam Team[] @relation("TeamDefaultBrand")
+  links     Link[]
+  datarooms Dataroom[] @relation("DataroomBaseBrand")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teamId, name])
+  @@index([teamId])
+}

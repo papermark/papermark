@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { LinkPreset } from "@prisma/client";
 import { motion } from "motion/react";
 
 import { FADE_IN_ANIMATION_SETTINGS } from "@/lib/constants";
-import { sanitizeList } from "@/lib/utils";
+import { validateList } from "@/lib/utils";
 
 import { Textarea } from "@/components/ui/textarea";
 
@@ -18,6 +18,7 @@ export default function DenyListSection({
   isAllowed,
   handleUpgradeStateChange,
   presets,
+  setValidationError,
 }: {
   data: DEFAULT_LINK_TYPE;
   setData: React.Dispatch<React.SetStateAction<DEFAULT_LINK_TYPE>>;
@@ -29,6 +30,7 @@ export default function DenyListSection({
     highlightItem,
   }: LinkUpgradeOptions) => void;
   presets: LinkPreset | null;
+  setValidationError?: (key: string, errors: string[]) => void;
 }) {
   const { emailProtected, denyList } = data;
   // Initialize enabled state based on whether denyList is not null and not empty
@@ -38,6 +40,26 @@ export default function DenyListSection({
   const [denyListInput, setDenyListInput] = useState<string>(
     denyList?.join("\n") || "",
   );
+
+  const validation = useMemo(
+    () => validateList(denyListInput, "both"),
+    [denyListInput],
+  );
+
+  useEffect(() => {
+    if (!setValidationError) return;
+    if (enabled && emailProtected) {
+      setValidationError("denyList", validation.invalid);
+    } else {
+      setValidationError("denyList", []);
+    }
+  }, [enabled, emailProtected, validation.invalid, setValidationError]);
+
+  useEffect(() => {
+    return () => {
+      setValidationError?.("denyList", []);
+    };
+  }, [setValidationError]);
 
   useEffect(() => {
     if (!emailProtected && enabled) {
@@ -63,7 +85,7 @@ export default function DenyListSection({
     if (updatedEnabled) {
       setData((prevData) => ({
         ...prevData,
-        denyList: updatedEnabled ? sanitizeList(denyListInput) : [],
+        denyList: updatedEnabled ? validateList(denyListInput).valid : [],
         emailAuthenticated: true, // Turn on email authentication
         emailProtected: true, // Turn on email protection
       }));
@@ -84,7 +106,7 @@ export default function DenyListSection({
     if (emailProtected && enabled) {
       setData((prevData) => ({
         ...prevData,
-        denyList: sanitizeList(updatedDenyListInput),
+        denyList: validateList(updatedDenyListInput).valid,
       }));
     }
   };
@@ -118,12 +140,30 @@ export default function DenyListSection({
             <Textarea
               className="focus:ring-inset"
               rows={5}
-              placeholder={`Enter blocked emails/domains, one per line, e.g.
+              placeholder={`Enter blocked emails/domains separated by comma, semicolon, or new line, e.g.
 marc@papermark.com
 @example.org`}
               value={denyListInput}
               onChange={handleDenyListChange}
+              aria-invalid={validation.invalid.length > 0}
             />
+            {validation.invalid.length > 0 ? (
+              <p className="mt-2 text-xs text-destructive">
+                The following entries are not valid emails or domains and must
+                be fixed before saving:{" "}
+                <span className="font-medium">
+                  {validation.invalid.slice(0, 5).join(", ")}
+                  {validation.invalid.length > 5
+                    ? `, and ${validation.invalid.length - 5} more`
+                    : ""}
+                </span>
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Separate multiple entries with a comma, semicolon, or new line.
+                Use <code>@example.org</code> to block a whole domain.
+              </p>
+            )}
           </motion.div>
         )}
       </div>

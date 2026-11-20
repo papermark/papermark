@@ -6,16 +6,17 @@ import {
   processDocumentForAITask,
 } from "@/ee/features/ai/lib/trigger";
 import { isTeamPausedById } from "@/ee/features/billing/cancellation/lib/is-team-paused";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { runs } from "@trigger.dev/sdk";
 import { waitUntil } from "@vercel/functions";
-import { getServerSession } from "next-auth/next";
 
+import { withTeamApi } from "@/lib/api/auth/with-session-team";
+import { assertDocumentAccess } from "@/lib/api/rbac/entitlements";
+import { isDataroomScopedRole } from "@/lib/api/rbac/permissions";
+import { onDataroomDocumentsAttached } from "@/lib/dataroom/apply-default-permissions";
 import { errorhandler } from "@/lib/errorHandler";
 import { getFeatureFlags } from "@/lib/featureFlags";
 import prisma from "@/lib/prisma";
 import { sendDataroomChangeNotificationTask } from "@/lib/trigger/dataroom-change-notification";
-import { CustomUser } from "@/lib/types";
 import { log, serializeFileSize } from "@/lib/utils";
 import { sortItemsByIndexAndName } from "@/lib/utils/sort-items-by-index-name";
 
@@ -24,40 +25,12 @@ export const config = {
   supportsResponseStreaming: true,
 };
 
-export default async function handle(
-  req: NextApiRequest,
-  res: NextApiResponse,
-) {
-  if (req.method === "GET") {
-    // GET /api/teams/:teamId/datarooms/:id/documents
-    const session = await getServerSession(req, res, authOptions);
-    if (!session) {
-      return res.status(401).end("Unauthorized");
-    }
-
-    const userId = (session.user as CustomUser).id;
-    const { teamId, id: dataroomId } = req.query as {
-      teamId: string;
-      id: string;
-    };
+// GET /api/teams/:teamId/datarooms/:id/documents
+const getHandler = withTeamApi(
+  async ({ req, res }) => {
+    const { id: dataroomId } = req.query as { id: string };
 
     try {
-      // Check if the user is part of the team
-      const team = await prisma.team.findUnique({
-        where: {
-          id: teamId,
-          users: {
-            some: {
-              userId: userId,
-            },
-          },
-        },
-      });
-
-      if (!team) {
-        return res.status(401).end("Unauthorized");
-      }
-
       const documents = await prisma.dataroomDocument.findMany({
         where: {
           dataroomId: dataroomId,
@@ -109,20 +82,14 @@ export default async function handle(
         .status(500)
         .json({ error: "Error fetching documents from dataroom" });
     }
-  } else if (req.method === "POST") {
-    // POST /api/teams/:teamId/datarooms/:id/documents
-    const session = await getServerSession(req, res, authOptions);
-    if (!session) {
-      res.status(401).end("Unauthorized");
-      return;
-    }
+  },
+  { requiredPermissions: ["datarooms.read"], dataroomParam: "id" },
+);
 
-    const { teamId, id: dataroomId } = req.query as {
-      teamId: string;
-      id: string;
-    };
-
-    const userId = (session.user as CustomUser).id;
+// POST /api/teams/:teamId/datarooms/:id/documents
+const postHandler = withTeamApi(
+  async ({ req, res, teamId, userId, role, allowedDataroomIds }) => {
+    const { id: dataroomId } = req.query as { id: string };
 
     // Assuming data is an object with `name` and `description` properties
     const { documentId, folderPathName } = req.body as {
@@ -131,23 +98,33 @@ export default async function handle(
     };
 
     try {
-      // Check if the user is part of the team
-      const team = await prisma.team.findUnique({
-        where: {
-          id: teamId,
-          users: {
-            some: {
-              userId: userId,
-            },
-          },
-        },
-        select: {
-          id: true,
-        },
-      });
-
-      if (!team) {
-        return res.status(401).end("Unauthorized");
+      // For dataroom-scoped members, the document being attached must either be
+      // owned by them (a fresh upload) or already live in one of their assigned
+      // rooms — otherwise an arbitrary team document could be pulled into the
+      // room and viewed.
+      if (isDataroomScopedRole(role)) {
+        const document = await prisma.document.findFirst({
+          where: { id: documentId, teamId },
+          select: { ownerId: true },
+        });
+        if (!document) {
+          return res.status(404).json({ error: "Document not found" });
+        }
+        const ownsDocument = document.ownerId === userId;
+        const hasRoomAccess =
+          ownsDocument ||
+          (await assertDocumentAccess({
+            role,
+            userId,
+            teamId,
+            documentId,
+            allowedIds: allowedDataroomIds,
+          }));
+        if (!hasRoomAccess) {
+          return res
+            .status(403)
+            .json({ error: "You cannot add this document to a data room." });
+        }
       }
 
       // Check if team is paused
@@ -156,6 +133,20 @@ export default async function handle(
         return res.status(403).json({
           error:
             "Team is currently paused. Adding documents to dataroom is not available.",
+        });
+      }
+
+      const dataroom = await prisma.dataroom.findUnique({
+        where: { id: dataroomId, teamId },
+        select: { isFrozen: true },
+      });
+      if (!dataroom) {
+        return res.status(404).json({ error: "Data room not found" });
+      }
+      if (dataroom.isFrozen) {
+        return res.status(403).json({
+          error:
+            "This data room is frozen. You cannot add documents to a frozen data room.",
         });
       }
 
@@ -198,12 +189,20 @@ export default async function handle(
                 orderBy: { createdAt: "desc" },
                 take: 1,
               },
-              _count: {
-                select: { viewerGroups: true, permissionGroups: true },
-              },
             },
           },
         },
+      });
+
+      await onDataroomDocumentsAttached({
+        dataroomId,
+        dataroomDocuments: [
+          {
+            id: dataroomDocument.id,
+            folderId: dataroomDocument.folderId,
+          },
+        ],
+        schedule: waitUntil,
       });
 
       // Auto-index document if dataroom has AI agents enabled
@@ -284,21 +283,38 @@ export default async function handle(
       // Check if the team has the dataroom change notification enabled
       if (dataroomDocument.dataroom.enableChangeNotifications) {
         // Get all delayed and queued runs for this dataroom
-        const allRuns = await runs.list({
+        const existingChangeRuns = await runs.list({
           taskIdentifier: ["send-dataroom-change-notification"],
-          tag: [`dataroom_${dataroomId}`],
+          tag: [`dataroom_${dataroomId}`, `user_upload_${userId}`],
           status: ["DELAYED", "QUEUED"],
-          period: "10m",
+          period: "15m",
         });
 
-        // Cancel any existing unsent notification runs for this dataroom
-        await Promise.all(allRuns.data.map((run) => runs.cancel(run.id)));
+        const matchingChangeRuns = existingChangeRuns.data.filter(
+          (run) =>
+            run.tags?.includes(`dataroom_${dataroomId}`) &&
+            run.tags?.includes(`user_upload_${userId}`),
+        );
+
+        let accumulatedDocIds: string[] = [dataroomDocument.id];
+        for (const run of matchingChangeRuns) {
+          const fullRun = await runs.retrieve(run.id);
+          const existingIds = (
+            fullRun.payload as { dataroomDocumentIds?: string[] } | undefined
+          )?.dataroomDocumentIds;
+          if (Array.isArray(existingIds)) {
+            accumulatedDocIds.push(...existingIds);
+          }
+        }
+        accumulatedDocIds = [...new Set(accumulatedDocIds)];
+
+        await Promise.all(matchingChangeRuns.map((run) => runs.cancel(run.id)));
 
         waitUntil(
           sendDataroomChangeNotificationTask.trigger(
             {
               dataroomId,
-              dataroomDocumentId: dataroomDocument.id,
+              dataroomDocumentIds: accumulatedDocIds,
               senderUserId: userId,
               teamId,
             },
@@ -308,6 +324,7 @@ export default async function handle(
                 `team_${teamId}`,
                 `dataroom_${dataroomId}`,
                 `document_${dataroomDocument.id}`,
+                `user_upload_${userId}`,
               ],
               delay: new Date(Date.now() + 10 * 60 * 1000), // 10 minute delay
             },
@@ -323,8 +340,19 @@ export default async function handle(
       });
       errorhandler(error, res);
     }
+  },
+  { requiredPermissions: ["documents.write"], dataroomParam: "id" },
+);
+
+export default async function handle(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  if (req.method === "GET") {
+    return getHandler(req, res);
+  } else if (req.method === "POST") {
+    return postHandler(req, res);
   } else {
-    // We only allow GET requests
     res.setHeader("Allow", ["GET", "POST"]);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }

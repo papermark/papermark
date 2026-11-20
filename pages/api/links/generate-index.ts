@@ -2,10 +2,12 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { ItemType } from "@prisma/client";
 
-import { generateDataroomIndex } from "@/lib/dataroom/index-generator";
-import { getFeatureFlags } from "@/lib/featureFlags";
+import {
+  DataroomIndexSource,
+  generateDataroomIndex,
+} from "@/lib/dataroom/index-generator";
+import { resolveDataroomIndexEnabledForViewer } from "@/lib/featureFlags/dataroom-index-viewer";
 import prisma from "@/lib/prisma";
-import { LinkWithDataroom } from "@/lib/types";
 import { IndexFileFormat } from "@/lib/types/index-file";
 
 export default async function handle(
@@ -66,6 +68,7 @@ export default async function handle(
                 id: true,
                 name: true,
                 teamId: true,
+                team: { select: { plan: true } },
                 documents: {
                   include: {
                     document: {
@@ -177,14 +180,14 @@ export default async function handle(
       );
     }
 
-    // Map updatedAt to lastUpdatedAt for the dataroom and transform document versions
-    // @ts-ignore
-    const linkWithDataroom: LinkWithDataroom = {
-      ...link,
+    const linkWithDataroom: DataroomIndexSource = {
+      id: link.id,
       dataroom: {
-        ...link.dataroom,
+        id: link.dataroom.id,
+        name: link.dataroom.name,
         createdAt: link.dataroom.createdAt,
         lastUpdatedAt: link.dataroom.updatedAt,
+        folders: link.dataroom.folders,
         documents: link.dataroom.documents.map((doc) => ({
           id: doc.id,
           folderId: doc.folderId,
@@ -202,20 +205,18 @@ export default async function handle(
               hasPages: version.hasPages,
               file: version.file,
               isVertical: version.isVertical,
-              numPages: version.numPages,
+              numPages: version.numPages ?? 0,
               updatedAt: version.updatedAt,
-              fileSize:
-                typeof version.fileSize === "bigint"
-                  ? Number(version.fileSize)
-                  : version.fileSize,
+              fileSize: Number(version.fileSize ?? 0),
             })),
           },
         })),
       },
     };
 
-    const { dataroomIndex } = await getFeatureFlags({
+    const showHierarchicalIndex = await resolveDataroomIndexEnabledForViewer({
       teamId: link.dataroom.teamId,
+      teamPlan: link.dataroom.team.plan,
     });
 
     // Generate the index file using the appropriate generator
@@ -226,7 +227,7 @@ export default async function handle(
         baseUrl: link.domainId
           ? `${link.domainSlug}/${link.slug}`
           : `${process.env.NEXT_PUBLIC_MARKETING_URL}/view/${link.id}`,
-        showHierarchicalIndex: dataroomIndex,
+        showHierarchicalIndex,
       },
     );
 

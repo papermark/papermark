@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { useDataroom } from "@/lib/swr/use-dataroom";
+import { useDataroomDocumentOverview } from "@/lib/swr/use-dataroom-document";
 import { useDocument } from "@/lib/swr/use-document";
 import { useFolderWithParents } from "@/lib/swr/use-folders";
 import useViewer from "@/lib/swr/use-viewer";
@@ -163,6 +164,8 @@ const SingleDataroomBreadcrumb = ({ path }: { path: string }) => {
       case "/datarooms/[id]/groups/[groupId]/members":
       case "/datarooms/[id]/groups/[groupId]/links":
         return "Permissions";
+      case "/datarooms/[id]/participants":
+        return "Participants";
       case "/datarooms/[id]/analytics":
         return "Analytics";
       case "/datarooms/[id]/conversations/faqs":
@@ -203,6 +206,41 @@ const SingleDataroomBreadcrumb = ({ path }: { path: string }) => {
   );
 };
 
+const SingleDataroomDocumentBreadcrumb = () => {
+  const { dataroom, document } = useDataroomDocumentOverview();
+
+  return (
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <BreadcrumbLink asChild>
+            <Link href="/datarooms">Datarooms</Link>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <TruncatedBreadcrumbLink
+            href={`/datarooms/${dataroom?.id}/documents`}
+            text={dataroom?.name}
+          />
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbLink asChild>
+            <Link href={`/datarooms/${dataroom?.id}/documents`}>Documents</Link>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbPage className="max-w-[200px] truncate">
+            {document?.name || "Loading..."}
+          </BreadcrumbPage>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
+};
+
 const SettingsBreadcrumb = () => {
   const router = useRouter();
   const path = router.pathname;
@@ -229,8 +267,6 @@ const SettingsBreadcrumb = () => {
         return "Slack";
       case "/settings/incoming-webhooks":
         return "Incoming Webhooks";
-      case "/settings/branding":
-        return "Branding";
       default:
         return "Settings";
     }
@@ -478,6 +514,32 @@ export const AppBreadcrumb = () => {
       return <AccountBreadcrumb />;
     }
 
+    // Partner program route
+    if (path === "/partners") {
+      return (
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbPage>Partner program</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      );
+    }
+
+    // Global branding route
+    if (path === "/branding") {
+      return (
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbPage>Branding</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      );
+    }
+
     // Root documents route
     if (path === "/documents") {
       return (
@@ -509,6 +571,11 @@ export const AppBreadcrumb = () => {
     // Dataroom document routes
     if (path === "/datarooms/[id]/documents/[...name]" && id) {
       return <DataroomBreadcrumb />;
+    }
+
+    // Single dataroom document route
+    if (path === "/datarooms/[id]/document/[documentId]" && id) {
+      return <SingleDataroomDocumentBreadcrumb />;
     }
 
     // Single dataroom route

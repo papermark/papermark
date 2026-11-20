@@ -10,11 +10,14 @@ import { toast } from "sonner";
 import {
   FREE_PLAN_ACCEPTED_FILE_TYPES,
   FULL_PLAN_ACCEPTED_FILE_TYPES,
+  HTML_ACCEPTED_FILE_TYPES,
   SUPPORTED_DOCUMENT_MIME_TYPES,
 } from "@/lib/constants";
+import { useFeatureFlags } from "@/lib/hooks/use-feature-flags";
 import { usePlan } from "@/lib/swr/use-billing";
 import useLimits from "@/lib/swr/use-limits";
 import { bytesToSize } from "@/lib/utils";
+import { isHtmlFile } from "@/lib/utils/get-content-type";
 import { fileIcon } from "@/lib/utils/get-file-icon";
 import {
   getFileSizeLimit,
@@ -25,9 +28,15 @@ import { getPagesCount } from "@/lib/utils/get-page-number-count";
 export default function DocumentUpload({
   currentFile,
   setCurrentFile,
+  pdfOnly = false,
+  maxSizeBytes,
+  maxSizeErrorMessage,
 }: {
   currentFile: File | null;
   setCurrentFile: React.Dispatch<React.SetStateAction<File | null>>;
+  pdfOnly?: boolean;
+  maxSizeBytes?: number;
+  maxSizeErrorMessage?: string;
 }) {
   const router = useRouter();
   const { theme, systemTheme } = useTheme();
@@ -35,8 +44,17 @@ export default function DocumentUpload({
     theme === "light" || (theme === "system" && systemTheme === "light");
   const { isFree, isTrial } = usePlan();
   const { limits } = useLimits();
+  const { isFeatureEnabled } = useFeatureFlags();
+  const htmlDocumentsEnabled = isFeatureEnabled("htmlDocuments");
 
-  // Get file size limits
+  const fullPlanAcceptedFileTypes = useMemo(
+    () => ({
+      ...FULL_PLAN_ACCEPTED_FILE_TYPES,
+      ...(htmlDocumentsEnabled ? HTML_ACCEPTED_FILE_TYPES : {}),
+    }),
+    [htmlDocumentsEnabled],
+  );
+
   const fileSizeLimits = useMemo(
     () =>
       getFileSizeLimits({
@@ -47,11 +65,18 @@ export default function DocumentUpload({
     [limits, isFree, isTrial],
   );
 
+  // When an explicit byte limit is provided (e.g. NDA signing template), use it instead of the plan limit.
+  const maxSizeMB =
+    typeof maxSizeBytes === "number"
+      ? Math.floor(maxSizeBytes / (1024 * 1024))
+      : undefined;
+
   const { getRootProps, getInputProps } = useDropzone({
-    accept:
-      isFree && !isTrial
+    accept: pdfOnly
+      ? { "application/pdf": [".pdf"] }
+      : isFree && !isTrial
         ? FREE_PLAN_ACCEPTED_FILE_TYPES
-        : FULL_PLAN_ACCEPTED_FILE_TYPES,
+        : fullPlanAcceptedFileTypes,
     multiple: false,
     onDropAccepted: (acceptedFiles) => {
       if (acceptedFiles.length === 0) {
@@ -60,16 +85,19 @@ export default function DocumentUpload({
       const file = acceptedFiles[0];
       const fileType = file.type;
       const fileSizeLimitMB = getFileSizeLimit(fileType, fileSizeLimits); // in MB
-      const fileSizeLimit = fileSizeLimitMB * 1024 * 1024; // in bytes
+      const limitMB = maxSizeMB ?? fileSizeLimitMB; // displayed limit
+      const fileSizeLimit = maxSizeBytes ?? fileSizeLimitMB * 1024 * 1024; // in bytes
 
       if (file.size > fileSizeLimit) {
-        const message = `File size too big for ${fileType} (max. ${fileSizeLimitMB} MB)`;
-        if (isFree && !isTrial) {
+        const message =
+          maxSizeErrorMessage ||
+          `File size too big for ${fileType} (max. ${limitMB} MB)`;
+        if (!maxSizeErrorMessage && isFree && !isTrial) {
           toast.error(message, {
             description: "Upgrade to a paid plan to increase the limit",
             action: {
               label: "Upgrade",
-              onClick: () => router.push("/settings/upgrade"),
+              onClick: () => router.push("/settings/billing/upgrade"),
             },
             duration: 10000,
           });
@@ -105,14 +133,15 @@ export default function DocumentUpload({
       const { errors, file } = fileRejections[0];
       let message;
       if (errors[0].code === "file-too-large") {
-        const fileSizeLimitMB = getFileSizeLimit(file.type, fileSizeLimits);
-        message = `File size too big (max. ${fileSizeLimitMB} MB)`;
-        if (isFree && !isTrial) {
+        const limitMB = maxSizeMB ?? getFileSizeLimit(file.type, fileSizeLimits);
+        message =
+          maxSizeErrorMessage || `File size too big (max. ${limitMB} MB)`;
+        if (!maxSizeErrorMessage && isFree && !isTrial) {
           toast.error(message, {
             description: "Upgrade to a paid plan to increase the limit",
             action: {
               label: "Upgrade",
-              onClick: () => router.push("/settings/upgrade"),
+              onClick: () => router.push("/settings/billing/upgrade"),
             },
             duration: 10000,
           });
@@ -126,7 +155,7 @@ export default function DocumentUpload({
             description: `Upgrade to a paid plan to upload ${file.type} files`,
             action: {
               label: "Upgrade",
-              onClick: () => router.push("/settings/upgrade"),
+              onClick: () => router.push("/settings/billing/upgrade"),
             },
             duration: 10000,
           });
@@ -137,6 +166,7 @@ export default function DocumentUpload({
       }
       toast.error(message);
     },
+    maxSize: maxSizeBytes,
   });
 
   const imageBlobUrl = useMemo(
@@ -168,7 +198,12 @@ export default function DocumentUpload({
               <div className="flex flex-col items-center text-foreground sm:flex-row sm:space-x-2">
                 <div>
                   {fileIcon({
-                    fileType: currentFile.type,
+                    fileType: isHtmlFile({
+                      name: currentFile.name,
+                      contentType: currentFile.type,
+                    })
+                      ? "html"
+                      : currentFile.type,
                     isLight,
                   })}
                 </div>
@@ -190,9 +225,11 @@ export default function DocumentUpload({
             <p className="text-xs leading-5 text-gray-500">
               {currentFile
                 ? "Replace file?"
-                : isFree && !isTrial
-                  ? `Only *.pdf, *.xls, *.xlsx, *.csv, *.tsv, *.ods, *.png, *.jpeg, *.jpg`
-                  : `Only *.pdf, *.pptx, *.docx, *.xlsx, *.xls, *.xlsm, *.csv, *.tsv, *.ods, *.ppt, *.odp, *.doc, *.odt, *.rtf, *txt, *.dwg, *.dxf, *.png, *.jpg, *.jpeg, *.mp4, *.mov, *.avi, *.webm, *.ogg`}
+                : pdfOnly
+                  ? `Only *.pdf`
+                  : isFree && !isTrial
+                    ? `Only *.pdf, *.xls, *.xlsx, *.csv, *.tsv, *.ods, *.png, *.jpeg, *.jpg`
+                    : `Only *.pdf, *.pptx, *.docx, *.xlsx, *.xls, *.xlsm, *.csv, *.tsv, *.ods, *.ppt, *.odp, *.doc, *.odt, *.rtf, *.txt, *.md, *.dwg, *.dxf, *.png, *.jpg, *.jpeg, *.mp4, *.mov, *.avi, *.webm, *.ogg, *.log${htmlDocumentsEnabled ? ", *.html, *.htm" : ""}`}
             </p>
           </div>
         </div>

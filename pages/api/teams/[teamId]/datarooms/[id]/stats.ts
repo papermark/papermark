@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { View } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
+import { enforceDataroomMemberScope } from "@/lib/api/rbac/guard";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { getTotalDataroomDuration } from "@/lib/tinybird";
@@ -37,6 +38,11 @@ export default async function handle(
 
     const userId = (session.user as CustomUser).id;
 
+    // Scoped members may only read stats for their assigned rooms.
+    if (await enforceDataroomMemberScope({ userId, teamId, dataroomId, res })) {
+      return;
+    }
+
     try {
       // Check if the user is part of the team
       const team = await prisma.team.findUnique({
@@ -57,11 +63,16 @@ export default async function handle(
       const dataroom = await prisma.dataroom.findUnique({
         where: {
           id: dataroomId,
+          teamId,
         },
         include: {
           views: true,
         },
       });
+
+      if (!dataroom) {
+        return res.status(404).end("Dataroom not found");
+      }
 
       const users = await prisma.user.findMany({
         where: {
@@ -76,7 +87,7 @@ export default async function handle(
         },
       });
 
-      const views = dataroom?.views;
+      const views = dataroom.views;
 
       // if there are no views, return an empty array
       if (!views) {

@@ -1,0 +1,141 @@
+{
+  "nav": {
+    "home": "Home",
+    "viewQA": "Visualizza Q&A",
+    "linksOnPage": "Link nella pagina",
+    "linksOnCurrentPage": "Link nella pagina corrente",
+    "zoomIn": "Ingrandisci",
+    "zoomOut": "Riduci",
+    "resetZoom": "Adatta allo schermo",
+    "fullscreen": "Schermo intero",
+    "exitFullscreen": "Esci dallo schermo intero",
+    "downloadDocument": "Scarica documento",
+    "teamMemberTooltip": "Verifica saltata perché sei un membro del team; non verranno raccolti dati analitici",
+    "changeLanguage": "Cambia lingua"
+  },
+  "fullscreenControls": {
+    "rotate": "Ruota",
+    "exitFullscreen": "Esci dallo schermo intero"
+  },
+  "toasts": {
+    "preparingDownload": "Preparazione del download...",
+    "preparingDownloadWatermark": "Preparazione del download con filigrana...",
+    "downloadSuccess": "File scaricato correttamente",
+    "downloadFailed": "Impossibile scaricare il file",
+    "cannotDownloadPreview": "Non puoi scaricare documenti in modalità anteprima."
+  },
+  "downloadOnly": {
+    "title": "Scarica documento",
+    "description": "Questo documento è disponibile solo per il download",
+    "button": "Scarica ora"
+  },
+  "awayPoster": {
+    "title": "Abbiamo messo in pausa per proteggere la tua sessione",
+    "description": "Sei stato inattivo per {{duration}}, quindi abbiamo messo in pausa l'anteprima del documento per mantenere la sessione sicura.",
+    "ariaTitle": "Notifica di sessione messa in pausa automaticamente",
+    "ariaDescription": "La tua sessione è stata messa in pausa per inattività. Fai clic su continua o muovi il mouse per riprendere.",
+    "badge": "In pausa automatica",
+    "idleFor": "{{duration}} di inattività",
+    "minSec": "{{minutes}} min {{seconds}} sec",
+    "minOnly": "{{minutes}} min",
+    "secOnly": "{{seconds}} sec",
+    "resume": "Riprendi da dove hai lasciato",
+    "moveHint": "Oppure muovi il mouse o premi un tasto per continuare"
+  },
+  "poweredBy": {
+    "shareDocsVia": "Condividi documenti tramite"
+  },
+  "report": {
+    "trigger": "Segnala abuso",
+    "title": "Segnala un problema",
+    "description": "Hai notato qualcosa di inappropriato? Daremo un'occhiata e, se necessario, interverremo.",
+    "submit": "Invia segnalazione",
+    "successToast": "Segnalazione inviata con successo",
+    "selectTypeError": "Seleziona un tipo di abuso.",
+    "types": {
+      "spam": "Spam, frode o truffa",
+      "malware": "Malware o virus",
+      "copyright": "Violazione del copyright",
+      "harmful": "Contenuto dannoso",
+      "notWorking": "Il contenuto non funziona correttamente",
+      "other": "Altro"
+    }
+  },
+  "qa": {
+    "header": {
+      "title": "Fai una domanda al team",
+      "composeTitle": "Fai una nuova domanda",
+      "subtitleWithName": "Domande su {{name}}",
+      "subtitle": "Domande su questa data room",
+      "back": "Indietro",
+      "close": "Chiudi"
+    },
+    "tabs": {
+      "home": "Home",
+      "messages": "Domande",
+      "faq": "FAQ"
+    },
+    "home": {
+      "askNew": "Fai una nuova domanda",
+      "recentReply": "Risposta recente",
+      "openConversation": "Apri conversazione",
+      "frequentlyAsked": "Domande frequenti"
+    },
+    "messages": {
+      "emptyTitle": "Ancora nessuna domanda",
+      "emptyDescription": "Fai una domanda al team e comparirà qui.",
+      "askQuestion": "Fai una domanda",
+      "newReply": "Nuova risposta"
+    },
+    "compose": {
+      "aboutPage": "Su questa pagina",
+      "subjectPlaceholder": "Oggetto (facoltativo)",
+      "messagePlaceholder": "Scrivi la tua domanda...",
+      "sending": "Invio…",
+      "submit": "Invia domanda"
+    },
+    "thread": {
+      "you": "Tu",
+      "team": "Team",
+      "page": "Pagina {{page}}",
+      "newDivider": "Nuovo",
+      "closed": "Questa conversazione è stata chiusa dal team.",
+      "messagePlaceholder": "Scrivi il tuo messaggio...",
+      "sendReply": "Invia risposta"
+    },
+    "status": {
+      "answered": "Risposta ricevuta",
+      "awaiting": "In attesa di risposta",
+      "closed": "Chiusa"
+    },
+    "snippet": {
+      "team": "Team: ",
+      "you": "Tu: "
+    },
+    "time": {
+      "now": "ora",
+      "minutes": "{{n}} min",
+      "hours": "{{n}} h",
+      "days": "{{n}} g"
+    },
+    "toasts": {
+      "sendMessageFailed": "Invio del messaggio non riuscito",
+      "sendQuestionFailed": "Invio della domanda non riuscito"
+    },
+    "untitled": "Domanda senza titolo",
+    "faqEmpty": "Nessuna domanda pubblicata finora."
+  },
+  "notFound": {
+    "eyebrow": "Errore 404",
+    "title": "Pagina non trovata.",
+    "goHome": "Torna alla home",
+    "reasons": {
+      "expired": "Il link che stai cercando è scaduto.",
+      "archived": "Il link che stai cercando è archiviato.",
+      "dataroomClosed": "Questa data room è stata chiusa e non è più disponibile.",
+      "loadErrorRefresh": "Non è stato possibile caricare questo link. Prova ad aggiornare la pagina.",
+      "loadErrorRetry": "Non è stato possibile caricare questo link. Riprova tra poco.",
+      "embedOnly": "Questa pagina è accessibile solo se incorporata in un altro sito web."
+    }
+  }
+}

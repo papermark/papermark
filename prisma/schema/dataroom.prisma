@@ -13,12 +13,20 @@ model Dataroom {
   viewers      Viewer[]
   viewerGroups ViewerGroup[]
   brand        DataroomBrand?
+  brandId      String?
+  baseBrand    Brand?           @relation("DataroomBaseBrand", fields: [brandId], references: [id], onDelete: SetNull)
+
+  // Internal team members scoped to this dataroom (DATAROOM_MEMBER role).
+  userDatarooms UserDataroom[]
 
   permissionGroups PermissionGroup[]
 
   // conversation
   conversationsEnabled Boolean        @default(false)
   conversations        Conversation[]
+
+  // Buy-side Q&A questions (admin-originated due-diligence questions)
+  questions DataroomQuestion[]
 
   // FAQ system
   faqItems DataroomFaqItem[]
@@ -34,11 +42,32 @@ model Dataroom {
   // tags
   tags TagItem[]
 
-  // notification settings
-  enableChangeNotifications Boolean @default(false)
+  // request list (task system)
+  requestListEnabled Boolean    @default(false) // Show the Request List in the dataroom sidebar/viewer
+  taskLists          TaskList[]
+  tasks              Task[]
 
-  // unified permission strategy
+  // notification settings
+  enableChangeNotifications              Boolean @default(false)
+  enableVisitorUploadChangeNotifications Boolean @default(false)
+
+  // Default strategy applied to permission groups (link-level file permissions)
+  // when new documents/folders are added to this dataroom.
   defaultPermissionStrategy DefaultPermissionStrategy @default(INHERIT_FROM_PARENT)
+
+  // Seeds the "Show Secured by Papermark" toggle on new links. Pre-existing
+  // datarooms were backfilled to false; new datarooms default to true.
+  defaultShowBanner Boolean @default(true)
+
+  // Default permission strategy for viewer groups. Kept separate from
+  // defaultPermissionStrategy so links and groups can have different defaults.
+  defaultGroupPermissionStrategy DefaultPermissionStrategy @default(INHERIT_FROM_PARENT)
+
+  // How root-level items (which have no parent folder to inherit from) are
+  // exposed when the INHERIT_FROM_PARENT strategy applies. One per scope,
+  // matching the link/group strategy split above.
+  defaultRootItemAccess      RootItemAccess @default(VIEW_ONLY) // links (permission groups)
+  defaultGroupRootItemAccess RootItemAccess @default(VIEW_ONLY) // viewer groups
 
   // bulk download setting
   allowBulkDownload Boolean @default(true) // Allow bulk download of entire dataroom
@@ -50,10 +79,152 @@ model Dataroom {
   introductionEnabled Boolean @default(false) // Toggle to show introduction on first visit
   introductionContent Json? // TipTap JSON content for the introduction page
 
+  // Freeze / close dataroom
+  isFrozen          Boolean   @default(false)
+  frozenAt          DateTime?
+  frozenBy          String?
+  frozenByUser      User?     @relation("frozenDatarooms", fields: [frozenBy], references: [id], onDelete: SetNull)
+  freezeArchiveUrl  String?
+  freezeArchiveHash String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([teamId])
+  @@index([brandId])
+}
+
+// =============================================================================
+// Request List (atomic Task system) — ee/features/request-lists
+//
+// Status/type are stored as String columns (no DB enums) and validated by Zod
+// in ee/features/request-lists/lib. A Dataroom can have many TaskLists; the
+// public viewer renders a single default list (lowest orderIndex).
+// =============================================================================
+
+model TaskList {
+  id         String   @id @default(cuid())
+  name       String
+  orderIndex Int?
+
+  dataroomId String
+  dataroom   Dataroom @relation(fields: [dataroomId], references: [id], onDelete: Cascade)
+  teamId     String
+  team       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  tasks Task[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dataroomId])
+  @@index([teamId])
+  @@index([dataroomId, orderIndex])
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  type        String    @default("TODO") // TODO | UPLOAD | ACKNOWLEDGE (validated by Zod)
+  status      String    @default("OPEN") // OPEN | IN_PROGRESS | SUBMITTED | COMPLETED (validated by Zod)
+  category    String? // free-text label for grouping (Financial / Tax / Legal …)
+  dueDate     DateTime?
+  orderIndex  Int?
+
+  taskListId String
+  taskList   TaskList @relation(fields: [taskListId], references: [id], onDelete: Cascade)
+  // denormalized for viewer scoping/indexing
+  dataroomId String
+  dataroom   Dataroom @relation(fields: [dataroomId], references: [id], onDelete: Cascade)
+  teamId     String
+  team       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // Optional destination folder for UPLOAD tasks: visitor files for this request
+  // are forced into this folder. Null = no per-task target (uploads fall back to
+  // the link's upload allow-list / root). SetNull so deleting the folder just
+  // clears the target rather than the task.
+  uploadFolderId String?
+  uploadFolder   DataroomFolder? @relation("TaskUploadFolder", fields: [uploadFolderId], references: [id], onDelete: SetNull)
+
+  createdByUserId String?
+  createdByUser   User?   @relation("createdTasks", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  assignments TaskAssignment[]
+  activities  TaskActivity[]
+  // Files uploaded by visitors to fulfill this task (UPLOAD type).
+  uploads     DocumentUpload[]
+
+  // Debounce cursor: createdAt of the newest activity already emailed. Advanced
+  // only after a notification batch is sent, so retries re-send rather than skip.
+  lastActivityNotifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskListId])
+  @@index([dataroomId])
+  @@index([teamId])
+  @@index([uploadFolderId])
+  @@index([taskListId, orderIndex])
+}
+
+// Join row connecting a Task to an assignee. Exactly one of viewerId / groupId
+// / linkId / email is set. Multiple assignments per task support bulk-assign.
+model TaskAssignment {
+  id     String  @id @default(cuid())
+  taskId String
+  task   Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  viewerId String?
+  viewer   Viewer? @relation(fields: [viewerId], references: [id], onDelete: Cascade)
+  groupId  String?
+  group    ViewerGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  linkId   String?
+  link     Link?   @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  email    String?
+
+  notifiedAt     DateTime? // assignment notification sent
+  lastReminderAt DateTime? // last reminder email sent
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([taskId, viewerId])
+  @@unique([taskId, groupId])
+  @@unique([taskId, linkId])
+  @@unique([taskId, email])
+  @@index([taskId])
+  @@index([viewerId])
+  @@index([groupId])
+  @@index([linkId])
+}
+
+// Append-only log powering status history + comments for both admins & visitors.
+model TaskActivity {
+  id         String  @id @default(cuid())
+  taskId     String
+  task       Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  type       String // CREATED | ASSIGNED | STATUS_CHANGED | UPLOADED | COMMENT (validated by Zod)
+  comment    String?
+  fromStatus String?
+  toStatus   String?
+
+  // actor: team member (userId) OR visitor (viewerId + viewId)
+  userId   String?
+  user     User?   @relation("taskActivities", fields: [userId], references: [id], onDelete: SetNull)
+  viewerId String?
+  viewer   Viewer? @relation(fields: [viewerId], references: [id], onDelete: SetNull)
+  viewId   String?
+  view     View?   @relation(fields: [viewId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+  @@index([userId])
+  @@index([viewerId])
+  @@index([viewId])
+  @@index([taskId, createdAt])
 }
 
 model DataroomDocument {
@@ -68,6 +239,9 @@ model DataroomDocument {
   hierarchicalIndex String? // Computed field like "1.2.3" for hierarchical display
 
   conversations Conversation[]
+
+  // Buy-side Q&A questions referencing this document
+  questions DataroomQuestion[]
 
   // FAQ system
   dataroomFAQs DataroomFaqItem[]
@@ -95,6 +269,8 @@ model DataroomFolder {
   documents         DataroomDocument[]
   childFolders      DataroomFolder[]   @relation("SubFolders")
   parentFolder      DataroomFolder?    @relation("SubFolders", fields: [parentId], references: [id], onDelete: SetNull)
+  // Request-list tasks that force uploads into this folder.
+  uploadTasks       Task[]             @relation("TaskUploadFolder")
   dataroomId        String
   dataroom          Dataroom           @relation(fields: [dataroomId], references: [id], onDelete: Cascade)
   orderIndex        Int?
@@ -109,15 +285,37 @@ model DataroomFolder {
 }
 
 model DataroomBrand {
-  id                             String   @id @default(cuid())
+  id                             String  @id @default(cuid())
   logo                           String? // This should be a reference to where the file is stored (S3, Google Cloud Storage, etc.)
+  hideLogo                       Boolean? // null inherits the team-level Brand.hideLogo
   banner                         String? // This should be a reference to where the file is stored (S3, Google Cloud Storage, etc.)
   brandColor                     String? // This should be a reference to the brand color
-  accentColor                    String? // This should be a reference to the accent color
-  applyAccentColorToDataroomView Boolean  @default(false) // When true, apply accentColor to dataroom list/tree viewer background
+  accentColor                    String? // This should be a reference to the accent color (front-page background)
+  accentButtonColor              String? // Color used for CTA buttons; falls back to global Brand.accentButtonColor
+  applyAccentColorToDataroomView Boolean @default(false) // When true, apply accentColor to dataroom list/tree viewer background
   welcomeMessage                 String? // This should be a reference to the welcome message
-  dataroomId                     String   @unique
-  dataroom                       Dataroom @relation(fields: [dataroomId], references: [id], onDelete: Cascade)
+
+  cardLayout            String  @default("LIST")
+  showFolderTree        Boolean @default(true) // hide folder nav tree when false
+  viewerLayoutPreset    String  @default("STANDARD")
+  viewerHeaderStyle     String  @default("DEFAULT")
+  hideFolderIconsInMain Boolean @default(false)
+  ctaLabel              String?
+  ctaUrl                String?
+
+  // Open Graph / social preview for this dataroom's links (overrides team brand when enabled)
+  customLinkPreviewEnabled Boolean @default(false)
+  linkPreviewTitle         String?
+  linkPreviewDescription   String?
+  linkPreviewImage         String?
+  linkPreviewFavicon       String?
+
+  // Visitor-side language (i18n) settings — these override the team-level
+  // Admin-chosen viewer language (BCP-47). See `lib/i18n/viewer-page-props.ts`.
+  defaultLanguage String @default("en") // BCP-47 tag from SUPPORTED_LOCALES; admin-chosen viewer language
+
+  dataroomId String   @unique
+  dataroom   Dataroom @relation(fields: [dataroomId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -140,6 +338,10 @@ model ViewerGroup {
   views         View[]
   conversations Conversation[]
   invitations   ViewerInvitation[]
+
+  // Buy-side Q&A: question assignments routed to this group's link(s)
+  questionAssignments DataroomQuestionAssignment[]
+  taskAssignments     TaskAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -193,6 +395,14 @@ enum DefaultPermissionStrategy {
   INHERIT_FROM_PARENT
   ASK_EVERY_TIME
   HIDDEN_BY_DEFAULT
+}
+
+// Default access granted to root-level items under INHERIT_FROM_PARENT,
+// where there is no parent folder whose permissions could be copied.
+enum RootItemAccess {
+  VIEW_ONLY
+  VIEW_AND_DOWNLOAD
+  HIDDEN
 }
 
 model PermissionGroup {

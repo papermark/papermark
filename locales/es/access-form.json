@@ -1,0 +1,56 @@
+{
+  "welcome": {
+    "fallback": "Se requiere su acción para continuar"
+  },
+  "buttons": {
+    "continue": "Continuar",
+    "verifying": "Verificando..."
+  },
+  "fields": {
+    "email": {
+      "label": "Correo electrónico",
+      "placeholder": "Introduzca el correo electrónico",
+      "errorInvalid": "Introduzca una dirección de correo electrónico válida",
+      "sharedWithSender": "Estos datos se compartirán con el remitente.",
+      "sharedWithProvider": "Estos datos se compartirán con el proveedor del contenido."
+    },
+    "password": {
+      "label": "Código de acceso",
+      "placeholder": "Introduzca el código de acceso"
+    },
+    "name": {
+      "label": "Nombre",
+      "placeholder": "Introduzca su nombre completo"
+    },
+    "url": {
+      "errorInvalid": "Introduzca una URL válida que comience con https://"
+    },
+    "phone": {
+      "placeholderDefault": "+34 612 34 56 78"
+    }
+  },
+  "agreement": {
+    "fallbackPrefix": "He revisado y acepto los términos de este"
+  },
+  "verification": {
+    "title": "Verifique su correo electrónico",
+    "description": "Introduzca el código de verificación de seis dígitos enviado a <email>{{email}}</email>",
+    "errorInvalid": "Código no válido. Inténtelo de nuevo.",
+    "noEmail": "¿No ha recibido el correo electrónico?",
+    "resending": "Reenviando código...",
+    "resendIn": "Reenviar código ({{seconds}} s)",
+    "resend": "Reenviar código"
+  },
+  "footer": {
+    "sharedSecurelyVia": "Este documento se comparte con usted de forma segura mediante",
+    "sharedSecurelyViaDataroom": "Esta sala de datos se comparte con usted de forma segura mediante",
+    "papermark": "Papermark",
+    "seeHowWeProtect": "Vea cómo protegemos sus datos en nuestra",
+    "privacyPolicy": "Política de privacidad"
+  },
+  "reauth": {
+    "title": "Verifique que es usted",
+    "description": "Este archivo fue subido por usted. Para volver a abrirlo, confirme que controla <email>{{email}}</email>.",
+    "otpDescription": "Le hemos enviado un código de 6 dígitos a <email>{{email}}</email>. Introdúzcalo a continuación para acceder a su archivo."
+  }
+}

@@ -34,11 +34,18 @@ export default async function DomainMiddleware(req: NextRequest) {
   // Rewrite to the pages/view/domains/[domain]/[slug] route
   url.pathname = `/view/domains/${host}${path}`;
 
-  return NextResponse.rewrite(url, {
-    headers: {
-      "X-Robots-Tag": "noindex",
-      "X-Powered-By":
-        "Papermark - Secure Data Room Infrastructure for the modern web",
-    },
-  });
+  const headers: Record<string, string> = {
+    "X-Robots-Tag": "noindex",
+    "X-Powered-By":
+      "Papermark - Secure Data Room Infrastructure for the modern web",
+  };
+
+  // Allow custom-domain embeds to be framed from any host, matching the
+  // papermark.com `/view/:path*/embed` behavior. next.config `headers()` match
+  // the external path (`/{slug}/embed`), so the framing header is set here.
+  if (path.endsWith("/embed")) {
+    headers["Content-Security-Policy"] = "frame-ancestors *;";
+  }
+
+  return NextResponse.rewrite(url, { headers });
 }

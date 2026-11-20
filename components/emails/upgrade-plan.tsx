@@ -12,7 +12,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from "@react-email/components";
+} from "react-email";
 
 import { Footer } from "./shared/footer";
 
@@ -39,7 +39,8 @@ const UpgradePlanEmail = ({
   const planTypeText = PLAN_TYPE_MAP[planType as keyof typeof PLAN_TYPE_MAP];
   const features: any = {
     pro: [
-      "Custom branding",
+      "Remove Papermark branding",
+      "Custom logo, colors & accents",
       "Unlimited link views",
       "Folder organization",
       "1 team member",
@@ -88,7 +89,7 @@ const UpgradePlanEmail = ({
             <Text className="mx-0 mb-8 mt-4 p-0 text-center text-2xl font-normal">
               <span className="font-bold tracking-tighter">Papermark</span>
             </Text>
-            <Text className="font-seminbold mx-0 mb-8 mt-4 p-0 text-center text-xl">
+            <Text className="mx-0 mb-8 mt-4 p-0 text-center text-xl">
               Thanks for upgrading to Papermark {planTypeText}!
             </Text>
             <Text className="text-sm leading-6 text-black">

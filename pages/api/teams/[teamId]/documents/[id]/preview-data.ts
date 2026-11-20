@@ -2,12 +2,15 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { getServerSession } from "next-auth/next";
 
-import { getTeamStorageConfigById } from "@/ee/features/storage/config";
-
+import { enforceDocumentMemberScope } from "@/lib/api/rbac/guard";
+import { getFeatureFlags } from "@/lib/featureFlags";
+import { getAdvancedExcelFileUrl } from "@/lib/files/advanced-excel-url";
 import { getFile } from "@/lib/files/get-file";
+import { signPageLinks } from "@/lib/files/sign-page-links";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 import { log } from "@/lib/utils";
+import { resolveHtmlContentForRender } from "@/lib/utils/html-document";
 
 import { authOptions } from "../../../../auth/[...nextauth]";
 
@@ -30,6 +33,11 @@ export default async function handle(
     teamId: string;
   };
   const userId = (session.user as CustomUser).id;
+
+  // Dataroom-scoped members may only access documents in their assigned rooms.
+  if (await enforceDocumentMemberScope({ userId, teamId, documentId, res })) {
+    return;
+  }
 
   try {
     const team = await prisma.team.findUnique({
@@ -105,6 +113,7 @@ export default async function handle(
       pages: undefined as any,
       file: undefined as string | undefined,
       sheetData: undefined as any,
+      htmlContent: undefined as string | undefined,
     };
 
     const INITIAL_PAGES_TO_LOAD = 10;
@@ -117,12 +126,16 @@ export default async function handle(
       returnData.pages = await Promise.all(
         primaryVersion.pages.map(async (page, index) => {
           const { storageType, ...otherPageData } = page;
+          const inWindow = index < INITIAL_PAGES_TO_LOAD;
           return {
             ...otherPageData,
-            file:
-              index < INITIAL_PAGES_TO_LOAD
-                ? await getFile({ data: page.file, type: storageType })
-                : null,
+            file: inWindow
+              ? await getFile({ data: page.file, type: storageType })
+              : null,
+            pageLinks: inWindow
+              ? ((await signPageLinks(otherPageData.pageLinks)) ??
+                otherPageData.pageLinks)
+              : otherPageData.pageLinks,
           };
         }),
       );
@@ -136,16 +149,40 @@ export default async function handle(
     } else if (primaryVersion.type === "sheet") {
       if (document.advancedExcelEnabled) {
         // Advanced Excel mode: use Office Online viewer URL
-        if (!primaryVersion.file.includes("https://")) {
-          const storageConfig = await getTeamStorageConfigById(document.teamId);
-          returnData.file = `https://${storageConfig.advancedDistributionHost}/${primaryVersion.file}`;
-        } else {
-          returnData.file = primaryVersion.file;
-        }
+        returnData.file = await getAdvancedExcelFileUrl({
+          file: primaryVersion.file,
+          storageType: primaryVersion.storageType,
+        });
         returnData.numPages = 1;
       }
       // Non-advanced sheets: return 200 with advancedExcelEnabled=false so
       // PreviewViewer renders its inline fallback instead of showing an error.
+    } else if (primaryVersion.type === "html") {
+      const featureFlags = await getFeatureFlags({ teamId });
+      if (!featureFlags.htmlDocuments) {
+        return res.status(400).json({
+          message: "HTML documents are not enabled for this team.",
+        });
+      }
+      try {
+        const fileUrl = await getFile({
+          data: primaryVersion.file,
+          type: primaryVersion.storageType,
+        });
+        returnData.htmlContent = await resolveHtmlContentForRender({
+          documentId,
+          url: fileUrl,
+        });
+        returnData.numPages = 1;
+      } catch (error) {
+        console.error("Failed to load HTML document preview:", error);
+        return res.status(400).json({
+          message:
+            error instanceof Error && error.message
+              ? error.message
+              : "Preview not available for this document",
+        });
+      }
     } else if (primaryVersion.type === "notion") {
       // Notion documents - preview not supported
       return res.status(400).json({

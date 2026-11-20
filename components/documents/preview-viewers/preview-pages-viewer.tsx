@@ -13,14 +13,18 @@ interface PreviewPagesViewerProps {
   documentData: DocumentPreviewData;
   onClose: () => void;
   pagesApiEndpoint?: string;
+  initialPage?: number;
 }
 
 export function PreviewPagesViewer({
   documentData,
   onClose,
   pagesApiEndpoint,
+  initialPage,
 }: PreviewPagesViewerProps) {
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(() =>
+    Math.min(Math.max(initialPage ?? 1, 1), documentData.numPages || 1),
+  );
   const [imageCache, setImageCache] = useState<{ [key: number]: boolean }>({});
   const [imageLoaded, setImageLoaded] = useState(imageCache[1] || false);
   const [pages, setPages] = useState(documentData.pages ?? []);

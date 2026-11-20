@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 
+import { getEmbedUrl } from "@/lib/utils/embed";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,6 +18,8 @@ interface EmbedCodeModalProps {
   setIsOpen: (open: boolean) => void;
   linkId: string;
   linkName: string;
+  domain?: string | null;
+  slug?: string | null;
 }
 
 export default function EmbedCodeModal({
@@ -23,11 +27,13 @@ export default function EmbedCodeModal({
   setIsOpen,
   linkId,
   linkName,
+  domain,
+  slug,
 }: EmbedCodeModalProps) {
   const [copied, setCopied] = useState(false);
 
   const embedCode = `<iframe
-  src="${process.env.NEXT_PUBLIC_BASE_URL}/view/${linkId}/embed"
+  src="${getEmbedUrl({ linkId, domain, slug })}"
   style="width: 100%; height: 100%; border: none; border-radius: 8px;"
   allow="fullscreen"
   loading="lazy">

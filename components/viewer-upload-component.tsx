@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 
+import { usePendingUploads } from "@/context/pending-uploads-context";
 import { FileUp } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
-import { usePendingUploads } from "@/context/pending-uploads-context";
 import { DocumentData } from "@/lib/documents/create-document";
 import { newId } from "@/lib/id-helper";
 import { cn } from "@/lib/utils";
@@ -15,13 +16,20 @@ export function ViewerUploadComponent({
   viewerData,
   teamId,
   folderId,
+  taskId,
   onUploadSuccess,
 }: {
   viewerData: { id: string; linkId: string; dataroomId?: string };
   teamId: string;
   folderId?: string;
+  /** When set, the upload fulfills a Request List task (links it to the task
+   *  and auto-submits the request). */
+  taskId?: string;
   onUploadSuccess?: () => void;
 }) {
+  // Viewer-only component: it is mounted exclusively inside the data room
+  // viewer tree, so the `dataroom` namespace is always available.
+  const { t } = useTranslation("dataroom");
   const [uploads, setUploads] = useState<
     { uploadId: string; fileName: string; progress: number }[]
   >([]);
@@ -123,17 +131,26 @@ export function ViewerUploadComponent({
           documentData,
           dataroomId: viewerData.dataroomId,
           folderId: folderId,
+          taskId: taskId,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to process upload");
+        throw new Error(
+          errorData.message ||
+            t("uploadZone.errorProcessFailed", "Failed to process upload"),
+        );
       }
 
       const result = await response.json();
       if (!result.document) {
-        throw new Error("Upload response missing document metadata");
+        throw new Error(
+          t(
+            "uploadZone.errorMissingMetadata",
+            "Upload response missing document metadata",
+          ),
+        );
       }
 
       // Determine if the file needs trigger processing (PDF, docs, slides)
@@ -143,7 +160,11 @@ export function ViewerUploadComponent({
         result.document.fileType,
       );
 
-      // Update pending upload with real document data
+      // Update pending upload with real document data. Crucially, reconcile the
+      // folder with the destination the server actually chose: forced
+      // destinations (per-task `uploadFolderId` or the link's upload allow-list)
+      // can differ from the client-guessed `folderId`, so trust the server so
+      // the file shows under its real folder — not stuck in Home.
       if (pendingId) {
         updatePendingUpload(pendingId, {
           status: needsProcessing ? "processing" : "complete",
@@ -151,18 +172,23 @@ export function ViewerUploadComponent({
           dataroomDocumentId: result.document.dataroomDocumentId,
           documentVersionId: result.document.documentVersionId,
           fileType: result.document.fileType,
+          folderId: result.document.folderId ?? null,
         });
       }
 
       settleUpload(uploadId, false);
     } catch (error) {
       console.error("Error processing upload:", error);
-      toast.error((error as Error).message || "Failed to upload document");
+      const fallback = t(
+        "uploadZone.toastUploadFailed",
+        "Failed to upload document",
+      );
+      toast.error((error as Error).message || fallback);
 
       if (pendingId) {
         updatePendingUpload(pendingId, {
           status: "error",
-          errorMessage: (error as Error).message || "Failed to upload document",
+          errorMessage: (error as Error).message || fallback,
         });
       }
 
@@ -180,6 +206,7 @@ export function ViewerUploadComponent({
       onUploadRejected={(rejected) => setRejectedFiles(rejected)}
       viewerData={viewerData}
       teamId={teamId}
+      taskId={taskId}
     >
       {isUploading ? (
         <div className="min-w-0 space-y-3">
@@ -194,10 +221,7 @@ export function ViewerUploadComponent({
                   {upload.fileName}
                 </p>
                 <div className="mt-1.5 flex items-center gap-2">
-                  <Progress
-                    value={upload.progress}
-                    className="h-1.5 flex-1"
-                  />
+                  <Progress value={upload.progress} className="h-1.5 flex-1" />
                   <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                     {upload.progress}%
                   </span>
@@ -217,10 +241,16 @@ export function ViewerUploadComponent({
             <FileUp className="h-5 w-5 text-muted-foreground" />
           </div>
           <p className="text-sm font-medium text-foreground">
-            Drag & drop files here, or click to select files
+            {t(
+              "uploadZone.dropzoneTitle",
+              "Drag & drop files here, or click to select files",
+            )}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Supported: PDF, Office, spreadsheets, images, ZIP, and more
+            {t(
+              "uploadZone.dropzoneHint",
+              "Supported: PDF, Office, spreadsheets, images, ZIP, and more",
+            )}
           </p>
         </div>
       )}
@@ -229,7 +259,7 @@ export function ViewerUploadComponent({
       {rejectedFiles.length > 0 && (
         <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950/30">
           <p className="text-xs font-medium text-red-600 dark:text-red-400">
-            Some files were rejected:
+            {t("uploadZone.rejectedTitle", "Some files were rejected:")}
           </p>
           <ul className="mt-1.5 space-y-0.5">
             {rejectedFiles.map((file, index) => (

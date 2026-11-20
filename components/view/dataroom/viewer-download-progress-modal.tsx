@@ -10,6 +10,7 @@ import {
   Loader2,
   XCircle,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { DownloadOtpVerification } from "./download-otp-verification";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,7 @@ export function ViewerDownloadProgressModal({
   folderId,
   folderName,
 }: ViewerDownloadProgressModalProps) {
+  const { t } = useTranslation("dataroom");
   const isFolderDownload = !!folderId;
   const [step, setStep] = useState<Step>("choose");
   const [wantEmail, setWantEmail] = useState(false);
@@ -124,11 +126,11 @@ export function ViewerDownloadProgressModal({
       );
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Failed to fetch status");
+        throw new Error(data.error ?? t("download.statusFetchFailed", "Failed to fetch status"));
       }
       return res.json();
     },
-    [linkId],
+    [linkId, t],
   );
 
   useEffect(() => {
@@ -179,7 +181,7 @@ export function ViewerDownloadProgressModal({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "Failed to start download");
+        setError(data.error ?? t("download.startFailed", "Failed to start download"));
         return;
       }
       if (data.jobId) {
@@ -261,9 +263,10 @@ export function ViewerDownloadProgressModal({
     const diffMs = expires.getTime() - now.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays > 0) return `${diffDays} day${diffDays > 1 ? "s" : ""}`;
-    if (diffHours > 0) return `${diffHours} hour${diffHours > 1 ? "s" : ""}`;
-    return "less than an hour";
+    // i18next plural keys (`_one` / `_other`) are picked via `count`.
+    if (diffDays > 0) return t("download.expiresDays", "{{count}} days", { count: diffDays });
+    if (diffHours > 0) return t("download.expiresHours", "{{count}} hours", { count: diffHours });
+    return t("download.expiresLessThanHour", "less than an hour");
   };
 
   return (
@@ -272,17 +275,18 @@ export function ViewerDownloadProgressModal({
         <DialogHeader>
           <DialogTitle>
             {isFolderDownload
-              ? `Download folder: ${folderName}`
-              : `Download ${dataroomName || "Dataroom"}`}
+              ? t("download.folderTitle", "Download folder: {{name}}", { name: folderName ?? "" })
+              : t("download.dataroomTitle", "Download {{name}}", {
+                  name: dataroomName || t("download.defaultName", "Dataroom"),
+                })}
           </DialogTitle>
           <DialogDescription>
-            {step === "choose" &&
-              "Start the download. You can optionally get an email when it's ready."}
-            {step === "otp" && "Verify your email to receive download notifications."}
+            {step === "choose" && t("download.chooseDescription", "Start the download. You can optionally get an email when it's ready.")}
+            {step === "otp" && t("download.otpDescription", "Verify your email to receive download notifications.")}
             {step === "progress" &&
               (status?.status === "COMPLETED"
-                ? "Your files are ready to download."
-                : "Preparing your files...")}
+                ? t("download.ready", "Your files are ready to download.")
+                : t("download.preparing", "Preparing your files..."))}
           </DialogDescription>
         </DialogHeader>
 
@@ -294,11 +298,11 @@ export function ViewerDownloadProgressModal({
                 checked={wantEmail}
                 onChange={(e) => setWantEmail(e.target.checked)}
               />
-              Notify me by email when the download is ready
+              {t("download.notifyByEmail", "Notify me by email when the download is ready")}
             </label>
             {wantEmail && verified === false && (
               <p className="text-xs text-muted-foreground">
-                You’ll need to verify your email with a one-time code first.
+                {t("download.needsVerification", "You'll need to verify your email with a one-time code first.")}
               </p>
             )}
             <div className="flex gap-2">
@@ -306,10 +310,12 @@ export function ViewerDownloadProgressModal({
                 onClick={handleStartClick}
                 disabled={isStarting}
               >
-                {isStarting ? "Starting..." : "Start download"}
+                {isStarting
+                  ? t("download.starting", "Starting...")
+                  : t("download.start", "Start download")}
               </Button>
               <Button variant="outline" onClick={handleClose}>
-                Cancel
+                {t("download.cancel", "Cancel")}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -319,7 +325,7 @@ export function ViewerDownloadProgressModal({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                View your downloads
+                {t("download.viewDownloads", "View your downloads")}
               </a>
             </p>
           </div>
@@ -349,14 +355,17 @@ export function ViewerDownloadProgressModal({
             </div>
             <p className="text-center text-sm text-muted-foreground">
               {!status
-                ? "Starting..."
+                ? t("download.starting", "Starting...")
                 : status.status === "PENDING"
-                  ? "Preparing..."
+                  ? t("download.preparingShort", "Preparing...")
                   : status.status === "PROCESSING"
-                    ? `Processing ${status.processedFiles} of ${status.totalFiles} files...`
+                    ? t("download.processingFiles", "Processing {{processed}} of {{total}} files...", {
+                        processed: status.processedFiles,
+                        total: status.totalFiles,
+                      })
                     : status.status === "COMPLETED"
-                      ? "Your download is ready!"
-                      : status.error ?? "Download failed."}
+                      ? t("download.complete", "Your download is ready!")
+                      : status.error ?? t("download.failed", "Download failed.")}
             </p>
             {(status?.status === "PROCESSING" || status?.status === "PENDING") && (
               <Progress value={status?.progress ?? 0} className="h-2" />
@@ -369,7 +378,7 @@ export function ViewerDownloadProgressModal({
                     onClick={() => handleDownload(status.downloadUrls![0])}
                   >
                     <Download className="mr-2 h-4 w-4" />
-                    Download ZIP
+                    {t("download.downloadZip", "Download ZIP")}
                   </Button>
                 ) : (
                   <>
@@ -381,13 +390,17 @@ export function ViewerDownloadProgressModal({
                       {downloadProgress ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Downloading {downloadProgress.current} of{" "}
-                          {downloadProgress.total}...
+                          {t("download.downloadingProgress", "Downloading {{current}} of {{total}}...", {
+                            current: downloadProgress.current,
+                            total: downloadProgress.total,
+                          })}
                         </>
                       ) : (
                         <>
                           <Download className="mr-2 h-4 w-4" />
-                          Download all ({status.downloadUrls.length} parts)
+                          {t("download.downloadAll", "Download all ({{count}} parts)", {
+                            count: status.downloadUrls.length,
+                          })}
                         </>
                       )}
                     </Button>
@@ -400,7 +413,7 @@ export function ViewerDownloadProgressModal({
                           className="w-full justify-start"
                           onClick={() => handleDownload(url)}
                         >
-                          Part {i + 1}
+                          {t("download.part", "Part {{index}}", { index: i + 1 })}
                         </Button>
                       ))}
                     </div>
@@ -408,7 +421,9 @@ export function ViewerDownloadProgressModal({
                 )}
                 {status.expiresAt && (
                   <p className="text-center text-xs text-muted-foreground">
-                    Expires in {formatExpirationTime(status.expiresAt)}
+                    {t("download.expiresIn", "Expires in {{time}}", {
+                      time: formatExpirationTime(status.expiresAt),
+                    })}
                   </p>
                 )}
               </div>
@@ -417,19 +432,19 @@ export function ViewerDownloadProgressModal({
               <DialogFooter>
                 <p className="text-xs text-muted-foreground">
                   {wantEmail
-                    ? "You can close this. We’ll email you when it’s ready."
-                    : "You can close this. Check back on the downloads page when it’s ready."}
+                    ? t("download.willEmailWhenReady", "You can close this. We'll email you when it's ready.")
+                    : t("download.checkBackOnDownloads", "You can close this. Check back on the downloads page when it's ready.")}
                 </p>
               </DialogFooter>
             )}
             {status?.status === "FAILED" && (
               <Button variant="outline" onClick={() => setStep("choose")}>
-                Try again
+                {t("download.tryAgain", "Try again")}
               </Button>
             )}
             <p className="text-xs text-muted-foreground">
               <a href={downloadsPageUrl} className="underline" target="_blank" rel="noopener noreferrer">
-                Open downloads page
+                {t("download.openDownloads", "Open downloads page")}
               </a>
             </p>
             {error && (

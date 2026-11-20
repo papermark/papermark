@@ -59,7 +59,7 @@ export const sendVerificationRequestEmail = async (params: {
   waitUntil(
     sendEmail({
       to: email as string,
-      system: true,
+      verify: true,
       subject: "Login for Papermark",
       react: emailTemplate,
       test: process.env.NODE_ENV === "development",

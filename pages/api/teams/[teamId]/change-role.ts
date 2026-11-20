@@ -22,9 +22,14 @@ export default async function handle(
     const { teamId } = req.query as { teamId: string };
     const userId = (session.user as CustomUser).id;
 
-    const { userToBeChanged, role } = req.body as {
+    const {
+      userToBeChanged,
+      role,
+      dataroomIds: rawDataroomIds,
+    } = req.body as {
       userToBeChanged: string;
-      role: "MEMBER" | "MANAGER" | "ADMIN";
+      role: "MEMBER" | "MANAGER" | "ADMIN" | "DATAROOM_MEMBER";
+      dataroomIds?: string[];
     };
 
     try {
@@ -46,21 +51,79 @@ export default async function handle(
         return res.status(403).json("Only admins can change user roles");
       }
 
+      // Managing the dataroom-scoped role (and its room assignments) is an
+      // ADMIN/MANAGER-only operation.
+      if (
+        role === "DATAROOM_MEMBER" &&
+        userTeam.role !== "ADMIN" &&
+        userTeam.role !== "MANAGER"
+      ) {
+        return res
+          .status(403)
+          .json("Only admins and managers can manage data room members");
+      }
+
       if (userTeam?.role === "ADMIN" && userTeam.userId === userToBeChanged) {
         return res.status(401).json("You can't change the Admin");
       }
 
-      await prisma.userTeam.update({
-        where: {
-          userId_teamId: {
-            userId: userToBeChanged,
-            teamId,
+      const dataroomIds =
+        role === "DATAROOM_MEMBER" && Array.isArray(rawDataroomIds)
+          ? Array.from(
+              new Set(rawDataroomIds.filter((id) => typeof id === "string")),
+            )
+          : [];
+
+      if (role === "DATAROOM_MEMBER" && dataroomIds.length === 0) {
+        return res
+          .status(400)
+          .json("Select at least one data room for a data room member.");
+      }
+
+      if (dataroomIds.length > 0) {
+        const validDatarooms = await prisma.dataroom.findMany({
+          where: { id: { in: dataroomIds }, teamId },
+          select: { id: true },
+        });
+        if (validDatarooms.length !== dataroomIds.length) {
+          return res.status(400).json("One or more data rooms are invalid.");
+        }
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.userTeam.update({
+          where: {
+            userId_teamId: {
+              userId: userToBeChanged,
+              teamId,
+            },
           },
-        },
-        data: {
-          role,
-        },
+          data: {
+            role,
+          },
+        });
+
+        if (role === "DATAROOM_MEMBER") {
+          // Replace the member's room assignments with the provided set.
+          await tx.userDataroom.deleteMany({
+            where: { userId: userToBeChanged, teamId },
+          });
+          await tx.userDataroom.createMany({
+            data: dataroomIds.map((dataroomId) => ({
+              userId: userToBeChanged,
+              teamId,
+              dataroomId,
+            })),
+            skipDuplicates: true,
+          });
+        } else {
+          // Promoting away from the scoped role clears any assignments.
+          await tx.userDataroom.deleteMany({
+            where: { userId: userToBeChanged, teamId },
+          });
+        }
       });
+
       return res.status(204).end();
     } catch (error) {
       errorhandler(error, res);

@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { FormEvent, useEffect, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
+import ConfidentialViewSection from "@/ee/features/permissions/components/confidential-view/confidential-view-section";
 import { PlanEnum } from "@/ee/stripe/constants";
 import { LinkPreset } from "@prisma/client";
 import { AlertCircle, ArrowLeft, Trash2, X } from "lucide-react";
@@ -134,6 +135,7 @@ export default function EditPreset() {
         watermarkConfig: watermarkConfig,
         pId: preset.pId,
         enableScreenshotProtection: preset.enableScreenshotProtection ?? false,
+        enableConfidentialView: preset.enableConfidentialView ?? false,
         enableAgreement: preset.enableAgreement ?? false,
         agreementId: preset.agreementId,
         enableCustomFields: customFields.length > 0,
@@ -185,6 +187,7 @@ export default function EditPreset() {
           expiresIn: data.expiresIn,
           pId: data.pId,
           enableScreenshotProtection: data.enableScreenshotProtection,
+          enableConfidentialView: data.enableConfidentialView,
           enableAgreement: data.enableAgreement,
           agreementId: data.agreementId,
           enableCustomFields: data.enableCustomFields,
@@ -456,6 +459,14 @@ export default function EditPreset() {
                     isBusiness ||
                     isDatarooms ||
                     isDataroomsPlus
+                  }
+                  handleUpgradeStateChange={handleUpgradeStateChange}
+                />
+                <ConfidentialViewSection
+                  data={data as any}
+                  setData={setData as any}
+                  isAllowed={
+                    isTrial || isBusiness || isDatarooms || isDataroomsPlus
                   }
                   handleUpgradeStateChange={handleUpgradeStateChange}
                 />

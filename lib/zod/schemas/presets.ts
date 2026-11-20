@@ -64,6 +64,7 @@ export const presetDataSchema = z.object({
   expiresAt: z.string().nullable(),
   expiresIn: z.number().nullable().optional(),
   enableScreenshotProtection: z.boolean().optional(),
+  enableConfidentialView: z.boolean().optional(),
 
   // Agreement
   enableAgreement: z.boolean().optional(),

@@ -19,20 +19,39 @@ export type TStatsData = {
 
 export function useStats({
   excludeTeamMembers,
-}: { excludeTeamMembers?: boolean } = {}) {
+  documentId,
+  dataroomId,
+}: {
+  excludeTeamMembers?: boolean;
+  documentId?: string;
+  /**
+   * When provided, stats are scoped to this data room's visits only (e.g. the
+   * dataroom-scoped document page), excluding the document's direct-link visits.
+   */
+  dataroomId?: string;
+} = {}) {
   // this gets the data for a document's graph of all views
   const router = useRouter();
   const teamInfo = useTeam();
   const teamId = teamInfo?.currentTeam?.id;
 
-  const { id } = router.query as {
+  const { id: routerId } = router.query as {
     id: string;
   };
+
+  // Allow an explicit documentId (e.g. the dataroom-scoped document page where
+  // router.query.id is the dataroom id, not the document id).
+  const id = documentId ?? routerId;
+
+  const query = new URLSearchParams();
+  if (excludeTeamMembers) query.set("excludeTeamMembers", "true");
+  if (dataroomId) query.set("dataroomId", dataroomId);
+  const queryString = query.toString();
 
   const { data: stats, error } = useSWR<TStatsData>(
     id &&
       teamId &&
-      `/api/teams/${teamId}/documents/${encodeURIComponent(id)}/stats${excludeTeamMembers ? "?excludeTeamMembers=true" : ""}`,
+      `/api/teams/${teamId}/documents/${encodeURIComponent(id)}/stats${queryString ? `?${queryString}` : ""}`,
     fetcher,
     {
       dedupingInterval: 10000,
@@ -53,14 +72,18 @@ interface StatsViewData {
   };
 }
 
-export function useVisitorStats(viewId: string) {
+export function useVisitorStats(viewId: string, documentIdOverride?: string) {
   // this gets the data for a single visitor's graph
   const router = useRouter();
   const teamInfo = useTeam();
 
-  const { id: documentId } = router.query as {
+  const { id: routerId } = router.query as {
     id: string;
   };
+
+  // Allow an explicit documentId (e.g. the dataroom-scoped document page where
+  // router.query.id is the dataroom id, not the document id).
+  const documentId = documentIdOverride ?? routerId;
 
   const { data: stats, error } = useSWR<StatsViewData>(
     documentId &&
@@ -81,13 +104,20 @@ export function useVisitorStats(viewId: string) {
   };
 }
 
-export function useVisitorUserAgent(viewId: string) {
+export function useVisitorUserAgent(
+  viewId: string,
+  documentIdOverride?: string,
+) {
   const router = useRouter();
   const teamInfo = useTeam();
 
-  const { id: documentId } = router.query as {
+  const { id: routerId } = router.query as {
     id: string;
   };
+
+  // Allow an explicit documentId (e.g. the dataroom-scoped document page where
+  // router.query.id is the dataroom id, not the document id).
+  const documentId = documentIdOverride ?? routerId;
 
   const { data: userAgent, error } = useSWRImmutable<{
     country: string;

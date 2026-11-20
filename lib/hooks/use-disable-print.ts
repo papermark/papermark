@@ -1,53 +1,31 @@
 import { useEffect } from "react";
 
 interface UseDisablePrintOptions {
-    className?: string;
     styleId?: string;
 }
 
 export function useDisablePrint({
-    className = "printing-disabled",
     styleId = "printing-disabled-style",
 }: UseDisablePrintOptions = {}) {
     useEffect(() => {
+        // Hide all content unconditionally inside the print media query. This is
+        // pure CSS, so it blocks printing / "Save as PDF" even on browsers that
+        // do not fire `beforeprint`/`afterprint` or `matchMedia('print')` change
+        // events (e.g. Samsung Internet, Opera Mini), without relying on JS to
+        // toggle a class at print time.
         const style = document.createElement("style");
         style.id = styleId;
         style.textContent = `
       @media print {
-        body.${className} * {
+        body {
           display: none !important;
         }
       }
     `;
         document.head.appendChild(style);
 
-        const handleBeforePrint = () => {
-            document.body.classList.add(className);
-        };
-
-        const handleAfterPrint = () => {
-            document.body.classList.remove(className);
-        };
-
-        window.addEventListener("beforeprint", handleBeforePrint);
-        window.addEventListener("afterprint", handleAfterPrint);
-
-        const mediaQueryList = window.matchMedia?.("print");
-        const mediaQueryHandler = (e: MediaQueryListEvent) => {
-            if (e.matches) {
-                handleBeforePrint();
-            } else {
-                handleAfterPrint();
-            }
-        };
-
-        mediaQueryList?.addEventListener?.("change", mediaQueryHandler);
-
         return () => {
             document.getElementById(styleId)?.remove();
-            window.removeEventListener("beforeprint", handleBeforePrint);
-            window.removeEventListener("afterprint", handleAfterPrint);
-            mediaQueryList?.removeEventListener?.("change", mediaQueryHandler);
         };
-    }, [className, styleId]);
+    }, [styleId]);
 }

@@ -2,10 +2,16 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { LinkType } from "@prisma/client";
 
+import { verifyDataroomSessionInPagesRouter } from "@/lib/auth/dataroom-auth";
+import { verifyLinkSessionInPagesRouter } from "@/lib/auth/link-session";
 import { getFile } from "@/lib/files/get-file";
 import { notifyDocumentDownload } from "@/lib/integrations/slack/events";
 import prisma from "@/lib/prisma";
-import { getFileNameWithPdfExtension } from "@/lib/utils";
+import {
+  buildAttachmentDispositionForName,
+  getFileNameWithPdfExtension,
+} from "@/lib/utils";
+import { ensureFileExtension } from "@/lib/utils/get-content-type";
 import { getIpAddress } from "@/lib/utils/ip";
 
 // This function can run for a maximum of 300 seconds
@@ -29,11 +35,14 @@ export default async function handle(
         },
         select: {
           id: true,
+          dataroomId: true,
+          dataroomViewId: true,
           viewedAt: true,
           viewerEmail: true,
           link: {
             select: {
               linkType: true,
+              emailAuthenticated: true,
               allowDownload: true,
               expiresAt: true,
               isArchived: true,
@@ -69,6 +78,46 @@ export default async function handle(
       // if view does not exist, we should not allow the download
       if (!view) {
         return res.status(404).json({ error: "Error downloading" });
+      }
+
+      if (view.link.linkType === LinkType.DATAROOM_LINK) {
+        const session = await verifyDataroomSessionInPagesRouter(
+          req,
+          linkId,
+          view.dataroomId ?? "",
+        );
+        if (!session) {
+          return res
+            .status(401)
+            .json({ error: "Session required to download" });
+        }
+
+        if (!view.dataroomViewId || session.viewId !== view.dataroomViewId) {
+          return res.status(403).json({ error: "Error downloading" });
+        }
+
+        if (view.link.emailAuthenticated && !session.verified) {
+          return res.status(403).json({ error: "Error downloading" });
+        }
+      } else if (view.link.linkType === LinkType.DOCUMENT_LINK) {
+        const session = await verifyLinkSessionInPagesRouter(req, linkId);
+        if (!session) {
+          return res
+            .status(401)
+            .json({ error: "Session required to download" });
+        }
+
+        if (
+          session.linkType !== LinkType.DOCUMENT_LINK ||
+          session.viewId !== view.id ||
+          session.documentId !== view.document?.id
+        ) {
+          return res.status(403).json({ error: "Error downloading" });
+        }
+
+        if (view.link.emailAuthenticated && !session.verified) {
+          return res.status(403).json({ error: "Error downloading" });
+        }
       }
 
       // if document is downloadOnly, always allow. Otherwise, check link settings.
@@ -138,14 +187,28 @@ export default async function handle(
           : (view.document!.versions[0].originalFile ??
             view.document!.versions[0].file);
 
+      // Pre-compute the user-facing filename (renamed doc name + correct
+      // extension). Pass it as ResponseContentDisposition so the browser
+      // uses our name even when downloading via direct presigned URL.
+      const desiredFileName = ensureFileExtension({
+        name: view.document!.name,
+        contentType: view.document!.versions[0].contentType,
+        type: view.document!.versions[0].type,
+      });
+
       const downloadUrl = await getFile({
         type: view.document!.versions[0].storageType,
         data: file,
         isDownload: true,
+        responseContentDisposition: desiredFileName
+          ? buildAttachmentDispositionForName(desiredFileName)
+          : undefined,
       });
 
+      const versionType = view.document!.versions[0].type;
+
       if (
-        view.document!.versions[0].type === "pdf" &&
+        (versionType === "pdf" || versionType === "image") &&
         view.link.enableWatermark &&
         view.link.watermarkConfig
       ) {
@@ -159,7 +222,15 @@ export default async function handle(
             },
             body: JSON.stringify({
               url: downloadUrl,
-              numPages: view.document!.versions[0].numPages,
+              // Images are a single page; convert them to a watermarked PDF.
+              fileType: versionType === "image" ? "image" : "pdf",
+              numPages:
+                versionType === "image"
+                  ? 1
+                  : view.document!.versions[0].numPages,
+              // Flatten form/annotation/layers; the watermark is drawn into
+              // the page content stream so it can't be removed as a layer.
+              flatten: true,
               watermarkConfig: view.link.watermarkConfig,
               originalFileName: view.document!.name,
               viewerData: {
@@ -197,11 +268,12 @@ export default async function handle(
 
         const pdfBuffer = await response.arrayBuffer();
 
-        // Set appropriate headers
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader(
           "Content-Disposition",
-          `attachment; filename="${encodeURIComponent(getFileNameWithPdfExtension(view.document!.name))}"`,
+          buildAttachmentDispositionForName(
+            getFileNameWithPdfExtension(view.document!.name),
+          ),
         );
         res.setHeader("Content-Length", Buffer.from(pdfBuffer).length);
 
@@ -209,9 +281,10 @@ export default async function handle(
         return res.send(Buffer.from(pdfBuffer));
       }
 
-      return res
-        .status(200)
-        .json({ downloadUrl, fileName: view.document!.name });
+      return res.status(200).json({
+        downloadUrl,
+        fileName: desiredFileName,
+      });
     } catch (error) {
       return res.status(500).json({
         message: "Internal Server Error",

@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
+import { enforceDataroomMemberScope } from "@/lib/api/rbac/guard";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 
@@ -21,6 +22,13 @@ export default async function handler(
   };
   const groupId = req.query.groupId as string | undefined;
   const userId = (session.user as CustomUser).id;
+
+  // Scoped members may only read counts for their assigned rooms.
+  if (
+    await enforceDataroomMemberScope({ userId, teamId, dataroomId: id, res })
+  ) {
+    return;
+  }
 
   if (req.method === "GET") {
     try {

@@ -10,6 +10,7 @@ SQL >
             WHERE
                 documentId = {{ String(documentId, required=true) }}
                 AND time >= {{ Int64(since, required=true) }}
+                AND time <= {{ Int64(until, 9999999999999) }}
                 AND linkId NOT IN splitByChar(',', {{ String(excludedLinkIds, required=True) }})
                 AND viewId NOT IN splitByChar(',', {{ String(excludedViewIds, required=True) }})
             GROUP BY versionNumber, pageNumber, viewId

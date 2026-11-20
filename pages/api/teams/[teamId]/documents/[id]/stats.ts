@@ -4,6 +4,7 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { View } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
+import { assertDocumentAccess } from "@/lib/api/rbac/entitlements";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import {
@@ -15,6 +16,13 @@ import {
   getViewCompletionStats,
 } from "@/lib/tinybird/pipes";
 import { CustomUser } from "@/lib/types";
+import {
+  countablePlaybackEvents,
+  completionRate,
+  eventsForView,
+  resolveVideoLength,
+  watchTimeSeconds,
+} from "@/lib/video-analytics/playback";
 
 export default async function handle(
   req: NextApiRequest,
@@ -31,10 +39,14 @@ export default async function handle(
       teamId,
       id: docId,
       excludeTeamMembers,
+      dataroomId,
     } = req.query as {
       teamId: string;
       id: string;
       excludeTeamMembers?: string;
+      // When provided, stats are scoped to this data room's visits only,
+      // treating the document's direct-link visits as out of scope.
+      dataroomId?: string;
     };
 
     const userId = (session.user as CustomUser).id;
@@ -46,6 +58,22 @@ export default async function handle(
 
       if (!teamHasUser) {
         return res.status(401).end("Unauthorized");
+      }
+
+      // Dataroom-scoped members may only read stats for a document in one of
+      // their assigned rooms.
+      const membership = await prisma.userTeam.findUnique({
+        where: { userId_teamId: { userId, teamId } },
+        select: { role: true },
+      });
+      const hasDocumentAccess = await assertDocumentAccess({
+        role: membership?.role ?? "",
+        userId,
+        teamId,
+        documentId: docId,
+      });
+      if (!hasDocumentAccess) {
+        return res.status(403).end("Forbidden");
       }
 
       // First check if document exists and get basic info
@@ -126,25 +154,40 @@ export default async function handle(
         });
       }
 
-      // combined archived and internal views
-      const allExcludedViews = [...internalViews, ...archivedViews];
+      // When scoped to a data room, the document's direct-link visits (and any
+      // visits belonging to other rooms) are out of scope and excluded.
+      const outOfScopeViews: View[] = dataroomId
+        ? activeViews.filter((view) => view.dataroomId !== dataroomId)
+        : [];
+
+      // combined archived, internal, and out-of-scope views (deduped by id)
+      const excludedViewIdSet = new Set<string>();
+      for (const view of [
+        ...internalViews,
+        ...archivedViews,
+        ...outOfScopeViews,
+      ]) {
+        excludedViewIdSet.add(view.id);
+      }
+      const excludedViewIds = Array.from(excludedViewIdSet);
+      const excludedViewIdsString = excludedViewIds.join(",");
 
       // filter out the excluded views
       const filteredViews = views.filter(
-        (view) => !allExcludedViews.map((view) => view.id).includes(view.id),
+        (view) => !excludedViewIdSet.has(view.id),
       );
 
       const [duration, totalDocumentDuration] = await Promise.all([
         getTotalAvgPageDuration({
           documentId: docId,
           excludedLinkIds: "",
-          excludedViewIds: allExcludedViews.map((view) => view.id).join(","),
+          excludedViewIds: excludedViewIdsString,
           since: 0,
         }),
         getTotalDocumentDuration({
           documentId: docId,
           excludedLinkIds: "",
-          excludedViewIds: allExcludedViews.map((view) => view.id).join(","),
+          excludedViewIds: excludedViewIdsString,
           since: 0,
         }),
       ]);
@@ -158,32 +201,18 @@ export default async function handle(
             document_id: docId,
           });
 
-          const completionRates = await Promise.all(
-            filteredViews.map(async (view) => {
-              const viewEvents =
-                videoEvents?.data.filter(
-                  (event: any) =>
-                    event.view_id === view.id &&
-                    ["played", "muted", "unmuted", "rate_changed"].includes(
-                      event.event_type,
-                    ) &&
-                    event.end_time > event.start_time &&
-                    event.end_time - event.start_time >= 1,
-                ) || [];
-
-              const uniqueTimestamps = new Set<number>();
-              viewEvents.forEach((event: any) => {
-                for (let t = event.start_time; t < event.end_time; t++) {
-                  uniqueTimestamps.add(Math.floor(t));
-                }
-              });
-
-              const videoLength = document.versions[0]?.length || 0;
-              return videoLength > 0
-                ? Math.min(100, (uniqueTimestamps.size / videoLength) * 100)
-                : 0;
-            }),
+          const countable = countablePlaybackEvents(videoEvents?.data);
+          const videoLength = resolveVideoLength(
+            document.versions[0]?.length,
+            countable,
           );
+
+          const completionRates = filteredViews.map((view) => {
+            const { unique } = watchTimeSeconds(
+              eventsForView(countable, view.id),
+            );
+            return completionRate(unique, videoLength);
+          });
 
           avgCompletionRate =
             completionRates.reduce((sum, rate) => sum + rate, 0) /
@@ -192,7 +221,7 @@ export default async function handle(
           // For document type, calculate based on pages viewed
           const completionStats = await getViewCompletionStats({
             documentId: docId,
-            excludedViewIds: allExcludedViews.map((v) => v.id).join(","),
+            excludedViewIds: excludedViewIdsString,
             since: 0,
           });
 
@@ -228,8 +257,10 @@ export default async function handle(
         views: filteredViews,
         duration,
         total_duration:
-          (totalDocumentDuration.data[0].sum_duration * 1.0) /
-          filteredViews.length,
+          filteredViews.length > 0
+            ? ((totalDocumentDuration.data[0]?.sum_duration ?? 0) * 1.0) /
+              filteredViews.length
+            : 0,
         avgCompletionRate: Math.round(avgCompletionRate),
         totalViews: filteredViews.length,
       };

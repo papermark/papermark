@@ -24,6 +24,27 @@ model Conversation {
   viewerGroupId String?
   viewerGroup   ViewerGroup? @relation(fields: [viewerGroupId], references: [id], onDelete: SetNull)
 
+  // Buy-side Q&A: an admin-originated question that this thread answers.
+  // When set, `origin` is "admin" and `recipientViewerId` identifies the
+  // single seller who answers in this private thread. Visitor-originated
+  // threads keep questionId/recipientViewerId null and origin "visitor".
+  questionId String?
+  question   DataroomQuestion? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  // Origin of the conversation: "visitor" (default) or "admin".
+  // Plain string validated by zod; intentionally not a DB enum.
+  origin String @default("visitor")
+
+  // Admin-only triage metadata, never returned to visitors.
+  category String?
+  priority String? // "urgent" | "high" | "medium" | "low" | "none"
+
+  // The single viewer expected to answer an admin-origin question. NULL for
+  // visitor-origin threads. Combined with questionId this enforces one thread
+  // per (question, seller) via @@unique below.
+  recipientViewerId String?
+  recipientViewer   Viewer? @relation(name: "ConversationRecipient", fields: [recipientViewerId], references: [id], onDelete: SetNull)
+
   // Original view that initiated the conversation (for reference)
   initialViewId String?
   initialView   View?   @relation(name: "initialView", fields: [initialViewId], references: [id], onDelete: SetNull)
@@ -47,12 +68,96 @@ model Conversation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // One private thread per admin question + recipient seller. Visitor-origin
+  // rows keep both columns NULL; Postgres treats NULLs as distinct so they
+  // never collide.
+  @@unique([questionId, recipientViewerId])
   @@index([dataroomId])
   @@index([dataroomDocumentId])
   @@index([linkId])
   @@index([teamId])
   @@index([viewerGroupId])
   @@index([initialViewId])
+  @@index([questionId])
+  @@index([recipientViewerId])
+}
+
+// An admin-authored due-diligence question. It fans out into one private
+// Conversation per answering viewer (see Conversation.questionId). Stages
+// (pre-LOI vs DD) are expressed through link/group assignments plus the
+// optional `category` field.
+model DataroomQuestion {
+  id      String @id @default(cuid())
+  content String @db.Text
+
+  // Optional categorization / triage metadata. Plain strings validated by zod.
+  category   String?
+  priority   String? // "high" | "medium" | "low" | "none"
+  status     String  @default("unanswered") // see question zod schema for allowed values
+  orderIndex Int?
+
+  // Groups questions created together via a single import.
+  importBatchId String?
+
+  dataroomId String
+  dataroom   Dataroom @relation(fields: [dataroomId], references: [id], onDelete: Cascade)
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // Author of the question; used as the sender of the seeded team message.
+  createdByUserId String?
+  createdByUser   User?   @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  // Optional document context the question relates to.
+  dataroomDocumentId String?
+  dataroomDocument   DataroomDocument? @relation(fields: [dataroomDocumentId], references: [id], onDelete: SetNull)
+  documentPageNumber Int?
+
+  assignments   DataroomQuestionAssignment[]
+  conversations Conversation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dataroomId])
+  @@index([teamId])
+  @@index([status])
+  @@index([importBatchId])
+  @@index([dataroomDocumentId])
+  @@index([createdByUserId])
+}
+
+// Assigns a question to exactly one target: link, viewer group, viewer, or
+// email. Link/group targets materialize threads lazily; viewer/email targets
+// seed the private answer thread immediately.
+model DataroomQuestionAssignment {
+  id String @id @default(cuid())
+
+  questionId String
+  question   DataroomQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  linkId String?
+  link   Link?   @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  groupId String?
+  group   ViewerGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  viewerId String?
+  viewer   Viewer? @relation(fields: [viewerId], references: [id], onDelete: Cascade)
+
+  email String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([questionId, linkId])
+  @@unique([questionId, groupId])
+  @@unique([questionId, viewerId])
+  @@unique([questionId, email])
+  @@index([questionId])
+  @@index([linkId])
+  @@index([groupId])
+  @@index([viewerId])
 }
 
 // Define conversation visibility options
@@ -118,6 +223,9 @@ model Message {
 
   // Tracking
   isRead Boolean @default(false)
+
+  // Team-only note, never returned to visitors. Requires a userId.
+  isInternalNote Boolean @default(false)
 
   // FAQ relationships (reverse relations)
   faqAsQuestion DataroomFaqItem[] @relation("FAQQuestionMessage")

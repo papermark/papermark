@@ -7,6 +7,7 @@ import {
   CogIcon,
   DownloadIcon,
   ShieldIcon,
+  TriangleAlertIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -80,6 +81,18 @@ export default function SettingsTabs({ dataroomId }: SettingsTabsProps) {
       >
         <ShieldIcon className="h-4 w-4" />
         File Permissions
+      </Link>
+      <Link
+        href={`/datarooms/${dataroomId}/settings/danger`}
+        className={cn(
+          "flex items-center gap-x-2 rounded-md p-2 text-primary hover:bg-muted",
+          {
+            "bg-muted font-medium": router.pathname.includes("danger"),
+          },
+        )}
+      >
+        <TriangleAlertIcon className="h-4 w-4" />
+        Danger Zone
       </Link>
     </nav>
   );

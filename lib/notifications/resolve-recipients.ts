@@ -20,11 +20,13 @@ export async function resolveRecipients({
   notificationType,
   linkOwnerId,
   documentOwnerId,
+  taskOwnerId,
 }: {
   teamId: string;
   notificationType: TeamNotificationType;
   linkOwnerId?: string | null;
   documentOwnerId?: string | null;
+  taskOwnerId?: string | null;
 }): Promise<NotificationRecipient[]> {
   const teamMembers = await prisma.userTeam.findMany({
     where: {
@@ -43,7 +45,7 @@ export async function resolveRecipients({
   });
 
   const ownerIds = new Set(
-    [linkOwnerId, documentOwnerId].filter(Boolean) as string[],
+    [linkOwnerId, documentOwnerId, taskOwnerId].filter(Boolean) as string[],
   );
 
   const eligibleMembers = teamMembers.filter((member) => {

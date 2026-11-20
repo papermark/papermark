@@ -8,6 +8,8 @@ import {
 } from "recharts";
 import useSWR from "swr";
 
+import { useTeam } from "@/context/team-context";
+
 import { Card } from "@/components/ui/card";
 import LoadingSpinner from "@/components/ui/loading-spinner";
 
@@ -20,24 +22,28 @@ export default function VisitorVideoChart({
 }: {
   documentId: string;
   viewId: string;
-  teamId: string;
+  teamId?: string;
 }) {
-  // Fetch video events if this is a video document
+  const teamInfo = useTeam();
+  const resolvedTeamId = teamId || teamInfo?.currentTeam?.id;
   const { data: videoEvents, error: videoError } = useSWR<{
     data: Array<{
       start_time: number;
       views: number;
     }>;
   }>(
-    teamId
-      ? `/api/teams/${teamId}/documents/${documentId}/views/${viewId}/video-stats`
+    resolvedTeamId
+      ? `/api/teams/${resolvedTeamId}/documents/${documentId}/views/${viewId}/video-stats`
       : null,
     fetcher,
   );
 
   if (videoError) {
-    console.error("Error loading video events:", videoError);
-    return null;
+    return (
+      <p className="py-6 text-sm text-muted-foreground">
+        Playback chart could not be loaded.
+      </p>
+    );
   }
 
   if (!videoEvents) {

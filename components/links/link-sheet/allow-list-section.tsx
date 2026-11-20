@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { LinkPreset } from "@prisma/client";
 import { CheckIcon, UsersIcon, XIcon } from "lucide-react";
@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 
 import { FADE_IN_ANIMATION_SETTINGS } from "@/lib/constants";
 import useVisitorGroups from "@/lib/swr/use-visitor-groups";
-import { sanitizeList } from "@/lib/utils";
+import { validateList } from "@/lib/utils";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ export default function AllowListSection({
   isAllowed,
   handleUpgradeStateChange,
   presets,
+  setValidationError,
 }: {
   data: DEFAULT_LINK_TYPE;
   setData: React.Dispatch<React.SetStateAction<DEFAULT_LINK_TYPE>>;
@@ -38,6 +39,7 @@ export default function AllowListSection({
     highlightItem,
   }: LinkUpgradeOptions) => void;
   presets: LinkPreset | null;
+  setValidationError?: (key: string, errors: string[]) => void;
 }) {
   const { emailProtected, allowList, visitorGroupIds } = data;
   const { visitorGroups } = useVisitorGroups();
@@ -51,6 +53,26 @@ export default function AllowListSection({
   const [allowListInput, setAllowListInput] = useState<string>(
     allowList?.join("\n") || "",
   );
+
+  const validation = useMemo(
+    () => validateList(allowListInput, "both"),
+    [allowListInput],
+  );
+
+  useEffect(() => {
+    if (!setValidationError) return;
+    if (enabled && emailProtected) {
+      setValidationError("allowList", validation.invalid);
+    } else {
+      setValidationError("allowList", []);
+    }
+  }, [enabled, emailProtected, validation.invalid, setValidationError]);
+
+  useEffect(() => {
+    return () => {
+      setValidationError?.("allowList", []);
+    };
+  }, [setValidationError]);
 
   useEffect(() => {
     if (!emailProtected && enabled) {
@@ -77,7 +99,9 @@ export default function AllowListSection({
     if (updatedEnabled) {
       setData((prevData) => ({
         ...prevData,
-        allowList: updatedEnabled ? sanitizeList(allowListInput) : [],
+        allowList: updatedEnabled
+          ? validateList(allowListInput).valid
+          : [],
         emailAuthenticated: true, // Turn on email authentication
         emailProtected: true, // Turn on email protection
       }));
@@ -99,7 +123,7 @@ export default function AllowListSection({
     if (emailProtected && enabled) {
       setData((prevData) => ({
         ...prevData,
-        allowList: sanitizeList(updatedAllowListInput),
+        allowList: validateList(updatedAllowListInput).valid,
       }));
     }
   };
@@ -254,12 +278,30 @@ export default function AllowListSection({
             <Textarea
               className="focus:ring-inset"
               rows={5}
-              placeholder={`Enter allowed emails/domains, one per line, e.g.
+              placeholder={`Enter allowed emails/domains separated by comma, semicolon, or new line, e.g.
 marc@papermark.com
 @example.org`}
               value={allowListInput}
               onChange={handleAllowListChange}
+              aria-invalid={validation.invalid.length > 0}
             />
+            {validation.invalid.length > 0 ? (
+              <p className="text-xs text-destructive">
+                The following entries are not valid emails or domains and must
+                be fixed before saving:{" "}
+                <span className="font-medium">
+                  {validation.invalid.slice(0, 5).join(", ")}
+                  {validation.invalid.length > 5
+                    ? `, and ${validation.invalid.length - 5} more`
+                    : ""}
+                </span>
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Separate multiple entries with a comma, semicolon, or new line.
+                Use <code>@example.org</code> to allow a whole domain.
+              </p>
+            )}
           </motion.div>
         )}
       </div>

@@ -10,14 +10,15 @@ import {
   ExternalLink,
   FolderLockIcon,
   KeyRoundIcon,
-  Mail,
   MailCheckIcon,
   MailIcon,
+  SendIcon,
   ShieldIcon,
   Users,
 } from "lucide-react";
 
 import { LinkWithViews } from "@/lib/types";
+
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ interface LinkSuccessSheetProps {
   link: LinkWithViews;
   hasCustomPermissions: boolean;
   onCreateAnother: () => void;
+  onInviteViewers?: (link: LinkWithViews) => void;
 }
 
 export default function LinkSuccessSheet({
@@ -44,6 +46,7 @@ export default function LinkSuccessSheet({
   link,
   hasCustomPermissions,
   onCreateAnother,
+  onInviteViewers,
 }: LinkSuccessSheetProps) {
   const [copied, setCopied] = useState(false);
 
@@ -82,7 +85,7 @@ export default function LinkSuccessSheet({
         <div className="flex-1 space-y-6 py-6">
           {/* Link Section */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium">Share Link</h3>
+            <h3 className="text-sm font-medium">Share Link to Your Data Room</h3>
             <div className="flex items-center gap-2 rounded-lg border bg-muted/30 p-3">
               <div className="flex-1 truncate font-mono text-sm">{linkUrl}</div>
               <Button
@@ -219,17 +222,26 @@ export default function LinkSuccessSheet({
 
           <Separator />
 
-          {/* Future: Invite Members Section */}
+          {/* Invite Viewers Section */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Invite Members (Coming Soon)
-            </h3>
+            <h3 className="text-sm font-medium">Invite Visitors by Email</h3>
             <div className="rounded-lg border border-dashed border-muted-foreground/25 p-6 text-center">
-              <Mail className="mx-auto h-8 w-8 text-muted-foreground/50" />
+              <SendIcon className="mx-auto h-8 w-8 text-muted-foreground/50" />
               <p className="mt-2 text-sm text-muted-foreground">
-                Soon you&apos;ll be able to invite team members directly via
-                email
+                Send email invitations to viewers with a direct link to this
+                data room
               </p>
+              {onInviteViewers && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => onInviteViewers(link)}
+                >
+                  <SendIcon className="mr-1.5 h-4 w-4" />
+                  Send Invitations
+                </Button>
+              )}
             </div>
           </div>
         </div>

@@ -1,0 +1,141 @@
+{
+  "nav": {
+    "home": "Home",
+    "viewQA": "View Q&A",
+    "linksOnPage": "Links on Page",
+    "linksOnCurrentPage": "Links on current page",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "resetZoom": "Fit to screen",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "downloadDocument": "Download document",
+    "teamMemberTooltip": "Skipped verification because you are a team member; no analytics will be collected",
+    "changeLanguage": "Change language"
+  },
+  "fullscreenControls": {
+    "rotate": "Rotate",
+    "exitFullscreen": "Exit fullscreen"
+  },
+  "toasts": {
+    "preparingDownload": "Preparing download...",
+    "preparingDownloadWatermark": "Preparing download with watermark...",
+    "downloadSuccess": "File downloaded successfully",
+    "downloadFailed": "Failed to download file",
+    "cannotDownloadPreview": "You cannot download documents in preview mode."
+  },
+  "downloadOnly": {
+    "title": "Download Document",
+    "description": "This document is available for download only",
+    "button": "Download Now"
+  },
+  "awayPoster": {
+    "title": "We paused to protect your session",
+    "description": "You were inactive since {{duration}}, so we paused the document preview to keep session safe.",
+    "ariaTitle": "Auto-paused session notification",
+    "ariaDescription": "Your session was paused due to inactivity. Click continue or move your mouse to resume.",
+    "badge": "Auto-paused",
+    "idleFor": "{{duration}} idle",
+    "minSec": "{{minutes}}min {{seconds}}sec",
+    "minOnly": "{{minutes}}min",
+    "secOnly": "{{seconds}}sec",
+    "resume": "Continue where you left off",
+    "moveHint": "Or just move your mouse or press any key to continue"
+  },
+  "poweredBy": {
+    "shareDocsVia": "Share docs via"
+  },
+  "report": {
+    "trigger": "Report abuse",
+    "title": "Report an issue",
+    "description": "See something inappropriate? We will take a look and, when appropriate, take action.",
+    "submit": "Submit Report",
+    "successToast": "Report submitted successfully",
+    "selectTypeError": "Please select an abuse type.",
+    "types": {
+      "spam": "Spam, Fraud, or Scam",
+      "malware": "Malware or virus",
+      "copyright": "Copyright violation",
+      "harmful": "Harmful content",
+      "notWorking": "Content is not working properly",
+      "other": "Other"
+    }
+  },
+  "qa": {
+    "header": {
+      "title": "Ask the deal team",
+      "composeTitle": "Ask a new question",
+      "subtitleWithName": "Questions about {{name}}",
+      "subtitle": "Questions about this data room",
+      "back": "Back",
+      "close": "Close"
+    },
+    "tabs": {
+      "home": "Home",
+      "messages": "Questions",
+      "faq": "FAQ"
+    },
+    "home": {
+      "askNew": "Ask a new question",
+      "recentReply": "Recent reply",
+      "openConversation": "Open conversation",
+      "frequentlyAsked": "Frequently asked"
+    },
+    "messages": {
+      "emptyTitle": "No questions yet",
+      "emptyDescription": "Ask the team a question and it will show up here.",
+      "askQuestion": "Ask a question",
+      "newReply": "New reply"
+    },
+    "compose": {
+      "aboutPage": "About this page",
+      "subjectPlaceholder": "Subject (optional)",
+      "messagePlaceholder": "Type your question...",
+      "sending": "Sending…",
+      "submit": "Send question"
+    },
+    "thread": {
+      "you": "You",
+      "team": "Team",
+      "page": "Page {{page}}",
+      "newDivider": "New",
+      "closed": "This conversation has been closed by the team.",
+      "messagePlaceholder": "Type your message...",
+      "sendReply": "Send reply"
+    },
+    "status": {
+      "answered": "Answered",
+      "awaiting": "Awaiting reply",
+      "closed": "Closed"
+    },
+    "snippet": {
+      "team": "Team: ",
+      "you": "You: "
+    },
+    "time": {
+      "now": "now",
+      "minutes": "{{n}}m",
+      "hours": "{{n}}h",
+      "days": "{{n}}d"
+    },
+    "toasts": {
+      "sendMessageFailed": "Failed to send message",
+      "sendQuestionFailed": "Failed to send question"
+    },
+    "untitled": "Untitled question",
+    "faqEmpty": "No questions published yet."
+  },
+  "notFound": {
+    "eyebrow": "404 error",
+    "title": "Page not found.",
+    "goHome": "Go back home",
+    "reasons": {
+      "expired": "Sorry, the link you're looking for is expired.",
+      "archived": "Sorry, the link you're looking for is archived.",
+      "dataroomClosed": "This data room has been closed and is no longer available.",
+      "loadErrorRefresh": "Sorry, we had trouble loading this link. Please try refreshing.",
+      "loadErrorRetry": "Sorry, we had trouble loading this link. Please try again in a moment.",
+      "embedOnly": "This page can only be accessed when embedded in another website."
+    }
+  }
+}

@@ -6,17 +6,34 @@ import useSWR from "swr";
 
 import { fetcher } from "@/lib/utils";
 
+import type {
+  VisitorAccessSource,
+  VisitorStatus,
+} from "@/components/visitors/visitor-status-badge";
+
 type ViewerWithStats = {
-  id: string;
+  id: string | null;
   email: string;
-  createdAt: Date;
-  updatedAt: Date;
+  viewerName: string | null;
+  verified: boolean;
+  internal: boolean;
+  agreement: { name: string; signed: boolean; signedAt: Date | null } | null;
+  isDomain: boolean;
+  status: VisitorStatus;
+  createdAt: Date | null;
+  updatedAt: Date | null;
   totalVisits: number;
+  documentViews: number;
+  downloads: number;
   lastViewed: Date | null;
+  invitedAt: Date | null;
+  invitationStatus: string | null;
+  accessSources: VisitorAccessSource[];
 };
 
 type ViewersResponse = {
   viewers: ViewerWithStats[];
+  anonymous: { visits: number; lastViewed: Date | null };
   pagination: {
     currentPage: number;
     pageSize: number;
@@ -35,7 +52,8 @@ export default function useViewers(
   page: number = 1,
   pageSize: number = 10,
   sortBy: string = "lastViewed",
-  sortOrder: string = "desc"
+  sortOrder: string = "desc",
+  status?: string
 ) {
   const router = useRouter();
   const teamInfo = useTeam();
@@ -52,6 +70,10 @@ export default function useViewers(
 
   if (searchQuery && typeof searchQuery === 'string') {
     queryParams.append('query', searchQuery);
+  }
+
+  if (status && status !== 'all') {
+    queryParams.append('status', status);
   }
 
   const queryString = queryParams.toString();
@@ -80,6 +102,7 @@ export default function useViewers(
 
   return {
     viewers: response?.viewers,
+    anonymous: response?.anonymous,
     pagination: response?.pagination,
     sorting: response?.sorting,
     isValidating,

@@ -3,9 +3,16 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
+import { enforceDocumentMemberScope } from "@/lib/api/rbac/guard";
 import prisma from "@/lib/prisma";
 import { getVideoEventsByDocument } from "@/lib/tinybird/pipes";
 import { CustomUser } from "@/lib/types";
+import {
+  countablePlaybackEvents,
+  documentViewDistribution,
+  resolveVideoLength,
+  watchTimeSeconds,
+} from "@/lib/video-analytics/playback";
 
 interface AnalyticsResponse {
   overall: {
@@ -45,100 +52,17 @@ function calculateAnalytics(
   }
 
   try {
-    // Filter for valid events and ensure valid time ranges > 1 second
-    const validEvents = events.filter((event) => {
-      // Check if event has required properties
-      if (!event || typeof event.event_type !== "string" || !event.view_id) {
-        console.warn("Invalid event structure:", event);
-        return false;
-      }
-
-      // Check if event has valid time properties
-      if (
-        typeof event.start_time !== "number" ||
-        typeof event.end_time !== "number"
-      ) {
-        console.warn("Invalid time properties:", event);
-        return false;
-      }
-
-      return (
-        (event.event_type === "played" ||
-          event.event_type === "muted" ||
-          event.event_type === "unmuted" ||
-          event.event_type === "rate_changed") &&
-        event.end_time > event.start_time &&
-        event.end_time - event.start_time >= 1 &&
-        event.start_time >= 0 &&
-        event.end_time <= videoLength + 10
-      ); // Allow some buffer
-    });
-
-    // Get all unique view_ids from any event type
+    const validEvents = countablePlaybackEvents(
+      events.filter((event) => event?.view_id && event.start_time >= 0),
+    );
+    const timelineLength = resolveVideoLength(videoLength, validEvents);
     const uniqueViewIds = new Set(events.map((e) => e.view_id));
+    const { total: totalWatchTime } = watchTimeSeconds(validEvents);
 
-    // Calculate total watch time
-    let totalWatchTime = 0;
-    validEvents.forEach((event) => {
-      const duration = event.end_time - event.start_time;
-      totalWatchTime += duration;
-    });
-
-    // Create a baseline array with zeros for every second
-    const viewDistributionMap = new Map<
-      number,
-      { uniqueViewers: Set<string>; viewDurations: Map<string, number> }
-    >();
-    for (let t = 0; t <= videoLength; t++) {
-      viewDistributionMap.set(t, {
-        uniqueViewers: new Set(),
-        viewDurations: new Map(), // Map of view_id to number of times this second was viewed
-      });
-    }
-
-    // Fill in the actual playback periods
-    validEvents.forEach((event) => {
-      // For each second in the duration, track the view
-      for (
-        let t = Math.floor(event.start_time);
-        t < Math.ceil(event.end_time);
-        t++
-      ) {
-        const stats = viewDistributionMap.get(t);
-        if (!stats) {
-          console.warn(`No stats found for time ${t}, skipping`);
-          continue;
-        }
-        stats.uniqueViewers.add(event.view_id);
-
-        // Increment the count for this view_id at this second
-        const currentCount = stats.viewDurations.get(event.view_id) || 0;
-        stats.viewDurations.set(event.view_id, currentCount + 1);
-      }
-    });
-
-    // Sort events by timestamp to find first and last view
     const sortedEvents = [...validEvents].sort(
       (a, b) =>
         new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
     );
-
-    // Convert view distribution to sorted array with both metrics
-    const distributionArray = Array.from(viewDistributionMap.entries())
-      .map(([start_time, stats]) => {
-        // Sum up all view durations for this second
-        let totalViews = 0;
-        stats.viewDurations.forEach((count) => {
-          totalViews += count;
-        });
-
-        return {
-          start_time,
-          unique_views: stats.uniqueViewers.size,
-          total_views: totalViews,
-        };
-      })
-      .sort((a, b) => a.start_time - b.start_time);
 
     return {
       overall: {
@@ -153,7 +77,10 @@ function calculateAnalytics(
           sortedEvents.length > 0
             ? sortedEvents[sortedEvents.length - 1].timestamp
             : "",
-        view_distribution: distributionArray,
+        view_distribution: documentViewDistribution(
+          validEvents,
+          timelineLength,
+        ),
       },
     };
   } catch (error) {
@@ -184,6 +111,18 @@ export default async function handle(
       id: string;
     };
 
+    // Scoped members may only read analytics for documents in their assigned rooms.
+    if (
+      await enforceDocumentMemberScope({
+        userId: user.id,
+        teamId,
+        documentId,
+        res,
+      })
+    ) {
+      return;
+    }
+
     // Check if user has access to this document and team
     const document = await prisma.document.findFirst({
       where: {
@@ -213,10 +152,7 @@ export default async function handle(
       return res.status(404).json({ message: "Document not found" });
     }
 
-    const videoLength = document.versions[0]?.length || 51;
-    if (!videoLength) {
-      return res.status(400).json({ message: "Video length not found" });
-    }
+    const videoLength = document.versions[0]?.length ?? 0;
 
     try {
       // Fetch video events from Tinybird

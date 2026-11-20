@@ -53,6 +53,7 @@ export default async function handler(
     return {
       id: job.id,
       status: job.status,
+      phase: job.phase,
       progress: job.progress,
       totalFiles: job.totalFiles,
       processedFiles: job.processedFiles,

@@ -1,145 +1,141 @@
 import { useRouter } from "next/router";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import Cookies from "js-cookie";
 
+import { useSelfMembership } from "@/lib/hooks/use-self-membership";
+
 import { AppBreadcrumb } from "@/components/layouts/breadcrumb";
+import { MobileBottomNav } from "@/components/layouts/mobile-bottom-nav";
+import { MobileHeader } from "@/components/layouts/mobile-header";
 import TrialBanner from "@/components/layouts/trial-banner";
-import { AppSidebar } from "@/components/sidebar/app-sidebar";
+import { SidebarPanels } from "@/components/sidebar/sidebar-panels";
 import { Separator } from "@/components/ui/separator";
 import {
   SIDEBAR_COOKIE_NAME,
+  Sidebar,
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 
-// import { usePlan } from "@/lib/swr/use-billing";
-// import YearlyUpgradeBanner from "@/components/billing/yearly-upgrade-banner";
-
 import { BlockingModal } from "./blocking-modal";
 
-const DATAROOM_SIDEBAR_COOKIE_NAME = "sidebar:dataroom-state";
+const DEFAULT_SIDEBAR_OPEN = true;
 
-// Helper to get initial sidebar state synchronously (avoids flash)
+// SSR and the first client render must return the same value to avoid a
+// hydration mismatch; the cookie is only read after hydration.
+let sidebarHydrated = false;
+
 function getInitialSidebarState(isDataroom: boolean): boolean {
-  if (typeof window === "undefined") return false; // SSR: default closed to avoid flash
-
-  // For dataroom pages, check dataroom-specific cookie first
-  if (isDataroom) {
-    const dataroomCookie = Cookies.get(DATAROOM_SIDEBAR_COOKIE_NAME);
-    if (dataroomCookie !== undefined) {
-      return dataroomCookie === "true";
-    }
-    // No dataroom preference set yet - default to closed for datarooms
-    return false;
+  if (typeof window === "undefined" || !sidebarHydrated) {
+    return DEFAULT_SIDEBAR_OPEN;
   }
 
-  // For non-dataroom pages, use main cookie
+  if (isDataroom) {
+    return true;
+  }
+
   const mainCookie = Cookies.get(SIDEBAR_COOKIE_NAME);
   if (mainCookie !== undefined) {
     return mainCookie === "true";
   }
 
-  return true; // Default open for non-dataroom pages
+  return DEFAULT_SIDEBAR_OPEN;
+}
+
+/**
+ * UX-only redirect guard for dataroom-scoped members. The API wrapper is the
+ * real security boundary; this just keeps the scoped member from landing on
+ * pages they cannot use. Redirects off non-dataroom paths and off datarooms
+ * they are not assigned to, sending them to the datarooms list.
+ */
+function DataroomMemberRouteGuard() {
+  const router = useRouter();
+  const { isDataroomMember, allowedDataroomIds, loading } = useSelfMembership();
+
+  useEffect(() => {
+    if (loading || !isDataroomMember) return;
+
+    const path = router.pathname;
+    const onDataroomsArea =
+      path === "/datarooms" || path.startsWith("/datarooms/[id]");
+
+    if (!onDataroomsArea) {
+      router.replace("/datarooms");
+      return;
+    }
+
+    if (path.startsWith("/datarooms/[id]")) {
+      const id = String(router.query.id || "");
+      if (id && !allowedDataroomIds.includes(id)) {
+        router.replace("/datarooms");
+      }
+    }
+  }, [
+    router,
+    router.pathname,
+    router.query.id,
+    isDataroomMember,
+    loading,
+    allowedDataroomIds,
+  ]);
+
+  return null;
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const isDataroom = router.pathname.startsWith("/datarooms/[id]");
 
-  // Use lazy initializer to compute initial state synchronously (avoids flash)
   const [sidebarOpen, setSidebarOpen] = useState(() =>
     getInitialSidebarState(isDataroom),
   );
 
-  // Track previous dataroom state for transitions
-  const prevIsDataroomRef = useRef<boolean>(isDataroom);
-  const isFirstRenderRef = useRef(true);
-
-  // Handle initial mount and transitions between dataroom/non-dataroom
+  // Restore the persisted sidebar state after the first render has hydrated.
   useEffect(() => {
-    if (isFirstRenderRef.current) {
-      isFirstRenderRef.current = false;
-      // Set cookie on initial mount if in dataroom and no preference exists
-      if (
-        isDataroom &&
-        Cookies.get(DATAROOM_SIDEBAR_COOKIE_NAME) === undefined
-      ) {
-        Cookies.set(DATAROOM_SIDEBAR_COOKIE_NAME, "false", { expires: 7 });
-      }
-      return;
-    }
-
-    // Transitioning from non-dataroom to dataroom
-    if (!prevIsDataroomRef.current && isDataroom) {
-      setSidebarOpen(false);
-      Cookies.set(DATAROOM_SIDEBAR_COOKIE_NAME, "false", { expires: 7 });
-    }
-
-    // Transitioning from dataroom to non-dataroom
-    if (prevIsDataroomRef.current && !isDataroom) {
-      Cookies.remove(DATAROOM_SIDEBAR_COOKIE_NAME);
-      // Restore main sidebar state
-      const mainCookie = Cookies.get(SIDEBAR_COOKIE_NAME);
-      // setSidebarOpen(mainCookie === "true");
-      setSidebarOpen(mainCookie !== undefined ? mainCookie === "true" : true);
-    }
-
-    prevIsDataroomRef.current = isDataroom;
+    sidebarHydrated = true;
+    setSidebarOpen(getInitialSidebarState(isDataroom));
   }, [isDataroom]);
 
-  // Handle sidebar state changes - save to appropriate cookie
-  const handleSidebarOpenChange = useCallback(
-    (open: boolean) => {
-      setSidebarOpen(open);
-      if (isDataroom) {
-        Cookies.set(DATAROOM_SIDEBAR_COOKIE_NAME, String(open), { expires: 7 });
-      }
-    },
-    [isDataroom],
-  );
-
-  // const { isAnnualPlan, isFree } = usePlan();
-  // const [showYearlyBanner, setShowYearlyBanner] = useState<boolean | null>(null);
-
-  // Show banner only for paid monthly subscribers (not free, not yearly)
-  // useEffect(() => {
-  //   // Hide banner for free users or yearly subscribers
-  //   if (isFree || isAnnualPlan) {
-  //     setShowYearlyBanner(false);
-  //     return;
-  //   }
-
-  //   // Show banner for monthly paid users (if not dismissed)
-  //   if (Cookies.get("hideYearlyUpgradeBanner") !== "yearly-upgrade-banner") {
-  //     setShowYearlyBanner(true);
-  //   } else {
-  //     setShowYearlyBanner(false);
-  //   }
-  // }, [isFree, isAnnualPlan]);
+  const handleSidebarOpenChange = useCallback((open: boolean) => {
+    setSidebarOpen(open);
+  }, []);
 
   return (
     <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange}>
-      <div className="flex flex-1 flex-col gap-x-1 bg-gray-50 dark:bg-black md:flex-row">
-        <AppSidebar />
-        <SidebarInset className="ring-1 ring-gray-200 dark:ring-gray-800">
-          <header className="flex h-10 shrink-0 items-center gap-2">
-            <div className="flex items-center gap-2 px-4">
-              <SidebarTrigger className="-ml-1" />
-              <Separator orientation="vertical" className="mr-1 h-4" />
-              <AppBreadcrumb />
-            </div>
-          </header>
-          <TrialBanner />
-          <BlockingModal />
-          <main className="flex-1">{children}</main>
-        </SidebarInset>
+      <DataroomMemberRouteGuard />
+      {/* Single flex child of SidebarProvider so fixed mobile chrome is not laid out as extra row siblings (WebKit / in-app browsers). */}
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-x-1 overflow-x-hidden bg-gray-50 dark:bg-black md:flex-row">
+          <Sidebar
+            className="bg-gray-50 dark:bg-black"
+            sidebarClassName="bg-gray-50 dark:bg-black"
+            side="left"
+            variant="inset"
+            collapsible="icon"
+          >
+            <SidebarPanels />
+          </Sidebar>
+          <SidebarInset className="min-w-0 overflow-x-hidden ring-0 md:ring-1 md:ring-gray-200 md:dark:ring-gray-800">
+            <header className="hidden h-10 shrink-0 items-center gap-2 md:flex">
+              <div className="flex items-center gap-2 px-4">
+                <SidebarTrigger className="-ml-1" />
+                <Separator orientation="vertical" className="mr-1 h-4" />
+                <AppBreadcrumb />
+              </div>
+            </header>
+            <TrialBanner />
+            <BlockingModal />
+            <main className="min-w-0 flex-1 overflow-x-hidden pt-[calc(3.5rem+env(safe-area-inset-top,0px))] pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pt-0 md:pb-0">
+              {children}
+            </main>
+          </SidebarInset>
+        </div>
+        <MobileHeader />
+        <MobileBottomNav />
       </div>
-      {/* {showYearlyBanner && (
-        <YearlyUpgradeBanner setShowBanner={setShowYearlyBanner} />
-      )} */}
     </SidebarProvider>
   );
 }

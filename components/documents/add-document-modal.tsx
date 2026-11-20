@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { FormEvent, useEffect, useState } from "react";
 
 import { useTeam } from "@/context/team-context";
+import { useUploadProgress } from "@/context/upload-progress-context";
 import { PlanEnum } from "@/ee/stripe/constants";
 import { DefaultPermissionStrategy } from "@prisma/client";
 import { parsePageId } from "notion-utils";
@@ -23,7 +24,10 @@ import { getNotionPageIdFromSlug } from "@/lib/notion/utils";
 import { usePlan } from "@/lib/swr/use-billing";
 import { useDataroom } from "@/lib/swr/use-dataroom";
 import useLimits from "@/lib/swr/use-limits";
-import { getSupportedContentType } from "@/lib/utils/get-content-type";
+import {
+  getSupportedContentType,
+  isHtmlFile,
+} from "@/lib/utils/get-content-type";
 
 import { SetUnifiedPermissionsModal } from "@/components/datarooms/groups/set-unified-permissions-modal";
 import DocumentUpload from "@/components/document-upload";
@@ -58,15 +62,29 @@ export function AddDocumentModal({
   children,
   isDataroom,
   dataroomId,
+  documentId: documentIdProp,
   setAddDocumentModalOpen,
   openModal,
+  defaultTab = "document",
+  defaultUploadMode = "file",
 }: {
   newVersion?: boolean;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   isDataroom?: boolean;
   openModal?: boolean;
   dataroomId?: string;
+  /**
+   * Explicit document id to upload a new version against. Required on routes
+   * where `router.query.id` is not the document id (e.g. the dataroom document
+   * view at `/datarooms/[id]/document/[documentId]`, where it is the dataroom
+   * id). Falls back to `router.query.id` when omitted.
+   */
+  documentId?: string;
   setAddDocumentModalOpen?: (isOpen: boolean) => void;
+  /** Initial tab shown when the modal opens. */
+  defaultTab?: "document" | "notion";
+  /** Initial upload mode within the Document tab (file picker vs. web link). */
+  defaultUploadMode?: "file" | "link";
 }) {
   const router = useRouter();
   const analytics = useAnalytics();
@@ -75,7 +93,12 @@ export function AddDocumentModal({
   const [currentFile, setCurrentFile] = useState<File | null>(null);
   const [notionLink, setNotionLink] = useState<string | null>(null);
   const [webLink, setWebLink] = useState<string | null>(null);
-  const [uploadMode, setUploadMode] = useState<"file" | "link">("file");
+  const [activeTab, setActiveTab] = useState<"document" | "notion">(
+    defaultTab,
+  );
+  const [uploadMode, setUploadMode] = useState<"file" | "link">(
+    defaultUploadMode,
+  );
   const [showGroupPermissions, setShowGroupPermissions] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<
     {
@@ -88,13 +111,21 @@ export function AddDocumentModal({
   const { canAddDocuments, limits } = useLimits();
   const { plan, isFree, isTrial, isPaused } = usePlan();
   const { dataroom } = useDataroom();
+  const { uploadTriggers } = useUploadProgress();
   const teamId = teamInfo?.currentTeam?.id as string;
 
   const { applyPermissions } = useDataroomPermissions();
 
   useEffect(() => {
-    if (openModal) setIsOpen(openModal);
-  }, [openModal]);
+    if (openModal) {
+      setIsOpen(true);
+      // Reset to the caller-requested starting state every time we open the
+      // modal programmatically so e.g. clicking "Notion" in the +Add menu
+      // never lands on a stale "link" upload form left over from last time.
+      setActiveTab(defaultTab);
+      setUploadMode(defaultUploadMode);
+    }
+  }, [openModal, defaultTab, defaultUploadMode]);
 
   /** current folder name */
   const currentFolderPath = router.query.name as string[] | undefined;
@@ -131,7 +162,7 @@ export function AddDocumentModal({
         `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/documents`,
       );
       mutate(
-        `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/folders/documents/${folderPathName}`,
+        `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/folder-documents/${folderPathName}`,
       );
 
       toast.success("Document added to dataroom successfully! 🎉");
@@ -166,11 +197,20 @@ export function AddDocumentModal({
 
     if (!hasAnyGroups) return;
 
-    const strategy =
+    const groupStrategy =
+      dataroom?.defaultGroupPermissionStrategy ||
+      DefaultPermissionStrategy.INHERIT_FROM_PARENT;
+    const linkStrategy =
       dataroom?.defaultPermissionStrategy ||
       DefaultPermissionStrategy.INHERIT_FROM_PARENT;
 
-    if (strategy === DefaultPermissionStrategy.ASK_EVERY_TIME) {
+    // If either side wants to ask, surface the unified modal so the user can
+    // configure group and/or link permissions in one place.
+    const shouldAsk =
+      groupStrategy === DefaultPermissionStrategy.ASK_EVERY_TIME ||
+      linkStrategy === DefaultPermissionStrategy.ASK_EVERY_TIME;
+
+    if (shouldAsk) {
       setShowGroupPermissions(true);
       setUploadedFiles([
         {
@@ -179,28 +219,39 @@ export function AddDocumentModal({
           fileName: document.name,
         },
       ]);
-    } else if (strategy === DefaultPermissionStrategy.INHERIT_FROM_PARENT) {
-      const isRootLevel = !currentFolderPath || currentFolderPath.length === 0;
+      return;
+    }
 
-      try {
-        const result = await applyPermissions(
-          dataroomId!,
-          [document.id],
-          "INHERIT_FROM_PARENT",
-          isRootLevel ? undefined : currentFolderPath?.join("/"),
-          toastErrorMessage,
-        );
+    // No interactive prompt needed — defer to the server, which will apply
+    // each strategy independently to viewer groups vs. permission groups.
+    // HIDDEN_BY_DEFAULT for both sides becomes a no-op server-side, so we can
+    // skip the round-trip entirely in that case.
+    if (
+      groupStrategy === DefaultPermissionStrategy.HIDDEN_BY_DEFAULT &&
+      linkStrategy === DefaultPermissionStrategy.HIDDEN_BY_DEFAULT
+    ) {
+      return;
+    }
 
-        if (!result.success) {
-          console.error("Failed to apply permissions:", result.error);
-          toastErrorMessage();
-        }
-      } catch (error) {
-        console.error("Failed to apply permissions:", error);
+    const isRootLevel = !currentFolderPath || currentFolderPath.length === 0;
+
+    try {
+      const result = await applyPermissions(
+        dataroomId!,
+        [document.id],
+        { groupStrategy, linkStrategy },
+        isRootLevel ? undefined : currentFolderPath?.join("/"),
+        toastErrorMessage,
+      );
+
+      if (!result.success) {
+        console.error("Failed to apply permissions:", result.error);
         toastErrorMessage();
       }
+    } catch (error) {
+      console.error("Failed to apply permissions:", error);
+      toastErrorMessage();
     }
-    // strategy === DefaultPermissionStrategy.HIDDEN_BY_DEFAULT - do nothing, documents remain hidden
   };
 
   const handleFileUpload = async (
@@ -263,6 +314,29 @@ export function AddDocumentModal({
         contentType = "application/vnd.ms-excel.sheet.macroEnabled.12";
       }
 
+      if (
+        currentFile.name.endsWith(".tif") ||
+        currentFile.name.endsWith(".tiff")
+      ) {
+        supportedFileType = "other";
+        contentType = "image/tiff";
+      }
+
+      if (currentFile.name.endsWith(".ecw")) {
+        supportedFileType = "other";
+        contentType = "image/x-ecw";
+      }
+
+      if (currentFile.name.endsWith(".bak")) {
+        supportedFileType = "other";
+        contentType = "application/x-bak";
+      }
+
+      if (isHtmlFile({ name: currentFile.name, contentType })) {
+        supportedFileType = "html";
+        contentType = "text/html";
+      }
+
       if (!supportedFileType) {
         setUploading(false);
         toast.error(
@@ -296,7 +370,7 @@ export function AddDocumentModal({
         });
       } else {
         // create a new version for existing document in the database
-        const documentId = router.query.id as string;
+        const documentId = documentIdProp ?? (router.query.id as string);
         response = await createNewDocumentVersion({
           documentData,
           documentId,
@@ -573,6 +647,7 @@ export function AddDocumentModal({
     } finally {
       setUploading(false);
       setIsOpen(false);
+      setAddDocumentModalOpen && setAddDocumentModalOpen(false);
     }
   };
 
@@ -720,6 +795,7 @@ export function AddDocumentModal({
     } finally {
       setUploading(false);
       setIsOpen(false);
+      setAddDocumentModalOpen && setAddDocumentModalOpen(false);
     }
   };
 
@@ -756,7 +832,9 @@ export function AddDocumentModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={clearModelStates}>
-        <DialogTrigger asChild>{children}</DialogTrigger>
+        {children ? (
+          <DialogTrigger asChild>{children}</DialogTrigger>
+        ) : null}
         <DialogContent
           className="border-none bg-transparent text-foreground shadow-none"
           isDocumentDialog
@@ -765,7 +843,12 @@ export function AddDocumentModal({
           <DialogDescription className="sr-only">
             An overlayed modal that can be clicked to upload a document
           </DialogDescription>
-          <Tabs defaultValue="document">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) =>
+              setActiveTab(value as "document" | "notion")
+            }
+          >
             {!newVersion ? (
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="document">Document</TabsTrigger>
@@ -839,11 +922,11 @@ export function AddDocumentModal({
                             <button
                               type="button"
                               className="underline-offset-4 transition-all hover:text-gray-800 hover:underline hover:dark:text-muted-foreground/80"
+                              disabled={!uploadTriggers}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                document
-                                  .getElementById("upload-multi-files-zone")
-                                  ?.click();
+                                if (!uploadTriggers) return;
+                                uploadTriggers.openFilesPicker();
                                 clearModelStates();
                               }}
                             >

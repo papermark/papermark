@@ -12,7 +12,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from "@react-email/components";
+} from "react-email";
 
 import { Footer } from "./shared/footer";
 
@@ -100,7 +100,7 @@ export default function CustomDomainSetup({
               ) : (
                 <Button
                   className="rounded bg-black text-center text-xs font-semibold text-white no-underline"
-                  href={`https://app.papermark.com/settings/upgrade`}
+                  href={`https://app.papermark.com/settings/billing/upgrade`}
                   style={{ padding: "12px 20px" }}
                 >
                   Upgrade to use custom domains
@@ -124,7 +124,7 @@ export default function CustomDomainSetup({
                 <>
                   Want to learn more about our plans?{" "}
                   <Link
-                    href="https://app.papermark.com/settings/upgrade"
+                    href="https://app.papermark.com/settings/billing/upgrade"
                     className="font-medium text-blue-600 no-underline"
                   >
                     View pricing

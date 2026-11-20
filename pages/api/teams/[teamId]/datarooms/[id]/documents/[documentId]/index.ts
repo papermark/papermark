@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
+import { enforceDataroomMemberScope } from "@/lib/api/rbac/guard";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 
@@ -26,6 +27,13 @@ export default async function handle(
       folderId: string;
       currentPathName: string;
     };
+
+    // Scoped members may only manage documents within their assigned rooms.
+    if (
+      await enforceDataroomMemberScope({ userId, teamId, dataroomId, res })
+    ) {
+      return;
+    }
 
     try {
       // Check if the user is part of the team
@@ -85,6 +93,13 @@ export default async function handle(
       documentId,
     } = req.query as { teamId: string; id: string; documentId: string };
 
+    // Scoped members may only manage documents within their assigned rooms.
+    if (
+      await enforceDataroomMemberScope({ userId, teamId, dataroomId, res })
+    ) {
+      return;
+    }
+
     try {
       const teamAccess = await prisma.userTeam.findUnique({
         where: {
@@ -99,13 +114,6 @@ export default async function handle(
       });
       if (!teamAccess) {
         return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      if (teamAccess.role !== "ADMIN" && teamAccess.role !== "MANAGER") {
-        return res.status(403).json({
-          message:
-            "You are not permitted to perform this action. Only admin and managers can delete dataroom documents.",
-        });
       }
 
       const dataroom = await prisma.dataroom.findUnique({

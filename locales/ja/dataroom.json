@@ -1,0 +1,233 @@
+{
+  "shell": {
+    "dataRoomEyebrow": "データルーム",
+    "updatedOn": "{{date}} に更新",
+    "lastUpdated": "最終更新 {{date}}",
+    "secureFooter": "セキュリティ提供：",
+    "papermark": "Papermark",
+    "copyright": "© {{year}}{{name}}"
+  },
+  "tabs": {
+    "documents": "資料",
+    "myUploads": "アップロード済み"
+  },
+  "search": {
+    "placeholder": "検索...",
+    "results": "「{{query}}」の検索結果",
+    "resultCount_one": "（全フォルダで {{count}} 件）",
+    "resultCount_other": "（全フォルダで {{count}} 件）",
+    "noMatches": "検索条件に一致する資料はありません。"
+  },
+  "breadcrumb": {
+    "home": "ホーム"
+  },
+  "empty": {
+    "noItems": "利用可能なアイテムはありません。",
+    "noUploads": "まだアップロードがありません。「資料を追加」ボタンから資料をアップロードしてください。"
+  },
+  "cards": {
+    "updated": "更新：{{when}}",
+    "processing": "（処理中...）",
+    "actionsLabel": "アクション",
+    "download": "ダウンロード",
+    "openMenu": "メニューを開く",
+    "openDocument": "資料「{{name}}」を開く",
+    "openFolder": "フォルダ「{{name}}」を開く",
+    "documents": "資料",
+    "folder": "フォルダ",
+    "folderBadge": "フォルダ"
+  },
+  "compactList": {
+    "name": "名前",
+    "updated": "更新",
+    "settings": "設定"
+  },
+  "trailingActions": {
+    "viewQA": "Q&A を表示",
+    "downloadDataroom": "データルームをダウンロード",
+    "teamMemberTooltip": "あなたはチームメンバーのため認証をスキップしました。分析データは収集されません"
+  },
+  "navToasts": {
+    "cannotDownloadPreview": "プレビュー モードではデータルームをダウンロードできません。",
+    "cannotDownloadDocPreview": "プレビュー モードではデータルームの資料をダウンロードできません。",
+    "cannotDownloadFolderPreview": "プレビュー モードではデータルームのフォルダをダウンロードできません。",
+    "foldersNotAllowed": "フォルダのダウンロードは許可されていません。",
+    "enterEmailFirst": "ダウンロードするには、データルームでメールアドレスを入力してください。",
+    "documentStillProcessing": "資料はまだ処理中です。しばらくしてから再度お試しください。",
+    "downloadPreparing": "ダウンロードを準備中...",
+    "downloadSuccess": "ファイルをダウンロードしました",
+    "downloadFailed": "ファイルのダウンロードに失敗しました"
+  },
+  "intro": {
+    "viewIntroduction": "イントロダクションを表示",
+    "title": "{{name}} へようこそ",
+    "defaultName": "データルーム",
+    "continueButton": "データルームへ進む"
+  },
+  "upload": {
+    "trigger": "資料を追加",
+    "title": "データルームに資料をアップロード",
+    "description": "資料はすぐにデータルームに表示され、バックグラウンドで処理されます。",
+    "destinationLabel": "保存先フォルダ",
+    "selectDestination": "保存先フォルダを選択",
+    "uploadingTo": "アップロード先：",
+    "setByOwner": "（データルームの所有者により設定）",
+    "success": "資料をアップロードしました！",
+    "successDescription": "資料がデータルームに表示されました。",
+    "previewDisabled": "プレビュー モードではファイルをアップロードできません。"
+  },
+  "download": {
+    "folderTitle": "フォルダをダウンロード：{{name}}",
+    "dataroomTitle": "{{name}} をダウンロード",
+    "defaultName": "データルーム",
+    "chooseDescription": "ダウンロードを開始します。準備ができたらメールでお知らせすることもできます。",
+    "otpDescription": "ダウンロード通知を受け取るには、メールアドレスを確認してください。",
+    "ready": "ファイルのダウンロードの準備ができました。",
+    "preparing": "ファイルを準備しています...",
+    "notifyByEmail": "ダウンロードの準備ができたらメールで通知する",
+    "needsVerification": "先にワンタイムコードでメールアドレスを確認する必要があります。",
+    "starting": "開始しています...",
+    "start": "ダウンロード開始",
+    "cancel": "キャンセル",
+    "viewDownloads": "ダウンロードを表示",
+    "openDownloads": "ダウンロード ページを開く",
+    "preparingShort": "準備中...",
+    "processingFiles": "{{total}} 件中 {{processed}} 件を処理中...",
+    "complete": "ダウンロードの準備ができました！",
+    "failed": "ダウンロードに失敗しました。",
+    "downloadZip": "ZIP をダウンロード",
+    "downloadAll": "すべてダウンロード（{{count}} パート）",
+    "downloadingProgress": "{{total}} 件中 {{current}} 件をダウンロード中...",
+    "part": "パート {{index}}",
+    "expiresIn": "{{time}} で期限切れ",
+    "expiresLessThanHour": "1 時間以内",
+    "expiresDays_one": "{{count}} 日",
+    "expiresDays_other": "{{count}} 日",
+    "expiresHours_one": "{{count}} 時間",
+    "expiresHours_other": "{{count}} 時間",
+    "willEmailWhenReady": "閉じても構いません。準備ができ次第メールでお知らせします。",
+    "checkBackOnDownloads": "閉じても構いません。準備ができ次第、ダウンロード ページをご確認ください。",
+    "tryAgain": "もう一度試す",
+    "startFailed": "ダウンロードを開始できませんでした",
+    "statusFetchFailed": "ステータスを取得できませんでした",
+    "expiresSoon": "まもなく"
+  },
+  "downloadsPage": {
+    "title": "ダウンロード一覧",
+    "description": "準備されたファイルを以下からダウンロードしてください。リンクは 3 日後に期限切れになります。",
+    "emailHeading": "ダウンロードを表示",
+    "emailDescription": "このデータルームへのアクセスに使用したメールアドレスを入力してください。",
+    "emailPlaceholder": "you@example.com",
+    "sendingCode": "コードを送信中...",
+    "continueButton": "続行",
+    "verifyEmailHeading": "メールアドレスを確認",
+    "empty": "まだダウンロードはありません。データルームからダウンロードを開始するとここに表示されます。",
+    "jobFolderPrefix": "フォルダ:",
+    "jobFullDataroom": "データルーム全体",
+    "expired": "期限切れ",
+    "expiresPrefix": "あと {{time}} で期限切れ",
+    "hideParts": "パートを隠す",
+    "showParts": "パートを表示 ({{count}})",
+    "orIndividual": "または個別にダウンロード:",
+    "partOf": "{{total}} 個中 {{index}} パート目",
+    "errors": {
+      "noAccess": "このメールアドレスではアクセスが見つかりません。データルームを開いた際のメールアドレスをご使用ください。",
+      "rateLimit": "リクエストが多すぎます。しばらくしてからもう一度お試しください。",
+      "generic": "問題が発生しました。"
+    }
+  },
+  "downloadOtp": {
+    "defaultDescription": "<email>{{email}}</email> に 6 桁のコードを送信しました。下に入力して認証し、ダウンロード通知を受け取ってください。",
+    "verify": "確認",
+    "verifying": "確認中...",
+    "noEmail": "メールが届きませんでしたか？",
+    "resending": "送信中...",
+    "resend": "コードを再送",
+    "resendIn": "コードを再送 ({{seconds}} 秒)",
+    "sendFailed": "コードを送信できませんでした",
+    "invalidCode": "無効なコード"
+  },
+  "downloadsPanel": {
+    "ready": "準備完了",
+    "failedFallback": "失敗",
+    "creatingZip": "ZIP を作成中...",
+    "filesCount": "{{processed}} / {{total}} 件",
+    "verifying": "アクセスを確認中...",
+    "buildingFileList": "ファイル一覧を作成中...",
+    "preparing": "準備中..."
+  },
+  "folderPicker": {
+    "home": "ホーム"
+  },
+  "indexFile": {
+    "trigger": "インデックスファイルを生成",
+    "title": "データルームのインデックスファイルを生成",
+    "description": "インデックスファイルを生成する形式を選択してください。",
+    "selectFormat": "形式を選択",
+    "generate": "生成",
+    "generating": "生成中...",
+    "successToast": "インデックスファイルを生成しました",
+    "errorToast": "インデックスの生成に失敗しました",
+    "genericError": "問題が発生しました。もう一度お試しください。",
+    "previewDisabled": "プレビュー モードではインデックスファイルを生成できません。"
+  },
+  "requestList": {
+    "trigger": "リクエスト一覧",
+    "title": "リクエスト一覧",
+    "summaryEmpty": "あなたに割り当てられたリクエストがここに表示されます。",
+    "summaryPending_one": "{{count}} 件のリクエストに対応が必要です。",
+    "summaryPending_other": "{{count}} 件のリクエストに対応が必要です。",
+    "summaryDone": "対応はすべて完了しました。所有者の確認をお待ちください。",
+    "emptyTitle": "対応が必要な項目はありません",
+    "emptyDescription": "現在あなたに割り当てられたリクエストはありません。",
+    "due": "期限 {{date}}",
+    "overdue": "期限超過",
+    "lockedByHost": "所有者により完了として設定されました",
+    "commentPlaceholder": "所有者へのメモを追加（任意）…",
+    "commentPlaceholderLocked": "コメントを追加…",
+    "submitComment": "コメントを追加",
+    "submitStatus": "リクエストを更新",
+    "submitDefault": "更新を送信",
+    "activityHeading": "アクティビティ",
+    "uploadsHeading": "あなたのファイル",
+    "uploadRequired": "ファイルが必要です",
+    "uploadProcessing": "処理中",
+    "toastUpdated": "リクエストを更新しました",
+    "toastCommented": "コメントを追加しました",
+    "toastFailed": "更新できませんでした",
+    "status": {
+      "OPEN": "未対応",
+      "IN_PROGRESS": "対応中",
+      "SUBMITTED": "提出済み",
+      "COMPLETED": "完了"
+    },
+    "activity": {
+      "you": "あなた",
+      "someone": "誰か",
+      "empty": "アクティビティはまだありません。",
+      "created": "リクエストを作成しました",
+      "assigned": "担当者を更新しました",
+      "uploaded": "{{name}} をアップロードしました",
+      "uploadedFallback": "ファイルをアップロードしました",
+      "statusFromTo": "ステータスを {{from}} から {{to}} に変更しました",
+      "statusTo": "ステータスを {{status}} に設定しました",
+      "statusChanged": "ステータスを変更しました",
+      "updated": "リクエストを更新しました"
+    }
+  },
+  "uploadZone": {
+    "dropzoneTitle": "ファイルをここにドラッグ＆ドロップするか、クリックして選択してください",
+    "dropzoneHint": "対応形式：PDF、Office、表計算、画像、ZIP など",
+    "dropActive": "ファイルをここにドロップ",
+    "dropActiveHint": "PDF、Office、画像、ZIP など",
+    "rejectedTitle": "一部のファイルは受け付けられませんでした:",
+    "rejectedTooLarge": "ファイルサイズが大きすぎます（最大 {{size}} MB）。",
+    "rejectedType": "対応していないファイル形式です。",
+    "toastComplete": "アップロードが完了しました！",
+    "toastError": "アップロード中にエラーが発生しました",
+    "toastFileFailed": "{{name}} をアップロードできませんでした",
+    "toastUploadFailed": "資料をアップロードできませんでした",
+    "errorProcessFailed": "アップロードを処理できませんでした",
+    "errorMissingMetadata": "アップロード応答に資料のメタデータがありません"
+  }
+}

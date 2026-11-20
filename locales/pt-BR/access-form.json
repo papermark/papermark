@@ -1,0 +1,56 @@
+{
+  "welcome": {
+    "fallback": "Sua ação é necessária para continuar"
+  },
+  "buttons": {
+    "continue": "Continuar",
+    "verifying": "Verificando..."
+  },
+  "fields": {
+    "email": {
+      "label": "Endereço de e-mail",
+      "placeholder": "Digite o e-mail",
+      "errorInvalid": "Digite um endereço de e-mail válido",
+      "sharedWithSender": "Estes dados serão compartilhados com o remetente.",
+      "sharedWithProvider": "Estes dados serão compartilhados com o provedor do conteúdo."
+    },
+    "password": {
+      "label": "Código de acesso",
+      "placeholder": "Digite o código de acesso"
+    },
+    "name": {
+      "label": "Nome",
+      "placeholder": "Digite seu nome completo"
+    },
+    "url": {
+      "errorInvalid": "Digite uma URL válida começando com https://"
+    },
+    "phone": {
+      "placeholderDefault": "+55 11 91234 5678"
+    }
+  },
+  "agreement": {
+    "fallbackPrefix": "Li e concordo com os termos deste"
+  },
+  "verification": {
+    "title": "Verifique seu endereço de e-mail",
+    "description": "Digite o código de verificação de seis dígitos enviado para <email>{{email}}</email>",
+    "errorInvalid": "Código inválido. Tente novamente.",
+    "noEmail": "Não recebeu o e-mail?",
+    "resending": "Reenviando código...",
+    "resendIn": "Reenviar código ({{seconds}} s)",
+    "resend": "Reenviar código"
+  },
+  "footer": {
+    "sharedSecurelyVia": "Este documento é compartilhado com você de forma segura via",
+    "sharedSecurelyViaDataroom": "Esta sala de dados é compartilhada com você de forma segura via",
+    "papermark": "Papermark",
+    "seeHowWeProtect": "Veja como protegemos seus dados em nossa",
+    "privacyPolicy": "Política de Privacidade"
+  },
+  "reauth": {
+    "title": "Verifique que é você",
+    "description": "Este arquivo foi enviado por você. Para reabri-lo, confirme que você controla <email>{{email}}</email>.",
+    "otpDescription": "Enviamos um código de 6 dígitos para <email>{{email}}</email>. Digite-o abaixo para acessar seu arquivo."
+  }
+}

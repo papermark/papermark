@@ -3,12 +3,15 @@ model Team {
   name          String
   slug          String?        @unique // Optional human-readable identifier (e.g. "acme"), used for SSO login
   users         UserTeam[]
+  userDatarooms UserDataroom[]
   documents     Document[]
   folders       Folder[]
   domains       Domain[]
   invitations   Invitation[]
   sentEmails    SentEmail[]
-  brand         Brand?
+  brands         Brand[] @relation("TeamBrands")
+  defaultBrandId String?
+  defaultBrand   Brand?  @relation("TeamDefaultBrand", fields: [defaultBrandId], references: [id], onDelete: SetNull)
   datarooms     Dataroom[]
   agreements    Agreement[]
   viewerGroups  ViewerGroup[]
@@ -21,16 +24,22 @@ model Team {
   restrictedTokens  RestrictedToken[]
   webhooks          Webhook[]
   conversations     Conversation[]
+  dataroomQuestions DataroomQuestion[]
   dataroomFaqItems  DataroomFaqItem[]
   uploadedDocuments DocumentUpload[]
   Tag               Tag[]
   annotations       DocumentAnnotation[] // Annotations created by team members
+  redactionJobs     DocumentRedactionJob[] // Redaction jobs owned by this team
 
   installedIntegrations InstalledIntegration[]
 
   links     Link[]
   views     View[]
   workflows Workflow[]
+
+  // request list (task system)
+  taskLists TaskList[]
+  tasks     Task[]
 
   plan           String    @default("free")
   stripeId       String?   @unique // Stripe customer ID
@@ -41,6 +50,14 @@ model Team {
   pauseStartsAt  DateTime? // When the pause period starts
   pauseEndsAt    DateTime? // When the pause period ends
   cancelledAt    DateTime? // When the subscription was cancelled
+
+  // Trial overrides — when set, these take precedence over the implicit
+  // "+drtrial in plan + 7 days from team/dataroom creation" computation.
+  // Populated when a trial is manually extended via the admin script.
+  trialStartedAt     DateTime? // When the trial actually started
+  trialEndsAt        DateTime? // Authoritative trial end timestamp (null = use legacy 7d-from-creation)
+  trialReminderRunId String? // Trigger.dev run id for the 24h reminder email
+  trialExpiredRunId  String? // Trigger.dev run id for the trial-expired task
 
   limits Json? // Plan limits // {datarooms: 1, users: 1, domains: 1, customDomainOnPro: boolean, customDomainInDataroom: boolean}
 
@@ -69,12 +86,43 @@ model Team {
   globalBlockList String[] // Email and domains that are blocked for the team
 
   notificationPreferences NotificationPreference[]
+
+  // Partner program, portfolio-discount track only. The discount lands on this
+  // team's plan, so the enrolment belongs to the team rather than to whoever
+  // filled the form: one link every member shares, one invite list, one cap.
+  // The affiliate track stays on User, where the commission is paid.
+  referralTrack           ReferralTrack?
+  referralTrackSelectedAt DateTime?
+  referralProfile         Json?
+  referralInvites         ReferralInvite[]
+
+  @@index([defaultBrandId])
 }
 
 enum Role {
   ADMIN
   MANAGER
   MEMBER
+  // Least-privileged role. Scoped to one or more datarooms via UserDataroom and
+  // acts as a room manager inside only those rooms. Denied everywhere else.
+  DATAROOM_MEMBER
+}
+
+// Assigns a DATAROOM_MEMBER (or any user) to a specific dataroom within a team.
+// This is the "which rooms" layer that the role alone cannot encode.
+model UserDataroom {
+  userId     String
+  teamId     String
+  dataroomId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  dataroom   Dataroom @relation(fields: [dataroomId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([userId, dataroomId])
+  @@index([userId])
+  @@index([teamId])
+  @@index([dataroomId])
 }
 
 model UserTeam {

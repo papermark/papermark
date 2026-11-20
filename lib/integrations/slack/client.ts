@@ -6,6 +6,23 @@ import {
 } from "@/lib/integrations/slack/types";
 import { decryptSlackToken } from "@/lib/integrations/slack/utils";
 
+// Slack `conversations.list` is rate limited (Tier 2). Without a `limit` it
+// returns small pages, so a large workspace requires hundreds of sequential
+// requests and can blow past the function timeout. These guards keep a single
+// fetch bounded in both work and wall-clock time.
+const SLACK_CHANNELS_PAGE_LIMIT = 999; // Slack max is 1000
+const SLACK_CHANNELS_MAX_PAGES = 50; // up to ~50k channels
+const SLACK_CHANNELS_DEADLINE_MS = 45_000; // overall budget, well under maxDuration
+const SLACK_CHANNELS_MAX_RETRY_PER_PAGE = 2; // bounded 429 retries
+const SLACK_CHANNELS_MAX_RETRY_AFTER_MS = 15_000; // cap a single backoff
+
+export class SlackRateLimitError extends Error {
+  constructor(message = "Slack rate limit exceeded") {
+    super(message);
+    this.name = "SlackRateLimitError";
+  }
+}
+
 export class SlackClient {
   private clientId: string;
   private clientSecret: string;
@@ -149,29 +166,59 @@ export class SlackClient {
 
     const channels: SlackChannel[] = [];
     let cursor: string | undefined = undefined;
+    let pages = 0;
+    const deadline = Date.now() + SLACK_CHANNELS_DEADLINE_MS;
 
     do {
+      if (Date.now() >= deadline) {
+        console.warn(
+          `[slack] getChannels hit time budget after ${pages} page(s); returning ${channels.length} channel(s) so far`,
+        );
+        break;
+      }
+
       const url = new URL(`${this.baseUrl}/conversations.list`);
       url.searchParams.set("types", "public_channel,private_channel");
       url.searchParams.set("exclude_archived", "true");
+      url.searchParams.set("limit", String(SLACK_CHANNELS_PAGE_LIMIT));
       if (cursor) url.searchParams.set("cursor", cursor);
 
       const requestUrl = url.toString();
-      const ac = new AbortController();
-      const to = setTimeout(() => ac.abort(), 10000);
-      const resp = await fetch(requestUrl, {
-        headers: {
-          Authorization: `Bearer ${decryptedToken}`,
-          "Content-Type": "application/json",
-        },
-        signal: ac.signal,
-      }).finally(() => clearTimeout(to));
-      // Basic 429 handling
-      if (resp.status === 429) {
-        const retry = Number(resp.headers.get("retry-after") || 1);
-        await new Promise((r) => setTimeout(r, retry * 1000));
-        continue;
+
+      // Fetch a single page with bounded 429 retries.
+      let resp: Response | undefined;
+      for (let attempt = 0; ; attempt++) {
+        const ac = new AbortController();
+        const to = setTimeout(() => ac.abort(), 10000);
+        resp = await fetch(requestUrl, {
+          headers: {
+            Authorization: `Bearer ${decryptedToken}`,
+            "Content-Type": "application/json",
+          },
+          signal: ac.signal,
+        }).finally(() => clearTimeout(to));
+
+        if (resp.status !== 429) break;
+
+        // Rate limited: give up rather than sleep into the function timeout.
+        if (
+          attempt >= SLACK_CHANNELS_MAX_RETRY_PER_PAGE ||
+          Date.now() >= deadline
+        ) {
+          throw new SlackRateLimitError(
+            "Slack rate limit exceeded while listing channels (conversations.list)",
+          );
+        }
+
+        const retryAfterSec = Number(resp.headers.get("retry-after") || 1);
+        const waitMs = Math.min(
+          retryAfterSec * 1000,
+          SLACK_CHANNELS_MAX_RETRY_AFTER_MS,
+          Math.max(0, deadline - Date.now()),
+        );
+        await new Promise((r) => setTimeout(r, waitMs));
       }
+
       if (!resp.ok)
         throw new Error(
           `Failed to get channels: ${resp.status} ${resp.statusText}`,
@@ -188,7 +235,8 @@ export class SlackClient {
         })),
       );
       cursor = data.response_metadata?.next_cursor || undefined;
-    } while (cursor);
+      pages++;
+    } while (cursor && pages < SLACK_CHANNELS_MAX_PAGES);
 
     return channels;
   }

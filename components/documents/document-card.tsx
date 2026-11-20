@@ -11,6 +11,7 @@ import {
   EyeIcon,
   EyeOffIcon,
   FileIcon,
+  FilePenIcon,
   FolderIcon,
   FolderInputIcon,
   MoreVertical,
@@ -32,6 +33,7 @@ import { UpgradePlanModal } from "@/components/billing/upgrade-plan-modal";
 import { DataroomTrialModal } from "@/components/datarooms/dataroom-trial-modal";
 import { AddToDataroomModal } from "@/components/documents/add-document-to-dataroom-modal";
 import { DocumentPreviewModal } from "@/components/documents/document-preview-modal";
+import { EditDocumentNameModal } from "@/components/documents/edit-document-name-modal";
 import { MoveToFolderModal } from "@/components/documents/move-folder-modal";
 import BarChart from "@/components/shared/icons/bar-chart";
 import { Button } from "@/components/ui/button";
@@ -71,6 +73,7 @@ export default function DocumentsCard({
   const [isFirstClick, setIsFirstClick] = useState<boolean>(false);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [moveFolderOpen, setMoveFolderOpen] = useState<boolean>(false);
+  const [renameOpen, setRenameOpen] = useState<boolean>(false);
   const [addDataroomOpen, setAddDataroomOpen] = useState<boolean>(false);
   const [trialModalOpen, setTrialModalOpen] = useState<boolean>(false);
   const [planModalOpen, setPlanModalOpen] = useState<boolean>(false);
@@ -93,12 +96,12 @@ export default function DocumentsCard({
 
   // https://github.com/radix-ui/primitives/issues/1241#issuecomment-1888232392
   useEffect(() => {
-    if (!moveFolderOpen || !addDataroomOpen) {
+    if (!moveFolderOpen && !addDataroomOpen && !renameOpen) {
       setTimeout(() => {
         document.body.style.pointerEvents = "";
       });
     }
-  }, [moveFolderOpen, addDataroomOpen]);
+  }, [moveFolderOpen, addDataroomOpen, renameOpen]);
 
   useEffect(() => {
     function handleClickOutside(event: { target: any }) {
@@ -147,7 +150,7 @@ export default function DocumentsCard({
     const queryString = queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
 
     const endpoint = currentFolderPath
-      ? `/folders/documents/${currentFolderPath.join("/")}`
+      ? `/folder-documents/${currentFolderPath.join("/")}`
       : `/documents${queryString}`;
 
     toast.promise(
@@ -221,7 +224,7 @@ export default function DocumentsCard({
       ).then(() => {
         mutate(`/api/teams/${teamInfo?.currentTeam?.id}/documents`);
         mutate(
-          `/api/teams/${teamInfo?.currentTeam?.id}/folders/documents/${currentFolderPath?.join("/")}`,
+          `/api/teams/${teamInfo?.currentTeam?.id}/folder-documents/${currentFolderPath?.join("/")}`,
         );
       }),
       {
@@ -249,7 +252,7 @@ export default function DocumentsCard({
     const queryString = queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
 
     const endpoint = currentFolderPath
-      ? `/folders/documents/${currentFolderPath.join("/")}`
+      ? `/folder-documents/${currentFolderPath.join("/")}`
       : `/documents${queryString}`;
 
     toast.promise(
@@ -311,9 +314,9 @@ export default function DocumentsCard({
           isHovered && "bg-secondary ring-gray-300 dark:ring-gray-500",
         )}
       >
-        <div className="flex min-w-0 shrink items-center space-x-2 sm:space-x-4">
+        <div className="flex min-w-0 flex-1 shrink items-center space-x-2 sm:space-x-4">
           {!isSelected && !isHovered ? (
-            <div className="mx-0.5 flex w-8 items-center justify-center text-center sm:mx-1">
+            <div className="mx-0.5 flex w-8 shrink-0 items-center justify-center text-center sm:mx-1">
               {fileIcon({
                 fileType: prismaDocument.type ?? "",
                 className: "h-8 w-8",
@@ -321,22 +324,25 @@ export default function DocumentsCard({
               })}
             </div>
           ) : (
-            <div className="mx-0.5 w-8 sm:mx-1"></div>
+            <div className="mx-0.5 w-8 shrink-0 sm:mx-1"></div>
           )}
 
-          <div className="flex-col">
-            <div className="flex items-center">
-              <h2 className="min-w-0 max-w-[250px] truncate text-sm font-semibold leading-6 text-foreground sm:max-w-md">
+          <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+            <div className="flex min-w-0 items-center gap-1">
+              <h2 className="min-w-0 flex-1 truncate text-sm font-semibold leading-6 text-foreground sm:max-w-none">
                 <Link
                   href={`/documents/${prismaDocument.id}`}
-                  className="w-full truncate"
+                  className="relative block w-full min-w-0 truncate"
                 >
-                  <span>{prismaDocument.name}</span>
-                  <span className="absolute inset-0" />
+                  <span className="block truncate">{prismaDocument.name}</span>
+                  <span
+                    className="absolute inset-0 z-0"
+                    aria-hidden
+                  />
                 </Link>
               </h2>
               {prismaDocument._count.datarooms > 0 && (
-                <div className="z-20">
+                <div className="z-20 shrink-0">
                   <BadgeTooltip
                     content={`In ${prismaDocument._count.datarooms} dataroom${prismaDocument._count.datarooms > 1 ? "s" : ""}`}
                     key="dataroom"
@@ -346,7 +352,7 @@ export default function DocumentsCard({
                 </div>
               )}
             </div>
-            <div className="mt-1 flex items-center space-x-1 text-xs leading-5 text-muted-foreground">
+            <div className="mt-1 flex min-w-0 items-center space-x-1 overflow-hidden text-xs leading-5 text-muted-foreground">
               <p className="truncate">{timeAgo(prismaDocument.createdAt)}</p>
               <p>•</p>
               <p className="truncate">
@@ -394,13 +400,13 @@ export default function DocumentsCard({
           </div>
         </div>
 
-        <div className="flex flex-row space-x-2">
+        <div className="flex shrink-0 flex-row space-x-2">
           <Link
             onClick={(e) => {
               e.stopPropagation();
             }}
             href={`/documents/${prismaDocument.id}`}
-            className="z-20 flex items-center space-x-1 rounded-md bg-gray-200 px-1.5 py-0.5 transition-all duration-75 hover:scale-105 active:scale-100 dark:bg-gray-700 sm:px-2"
+            className="z-20 flex shrink-0 items-center space-x-1 rounded-md bg-gray-200 px-1.5 py-0.5 transition-all duration-75 hover:scale-105 active:scale-100 dark:bg-gray-700 sm:px-2"
           >
             <BarChart className="h-3 w-3 text-muted-foreground sm:h-4 sm:w-4" />
             <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
@@ -414,7 +420,7 @@ export default function DocumentsCard({
               <Button
                 // size="icon"
                 variant="outline"
-                className="z-20 h-8 w-8 border-gray-200 bg-transparent p-0 hover:bg-gray-200 dark:border-gray-700 hover:dark:bg-gray-700 lg:h-9 lg:w-9"
+                className="z-20 h-8 w-8 shrink-0 border-gray-200 bg-transparent p-0 hover:bg-gray-200 dark:border-gray-700 hover:dark:bg-gray-700 lg:h-9 lg:w-9"
               >
                 <span className="sr-only">Open menu</span>
                 <MoreVertical className="h-4 w-4" />
@@ -432,6 +438,15 @@ export default function DocumentsCard({
                 Quick preview
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRenameOpen(true);
+                }}
+              >
+                <FilePenIcon className="mr-2 h-4 w-4" />
+                Rename
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setMoveFolderOpen(true)}>
                 <FolderInputIcon className="mr-2 h-4 w-4" />
                 Move to folder
@@ -478,6 +493,15 @@ export default function DocumentsCard({
           documentIds={[prismaDocument.id]}
           itemName={prismaDocument.name}
           folderParentId={prismaDocument.folderId!}
+        />
+      ) : null}
+
+      {renameOpen ? (
+        <EditDocumentNameModal
+          open={renameOpen}
+          setOpen={setRenameOpen}
+          documentId={prismaDocument.id}
+          documentName={prismaDocument.name}
         />
       ) : null}
 

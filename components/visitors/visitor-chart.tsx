@@ -32,7 +32,7 @@ export default function VisitorChart({
     }[];
   } | null;
 }) {
-  const { stats, error } = useVisitorStats(viewId);
+  const { stats, error } = useVisitorStats(viewId, documentId);
 
   if (error && error.status === 404) {
     return <ErrorPage statusCode={404} />;

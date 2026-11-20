@@ -11,7 +11,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from "@react-email/components";
+} from "react-email";
 
 import { Footer } from "./shared/footer";
 
@@ -30,7 +30,7 @@ export default function DomainDeleted({
             <Text className="mx-0 mb-8 mt-4 p-0 text-center text-2xl font-normal">
               <span className="font-bold tracking-tighter">Papermark</span>
             </Text>
-            <Text className="font-seminbold mx-0 mb-8 mt-4 p-0 text-center text-xl">
+            <Text className="mx-0 mb-8 mt-4 p-0 text-center text-xl">
               Domain Deleted
             </Text>
             <Text className="text-sm leading-6 text-black">

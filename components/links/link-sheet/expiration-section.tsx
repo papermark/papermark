@@ -122,7 +122,7 @@ export default function ExpirationSection({
   return (
     <div className="pb-5">
       <LinkItem
-        title="Expiration Date"
+        title="Expiration date"
         enabled={enabled}
         link="https://www.papermark.com/help/article/expiration-date"
         action={handleEnableExpiration}

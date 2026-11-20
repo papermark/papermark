@@ -5,6 +5,7 @@ import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
+import { enforceDocumentMemberScope } from "@/lib/api/rbac/guard";
 import { getFeatureFlags } from "@/lib/featureFlags";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
@@ -30,6 +31,13 @@ export default async function handle(
   };
 
   const userId = (session.user as CustomUser).id;
+
+  // Dataroom-scoped members may only access documents in their assigned rooms.
+  if (
+    await enforceDocumentMemberScope({ userId, teamId, documentId: docId, res })
+  ) {
+    return;
+  }
 
   try {
     // First verify user has access to the team
@@ -169,11 +177,8 @@ export default async function handle(
       },
     };
 
-    // Set cache headers for faster subsequent loads
-    res.setHeader(
-      "Cache-Control",
-      "private, max-age=60, stale-while-revalidate=300",
-    );
+    // Always revalidate with the server since document metadata is mutable
+    res.setHeader("Cache-Control", "private, no-cache, must-revalidate");
 
     return res.status(200).json(response);
   } catch (error) {

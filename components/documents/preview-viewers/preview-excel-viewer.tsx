@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { DocumentPreviewData } from "@/lib/types/document-preview";
 import { cn } from "@/lib/utils";
+import { getOfficeViewerEmbedUrl } from "@/lib/utils/office-viewer";
 
 interface PreviewExcelViewerProps {
   documentData: DocumentPreviewData;
@@ -24,7 +25,7 @@ export function PreviewExcelViewer({
     );
   }
 
-  const embedUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(file)}&wdPrint=0&action=embedview&wdAllowInteractivity=False`;
+  const embedUrl = getOfficeViewerEmbedUrl(file);
 
   return (
     <div className="relative h-full w-full overflow-hidden">
@@ -43,7 +44,7 @@ export function PreviewExcelViewer({
       )}
 
       {/* Office Online iframe */}
-      <div className="h-full w-full pt-14 pb-2 px-2">
+      <div className="relative h-full w-full px-2 pb-2 pt-14">
         <iframe
           className={cn(
             "h-full w-full rounded-md transition-opacity duration-200",
@@ -52,6 +53,7 @@ export function PreviewExcelViewer({
           src={embedUrl}
           onLoad={() => setIframeLoaded(true)}
         />
+        <div className="absolute bottom-2 left-2 right-2 z-50 h-[26px] rounded-b-md bg-gray-900" />
       </div>
     </div>
   );

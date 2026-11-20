@@ -59,14 +59,16 @@ export function AddGroupMemberModal({
     event.preventDefault();
     event.stopPropagation();
 
-    const inputs = inputValue
-      .split(",")
-      .map((input) => input.trim().toLowerCase())
-      .filter((input) => input);
+    const inputs = Array.from(
+      new Set(
+        inputValue
+          .split(/[,;\n\r\t]+/)
+          .map((input) => input.trim().toLowerCase())
+          .filter((input) => input.length > 0),
+      ),
+    );
 
     if (inputs.length === 0) return;
-
-    setLoading(true);
 
     // Separate domains and emails
     const domains = inputs.filter((input) => input.startsWith("@"));
@@ -75,20 +77,26 @@ export function AddGroupMemberModal({
     // validate emails
     const invalidEmails = emails.filter((email) => !validateEmail(email));
     if (invalidEmails.length > 0) {
-      setLoading(false);
-      toast.error("Found one or more invalid email addresses.");
+      toast.error(
+        `Found invalid email${invalidEmails.length > 1 ? "s" : ""}: ${invalidEmails
+          .slice(0, 3)
+          .join(", ")}${invalidEmails.length > 3 ? ", ..." : ""}`,
+      );
       return;
     }
 
     // validate domains
     const invalidDomains = domains.filter((domain) => !validateDomain(domain));
     if (invalidDomains.length > 0) {
-      setLoading(false);
       toast.error(
-        "Found one or more invalid domains. Domains should be in format @example.org",
+        `Found invalid domain${invalidDomains.length > 1 ? "s" : ""}: ${invalidDomains
+          .slice(0, 3)
+          .join(", ")}${invalidDomains.length > 3 ? ", ..." : ""}. Domains should be in format @example.org`,
       );
       return;
     }
+
+    setLoading(true);
 
     // POST request with emails and domains
     const response = await fetch(
@@ -144,13 +152,16 @@ export function AddGroupMemberModal({
               onChange={handleInputChange}
               rows={5}
               id="email"
-              placeholder="jane@acme.com, john@acme.com, @example.org"
+              placeholder={`jane@acme.com, john@acme.com; @example.org
+or one entry per line`}
               className="flex-1 bg-muted"
               autoComplete="off"
             />
             <small className="text-xs text-muted-foreground">
-              Use comma to separate multiple email addresses or domains. For
-              domains, use format @example.org
+              Separate multiple email addresses or domains with a comma,
+              semicolon, or new line. For domains, use the format
+              {" "}
+              <code>@example.org</code>.
             </small>
           </div>
 

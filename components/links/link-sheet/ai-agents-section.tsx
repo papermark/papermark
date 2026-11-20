@@ -50,7 +50,7 @@ export default function AIAgentsSection({
   return (
     <div className="pb-5">
       <LinkItem
-        title="AI Agents"
+        title="AI agents"
         enabled={enabled}
         action={handleToggle}
         isAllowed={isAllowed}

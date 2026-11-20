@@ -3,10 +3,15 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { ItemType, ViewType } from "@prisma/client";
 import { waitUntil } from "@vercel/functions";
 
+import { getDataroomSessionByLinkIdInPagesRouter } from "@/lib/auth/dataroom-auth";
 import { getFile } from "@/lib/files/get-file";
 import { notifyDocumentDownload } from "@/lib/integrations/slack/events";
 import prisma from "@/lib/prisma";
-import { getFileNameWithPdfExtension } from "@/lib/utils";
+import {
+  buildAttachmentDispositionForName,
+  getFileNameWithPdfExtension,
+} from "@/lib/utils";
+import { ensureFileExtension } from "@/lib/utils/get-content-type";
 import { getIpAddress } from "@/lib/utils/ip";
 
 export const config = {
@@ -19,16 +24,23 @@ export default async function handle(
 ) {
   if (req.method === "POST") {
     // POST /api/links/download/dataroom-document
-    const { linkId, viewId, documentId } = req.body as {
+    const { linkId, documentId } = req.body as {
       linkId: string;
-      viewId: string;
       documentId: string;
     };
 
     try {
+      const session = await getDataroomSessionByLinkIdInPagesRouter(
+        req,
+        linkId,
+      );
+      if (!session) {
+        return res.status(401).json({ error: "Session required to download" });
+      }
+
       const view = await prisma.view.findUnique({
         where: {
-          id: viewId,
+          id: session.viewId,
           linkId: linkId,
           viewType: { equals: ViewType.DATAROOM_VIEW },
         },
@@ -44,6 +56,7 @@ export default async function handle(
               expiresAt: true,
               isArchived: true,
               deletedAt: true,
+              emailAuthenticated: true,
               enableWatermark: true,
               watermarkConfig: true,
               name: true,
@@ -90,6 +103,19 @@ export default async function handle(
         return res.status(404).json({ error: "Error downloading" });
       }
 
+      // if dataroom does not exist, we should not allow the download
+      if (!view.dataroom) {
+        return res.status(404).json({ error: "Error downloading" });
+      }
+
+      if (session.dataroomId !== view.dataroom.id) {
+        return res.status(403).json({ error: "Error downloading" });
+      }
+
+      if (view.link.emailAuthenticated && !session.verified) {
+        return res.status(403).json({ error: "Error downloading" });
+      }
+
       // if link does not allow download, we should not allow the download
       if (!view.link.allowDownload) {
         return res.status(403).json({ error: "Error downloading" });
@@ -108,11 +134,6 @@ export default async function handle(
       // if link is expired, we should not allow the download
       if (view.link.expiresAt && view.link.expiresAt < new Date()) {
         return res.status(403).json({ error: "Error downloading" });
-      }
-
-      // if dataroom does not exist, we should not allow the download
-      if (!view.dataroom) {
-        return res.status(404).json({ error: "Error downloading" });
       }
 
       // if viewedAt is longer than 23 hours ago, we should not allow the download
@@ -147,15 +168,45 @@ export default async function handle(
             });
         }
 
-        const permittedDocumentIds = groupPermissions
-          .filter(
-            (permission) => permission.itemType === ItemType.DATAROOM_DOCUMENT,
-          )
-          .map((permission) => permission.itemId);
+        const permittedDocumentIds = new Set(
+          groupPermissions
+            .filter(
+              (permission) =>
+                permission.itemType === ItemType.DATAROOM_DOCUMENT,
+            )
+            .map((permission) => permission.itemId as string),
+        );
+
+        // Fallback: viewer-uploaded docs aren't tied to the link's
+        // permission group. Allow the original uploader through, scoped to
+        // the current viewer's id.
+        const candidateDocIds = downloadDocuments
+          .filter((doc) => !permittedDocumentIds.has(doc.id))
+          .map((doc) => doc.id);
+
+        if (candidateDocIds.length > 0 && view.viewerId) {
+          const viewerUploads = await prisma.documentUpload.findMany({
+            where: {
+              linkId,
+              viewerId: view.viewerId,
+              dataroomDocumentId: { in: candidateDocIds },
+            },
+            select: { dataroomDocumentId: true },
+          });
+          for (const upload of viewerUploads) {
+            if (upload.dataroomDocumentId) {
+              permittedDocumentIds.add(upload.dataroomDocumentId);
+            }
+          }
+        }
 
         downloadDocuments = downloadDocuments.filter((doc) =>
-          permittedDocumentIds.includes(doc.id),
+          permittedDocumentIds.has(doc.id),
         );
+      }
+
+      if (downloadDocuments.length === 0) {
+        return res.status(403).json({ error: "Error downloading" });
       }
 
       //creates new view for document
@@ -197,15 +248,33 @@ export default async function handle(
           : (downloadDocuments[0].document!.versions[0].originalFile ??
             downloadDocuments[0].document!.versions[0].file);
 
-      const downloadUrl = await getFile({
-        type: downloadDocuments[0].document!.versions[0].storageType,
-        data: file,
-        isDownload: true,
+      // Pre-compute the user-facing download filename (renamed name + correct
+      // extension). We pass it as ResponseContentDisposition on the S3
+      // presigned URL so the browser uses it instead of the original
+      // upload-time disposition stored on the S3 object. CloudFront-fronted
+      // origins ignore this and still return the stored disposition.
+      const versionForName = downloadDocuments[0].document!.versions[0];
+      const desiredFileName = ensureFileExtension({
+        name: downloadDocuments[0].document!.name,
+        contentType: versionForName.contentType,
+        type: versionForName.type,
       });
 
-      // For PDF files with watermark, always buffer and process
+      const downloadUrl = await getFile({
+        type: versionForName.storageType,
+        data: file,
+        isDownload: true,
+        responseContentDisposition: desiredFileName
+          ? buildAttachmentDispositionForName(desiredFileName)
+          : undefined,
+      });
+
+      const versionType = downloadDocuments[0].document!.versions[0].type;
+
+      // For PDFs and images with watermark, buffer and process. Images are
+      // converted to a watermarked PDF.
       if (
-        downloadDocuments[0].document!.versions[0].type === "pdf" &&
+        (versionType === "pdf" || versionType === "image") &&
         view.link.enableWatermark &&
         view.link.watermarkConfig
       ) {
@@ -219,7 +288,14 @@ export default async function handle(
             },
             body: JSON.stringify({
               url: downloadUrl,
-              numPages: downloadDocuments[0].document!.versions[0].numPages,
+              fileType: versionType === "image" ? "image" : "pdf",
+              numPages:
+                versionType === "image"
+                  ? 1
+                  : downloadDocuments[0].document!.versions[0].numPages,
+              // Flatten form/annotation/layers; the watermark is drawn into
+              // the page content stream so it can't be removed as a layer.
+              flatten: true,
               watermarkConfig: view.link.watermarkConfig,
               originalFileName: downloadDocuments[0].document!.name,
               viewerData: {
@@ -245,11 +321,12 @@ export default async function handle(
 
         const pdfBuffer = await response.arrayBuffer();
 
-        // Set appropriate headers for watermarked PDF
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader(
           "Content-Disposition",
-          `attachment; filename="${encodeURIComponent(getFileNameWithPdfExtension(downloadDocuments[0].document!.name))}"`,
+          buildAttachmentDispositionForName(
+            getFileNameWithPdfExtension(downloadDocuments[0].document!.name),
+          ),
         );
         res.setHeader("Content-Length", Buffer.from(pdfBuffer).length);
 
@@ -257,52 +334,14 @@ export default async function handle(
         return res.send(Buffer.from(pdfBuffer));
       }
 
-      // For non-watermarked PDFs, we need to buffer and set proper headers
-      // - contentType is application/pdf
-      // - contentType is null and type is pdf
-      // - contentType starts with image/
-      if (
-        downloadDocuments[0].document!.versions[0].contentType ===
-          "application/pdf" ||
-        (downloadDocuments[0].document!.versions[0].contentType === null &&
-          downloadDocuments[0].document!.versions[0].type === "pdf") ||
-        downloadDocuments[0].document!.versions[0].contentType?.startsWith(
-          "image/",
-        )
-      ) {
-        const response = await fetch(downloadUrl);
-        if (!response.ok) {
-          return res.status(500).json({ error: "Error downloading file" });
-        }
-
-        const pdfBuffer = await response.arrayBuffer();
-
-        // Set appropriate headers to force download
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader(
-          "Content-Disposition",
-          `attachment; filename="${encodeURIComponent(downloadDocuments[0].document!.name)}"`,
-        );
-        res.setHeader("Content-Length", Buffer.from(pdfBuffer).length);
-        res.setHeader("Cache-Control", "no-cache");
-
-        // Send the PDF buffer directly
-        return res.send(Buffer.from(pdfBuffer));
-      }
-
-      const headResponse = await fetch(downloadUrl, { method: "HEAD" });
-      const contentType =
-        downloadDocuments[0].document!.versions[0].contentType ||
-        headResponse.headers.get("content-type") ||
-        "application/octet-stream";
-      const fileName = downloadDocuments[0].document!.name;
-
-      // For all other files, return direct download URL
+      // For everything else (PDFs, images, sheets, slides, archives, ...)
+      // we hand back the presigned URL with the renamed Content-Disposition
+      // baked in via response-content-disposition. The client iframes it,
+      // CloudFront/S3 returns the bytes directly, and the OS saves the file
+      // with the right name + extension. No need to buffer through Vercel.
       return res.status(200).json({
         downloadUrl,
-        fileName,
-        contentType,
-        isDirectDownload: true,
+        fileName: desiredFileName,
       });
     } catch (error) {
       console.error("Error:", error);

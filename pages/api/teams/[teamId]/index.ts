@@ -10,7 +10,7 @@ import { removeDomainFromVercelProject } from "@/lib/domains";
 import { errorhandler } from "@/lib/errorHandler";
 import { deleteFiles } from "@/lib/files/delete-team-files-server";
 import prisma from "@/lib/prisma";
-import { redis } from "@/lib/redis";
+import { clearCachedBrandLogo } from "@/lib/redis/brand-logo-cache";
 
 import { CustomUser } from "@/lib/types";
 import { unsubscribe } from "@/lib/resend";
@@ -74,7 +74,14 @@ export default async function handle(
         return res.status(403).end("Unauthorized to access this team");
       }
 
-      return res.status(200).json(team);
+      // Attach per-member dataroom assignments so the client can render the
+      // scoped-member editor and derive the current user's allowed rooms.
+      const userDatarooms = await prisma.userDataroom.findMany({
+        where: { teamId },
+        select: { userId: true, dataroomId: true },
+      });
+
+      return res.status(200).json({ ...team, userDatarooms });
     } catch (error) {
       errorhandler(error, res);
     }
@@ -230,7 +237,7 @@ export default async function handle(
           },
         }),
         // delete team branding from redis
-        redis.del(`brand:logo:${teamId}`),
+        clearCachedBrandLogo(teamId),
 
         // delete team
         prisma.team.delete({

@@ -2,18 +2,16 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 import { isTeamPausedById } from "@/ee/features/billing/cancellation/lib/is-team-paused";
 import { getLimits } from "@/ee/limits/server";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import {
   Dataroom,
   DataroomBrand,
   DataroomDocument,
   DataroomFolder,
 } from "@prisma/client";
-import { getServerSession } from "next-auth/next";
 
+import { withTeamApi } from "@/lib/api/auth/with-session-team";
 import { newId } from "@/lib/id-helper";
 import prisma from "@/lib/prisma";
-import { CustomUser } from "@/lib/types";
 
 interface DataroomWithContents extends Dataroom {
   documents: DataroomDocument[];
@@ -128,47 +126,12 @@ async function duplicateFolders(
   );
 }
 
-export default async function handle(
-  req: NextApiRequest,
-  res: NextApiResponse,
-) {
-  if (req.method === "POST") {
-    // POST /api/teams/:teamId/datarooms/:id/duplicate
-    const session = await getServerSession(req, res, authOptions);
-    if (!session) {
-      res.status(401).end("Unauthorized");
-      return;
-    }
-
-    const { teamId, id: dataroomId } = req.query as {
-      teamId: string;
-      id: string;
-    };
-    const userId = (session.user as CustomUser).id;
+// POST /api/teams/:teamId/datarooms/:id/duplicate
+const postHandler = withTeamApi(
+  async ({ req, res, teamId, userId, team }) => {
+    const { id: dataroomId } = req.query as { id: string };
 
     try {
-      const team = await prisma.team.findUnique({
-        where: {
-          id: teamId,
-          users: {
-            some: {
-              userId: userId,
-            },
-          },
-        },
-        include: {
-          _count: {
-            select: {
-              datarooms: true,
-            },
-          },
-        },
-      });
-
-      if (!team) {
-        return res.status(401).end("Unauthorized");
-      }
-
       if (team.plan.includes("drtrial")) {
         return res.status(403).json({
           message:
@@ -198,13 +161,16 @@ export default async function handle(
       }
 
       // Check if the team has reached the limit of datarooms
-      const limits = await getLimits({ teamId, userId });
-      if (limits && limits.datarooms !== null && team._count.datarooms >= limits.datarooms) {
-        console.log(
-          "Dataroom limit reached",
-          limits.datarooms,
-          team._count.datarooms,
-        );
+      const [dataroomCount, limits] = await Promise.all([
+        prisma.dataroom.count({ where: { teamId } }),
+        getLimits({ teamId, userId }),
+      ]);
+      if (
+        limits &&
+        limits.datarooms !== null &&
+        dataroomCount >= limits.datarooms
+      ) {
+        console.log("Dataroom limit reached", limits.datarooms, dataroomCount);
         return res.status(400).json({
           message:
             "You've reached the limit of datarooms. Consider upgrading your plan.",
@@ -221,6 +187,7 @@ export default async function handle(
           pId: pId,
           name: dataroomContents.name + " (Copy)",
           teamId: dataroomContents.teamId,
+          brandId: dataroomContents.brandId,
           documents: {
             create: dataroomContents.documents.map((doc) => ({
               documentId: doc.documentId,
@@ -229,17 +196,41 @@ export default async function handle(
           folders: {
             create: [],
           },
-          brand: {
-            create: {
-              banner: dataroomContents.brand?.banner,
-              logo: dataroomContents.brand?.logo,
-              accentColor: dataroomContents.brand?.accentColor,
-              applyAccentColorToDataroomView:
-                (dataroomContents.brand as any)?.applyAccentColorToDataroomView ??
-                false,
-              brandColor: dataroomContents.brand?.brandColor,
-            },
-          },
+          brand: dataroomContents.brand
+            ? {
+                create: {
+                  logo: dataroomContents.brand.logo,
+                  hideLogo: dataroomContents.brand.hideLogo,
+                  banner: dataroomContents.brand.banner,
+                  brandColor: dataroomContents.brand.brandColor,
+                  accentColor: dataroomContents.brand.accentColor,
+                  accentButtonColor: dataroomContents.brand.accentButtonColor,
+                  applyAccentColorToDataroomView:
+                    dataroomContents.brand.applyAccentColorToDataroomView ??
+                    false,
+                  welcomeMessage: dataroomContents.brand.welcomeMessage,
+                  defaultLanguage: dataroomContents.brand.defaultLanguage,
+                  cardLayout: dataroomContents.brand.cardLayout ?? undefined,
+                  showFolderTree:
+                    dataroomContents.brand.showFolderTree ?? undefined,
+                  viewerLayoutPreset:
+                    dataroomContents.brand.viewerLayoutPreset ?? undefined,
+                  viewerHeaderStyle:
+                    dataroomContents.brand.viewerHeaderStyle ?? undefined,
+                  hideFolderIconsInMain:
+                    dataroomContents.brand.hideFolderIconsInMain ?? undefined,
+                  ctaLabel: dataroomContents.brand.ctaLabel,
+                  ctaUrl: dataroomContents.brand.ctaUrl,
+                  customLinkPreviewEnabled:
+                    dataroomContents.brand.customLinkPreviewEnabled ?? false,
+                  linkPreviewTitle: dataroomContents.brand.linkPreviewTitle,
+                  linkPreviewDescription:
+                    dataroomContents.brand.linkPreviewDescription,
+                  linkPreviewImage: dataroomContents.brand.linkPreviewImage,
+                  linkPreviewFavicon: dataroomContents.brand.linkPreviewFavicon,
+                },
+              }
+            : undefined,
         },
       });
 
@@ -255,6 +246,22 @@ export default async function handle(
       console.error("Request error", error);
       res.status(500).json({ message: "Error duplicating dataroom" });
     }
+  },
+  {
+    // Duplicating a dataroom creates a new team-level dataroom; scoped members
+    // are excluded (they hold datarooms.write only for rooms they already
+    // manage, and the copy would never be assigned to them).
+    requiredPermissions: ["datarooms.write"],
+    requiredRoles: ["ADMIN", "MANAGER", "MEMBER"],
+  },
+);
+
+export default async function handle(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  if (req.method === "POST") {
+    return postHandler(req, res);
   } else {
     // We only allow POST requests
     res.setHeader("Allow", ["POST"]);

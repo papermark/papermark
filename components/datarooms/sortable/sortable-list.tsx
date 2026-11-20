@@ -150,7 +150,7 @@ export function DataroomSortableList({
         `${baseKey}/folders${folderPathName ? `/${folderPathName.join("/")}` : "?root=true"}`,
       );
       mutate(
-        `${baseKey}${folderPathName ? `/folders/documents/${folderPathName.join("/")}` : "/documents"}`,
+        `${baseKey}${folderPathName ? `/folder-documents/${folderPathName.join("/")}` : "/documents"}`,
       );
       mutate(`${baseKey}/folders`);
       mutate(`${baseKey}/folders?include_documents=true`);

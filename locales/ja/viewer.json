@@ -1,0 +1,141 @@
+{
+  "nav": {
+    "home": "ホーム",
+    "viewQA": "Q&A を表示",
+    "linksOnPage": "ページ内のリンク",
+    "linksOnCurrentPage": "現在のページ内のリンク",
+    "zoomIn": "拡大",
+    "zoomOut": "縮小",
+    "resetZoom": "画面に合わせる",
+    "fullscreen": "全画面表示",
+    "exitFullscreen": "全画面表示を終了",
+    "downloadDocument": "資料をダウンロード",
+    "teamMemberTooltip": "あなたはチームメンバーのため認証をスキップしました。分析データは収集されません",
+    "changeLanguage": "言語を変更"
+  },
+  "fullscreenControls": {
+    "rotate": "回転",
+    "exitFullscreen": "全画面表示を終了"
+  },
+  "toasts": {
+    "preparingDownload": "ダウンロードを準備中...",
+    "preparingDownloadWatermark": "ウォーターマーク付きダウンロードを準備中...",
+    "downloadSuccess": "ファイルをダウンロードしました",
+    "downloadFailed": "ファイルのダウンロードに失敗しました",
+    "cannotDownloadPreview": "プレビュー モードでは資料をダウンロードできません。"
+  },
+  "downloadOnly": {
+    "title": "資料をダウンロード",
+    "description": "この資料はダウンロードのみ利用可能です",
+    "button": "今すぐダウンロード"
+  },
+  "awayPoster": {
+    "title": "セッションを保護するため一時停止しました",
+    "description": "{{duration}} 操作がなかったため、セッションを保護するために資料のプレビューを一時停止しました。",
+    "ariaTitle": "セッション自動一時停止の通知",
+    "ariaDescription": "操作がなかったためセッションが一時停止しました。続行をクリックするか、マウスを動かして再開してください。",
+    "badge": "自動一時停止中",
+    "idleFor": "{{duration}} 操作なし",
+    "minSec": "{{minutes}} 分 {{seconds}} 秒",
+    "minOnly": "{{minutes}} 分",
+    "secOnly": "{{seconds}} 秒",
+    "resume": "前回の続きから再開",
+    "moveHint": "またはマウスを動かす、もしくは任意のキーを押して続行してください"
+  },
+  "poweredBy": {
+    "shareDocsVia": "資料の共有はこちら"
+  },
+  "report": {
+    "trigger": "不正利用を報告",
+    "title": "問題を報告する",
+    "description": "不適切な内容が見つかりましたか？確認のうえ、必要に応じて対応します。",
+    "submit": "報告を送信",
+    "successToast": "報告を送信しました",
+    "selectTypeError": "不正利用の種類を選択してください。",
+    "types": {
+      "spam": "スパム・詐欺・不正行為",
+      "malware": "マルウェアまたはウイルス",
+      "copyright": "著作権侵害",
+      "harmful": "有害なコンテンツ",
+      "notWorking": "コンテンツが正しく動作しない",
+      "other": "その他"
+    }
+  },
+  "qa": {
+    "header": {
+      "title": "チームに質問",
+      "composeTitle": "新しい質問をする",
+      "subtitleWithName": "{{name}} に関する質問",
+      "subtitle": "このデータルームに関する質問",
+      "back": "戻る",
+      "close": "閉じる"
+    },
+    "tabs": {
+      "home": "ホーム",
+      "messages": "質問",
+      "faq": "FAQ"
+    },
+    "home": {
+      "askNew": "新しい質問をする",
+      "recentReply": "最近の返信",
+      "openConversation": "会話を開く",
+      "frequentlyAsked": "よくある質問"
+    },
+    "messages": {
+      "emptyTitle": "質問はまだありません",
+      "emptyDescription": "チームに質問すると、ここに表示されます。",
+      "askQuestion": "質問する",
+      "newReply": "新しい返信"
+    },
+    "compose": {
+      "aboutPage": "このページについて",
+      "subjectPlaceholder": "件名（任意）",
+      "messagePlaceholder": "質問を入力してください...",
+      "sending": "送信中…",
+      "submit": "質問を送信"
+    },
+    "thread": {
+      "you": "あなた",
+      "team": "チーム",
+      "page": "{{page}} ページ",
+      "newDivider": "新着",
+      "closed": "この会話はチームによって終了されました。",
+      "messagePlaceholder": "メッセージを入力してください...",
+      "sendReply": "返信を送信"
+    },
+    "status": {
+      "answered": "回答済み",
+      "awaiting": "返信待ち",
+      "closed": "終了"
+    },
+    "snippet": {
+      "team": "チーム: ",
+      "you": "あなた: "
+    },
+    "time": {
+      "now": "たった今",
+      "minutes": "{{n}}分",
+      "hours": "{{n}}時間",
+      "days": "{{n}}日"
+    },
+    "toasts": {
+      "sendMessageFailed": "メッセージを送信できませんでした",
+      "sendQuestionFailed": "質問を送信できませんでした"
+    },
+    "untitled": "無題の質問",
+    "faqEmpty": "公開されている質問はまだありません。"
+  },
+  "notFound": {
+    "eyebrow": "404 エラー",
+    "title": "ページが見つかりません。",
+    "goHome": "ホームに戻る",
+    "reasons": {
+      "expired": "お探しのリンクは有効期限が切れています。",
+      "archived": "お探しのリンクはアーカイブされています。",
+      "dataroomClosed": "このデータルームは閉鎖され、利用できなくなりました。",
+      "loadErrorRefresh": "リンクを読み込めませんでした。ページを再読み込みしてください。",
+      "loadErrorRetry": "リンクを読み込めませんでした。しばらくしてからもう一度お試しください。",
+      "embedOnly": "このページは他のウェブサイトに埋め込まれている場合のみアクセスできます。"
+    }
+  }
+}

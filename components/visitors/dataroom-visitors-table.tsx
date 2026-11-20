@@ -9,10 +9,17 @@ import {
   BadgeInfoIcon,
   Download,
   DownloadCloudIcon,
+  DownloadIcon,
   FileBadgeIcon,
+  FileSignatureIcon,
   MailOpenIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 
+import {
+  buildTeamSignedAgreementDownloadUrl,
+  downloadSignedAgreement,
+} from "@/lib/signing/download";
 import { usePlan } from "@/lib/swr/use-billing";
 import { useDataroom } from "@/lib/swr/use-dataroom";
 import { useDataroomVisits } from "@/lib/swr/use-dataroom";
@@ -43,6 +50,32 @@ import DataroomVisitorCustomFields from "./dataroom-visitor-custom-fields";
 import { DataroomVisitorUserAgent } from "./dataroom-visitor-useragent";
 import { VisitorAvatar } from "./visitor-avatar";
 
+type AgreementResponseSummary = {
+  id: string;
+  agreementId: string;
+  signingStatus: string;
+  agreement: {
+    name: string;
+    contentType: string;
+    signingProvider: string;
+  };
+};
+
+const isSignedAgreementResponse = (
+  response: AgreementResponseSummary | null | undefined,
+) => {
+  if (!response) return false;
+  const isSigningAgreement =
+    response.agreement.signingProvider === "DOCUMENSO" ||
+    response.agreement.contentType === "SIGNING";
+
+  return (
+    isSigningAgreement &&
+    (response.signingStatus === "SIGNED" ||
+      response.signingStatus === "COMPLETED")
+  );
+};
+
 export default function DataroomVisitorsTable({
   dataroomId,
   groupId,
@@ -69,6 +102,44 @@ export default function DataroomVisitorsTable({
     setExportModalOpen(true);
   };
 
+  const handleDownloadSignedAgreement = async ({
+    agreementId,
+    responseId,
+    agreementName,
+  }: {
+    agreementId: string;
+    responseId: string;
+    agreementName: string;
+  }) => {
+    if (!teamId) return;
+
+    const url = buildTeamSignedAgreementDownloadUrl({
+      teamId,
+      agreementId,
+      responseId,
+    });
+
+    const safeName = agreementName
+      .replace(/[^a-z0-9\-_]/gi, "_")
+      .toLowerCase()
+      .substring(0, 50);
+
+    await toast.promise(
+      downloadSignedAgreement({
+        url,
+        fallbackFilename: `${safeName || "agreement"}_signed.pdf`,
+      }),
+      {
+        loading: "Preparing signed NDA...",
+        success: "Signed NDA downloaded",
+        error: (error: unknown) =>
+          error instanceof Error
+            ? error.message
+            : "Failed to download the signed NDA.",
+      },
+    );
+  };
+
   const handleOpenChange = (viewId: string, open: boolean) => {
     setExpandedViewIds((prev) => {
       const next = new Set(prev);
@@ -90,8 +161,8 @@ export default function DataroomVisitorsTable({
           Export visits
         </Button>
       </div>
-      <div className="rounded-md border">
-        <Table className="table-fixed">
+      <div className="overflow-x-auto rounded-md border">
+        <Table className="min-w-[600px] table-fixed">
           <TableHeader>
             <TableRow className="*:whitespace-nowrap *:font-medium hover:bg-transparent">
               <TableHead>Name</TableHead>
@@ -186,10 +257,22 @@ export default function DataroomVisitorsTable({
                                     )}
                                     {view.agreementResponse && (
                                       <BadgeTooltip
-                                        content={`Agreed to ${view.agreementResponse.agreement.name}`}
+                                        content={
+                                          isSignedAgreementResponse(
+                                            view.agreementResponse,
+                                          )
+                                            ? `Signed ${view.agreementResponse.agreement.name}`
+                                            : `Agreed to ${view.agreementResponse.agreement.name}`
+                                        }
                                         key={`agreement-${view.id}`}
                                       >
-                                        <FileBadgeIcon className="h-4 w-4 text-emerald-500 hover:text-emerald-600" />
+                                        {isSignedAgreementResponse(
+                                          view.agreementResponse,
+                                        ) ? (
+                                          <FileSignatureIcon className="h-4 w-4 text-emerald-500 hover:text-emerald-600" />
+                                        ) : (
+                                          <FileBadgeIcon className="h-4 w-4 text-emerald-500 hover:text-emerald-600" />
+                                        )}
                                       </BadgeTooltip>
                                     )}
                                   </>
@@ -302,6 +385,76 @@ export default function DataroomVisitorsTable({
                                   {timeAgo(view.downloadedAt)}
                                 </time>
                               </TimestampTooltip>
+                            </TableCell>
+                            <TableCell />
+                          </TableRow>
+                        ) : null}
+
+                        {isSignedAgreementResponse(view.agreementResponse) ? (
+                          <TableRow
+                            key={`signed-nda-${view.id}`}
+                            className="[&>td]:py-3"
+                          >
+                            <TableCell>
+                              <div className="flex items-center gap-x-4 overflow-visible">
+                                <FileSignatureIcon className="h-5 w-5 text-emerald-500" />
+                                <span>
+                                  Signed {view.agreementResponse.agreement.name}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() =>
+                                    handleDownloadSignedAgreement({
+                                      agreementId:
+                                        view.agreementResponse.agreementId,
+                                      responseId: view.agreementResponse.id,
+                                      agreementName:
+                                        view.agreementResponse.agreement.name,
+                                    })
+                                  }
+                                >
+                                  <DownloadIcon className="h-4 w-4" />
+                                  <span className="sr-only">
+                                    Download signed NDA
+                                  </span>
+                                </Button>
+                              </div>
+                            </TableCell>
+                            <TableCell />
+                            <TableCell />
+                            <TableCell>
+                              {view.agreementResponse.signedAt ||
+                              view.agreementResponse.completedAt ? (
+                                <TimestampTooltip
+                                  timestamp={new Date(
+                                    view.agreementResponse.signedAt ||
+                                      view.agreementResponse.completedAt,
+                                  )}
+                                  side="right"
+                                  rows={["local", "utc", "unix"]}
+                                >
+                                  <time
+                                    className="select-none truncate text-sm text-muted-foreground"
+                                    dateTime={new Date(
+                                      view.agreementResponse.signedAt ||
+                                        view.agreementResponse.completedAt,
+                                    ).toISOString()}
+                                  >
+                                    {timeAgo(
+                                      new Date(
+                                        view.agreementResponse.signedAt ||
+                                          view.agreementResponse.completedAt,
+                                      ),
+                                    )}
+                                  </time>
+                                </TimestampTooltip>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">
+                                  Signed
+                                </span>
+                              )}
                             </TableCell>
                             <TableCell />
                           </TableRow>

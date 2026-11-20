@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth";
 
+import { enforceDataroomMemberScope } from "@/lib/api/rbac/guard";
 import { generateFreshPresignedUrl } from "@/lib/files/bulk-download-presign";
 import prisma from "@/lib/prisma";
 import { downloadJobStore } from "@/lib/redis-download-job-store";
@@ -44,13 +45,27 @@ export default async function handler(
           teamId: teamId,
         },
       },
-      select: { teamId: true },
+      select: { teamId: true, role: true },
     });
 
     if (!teamAccess) {
       return res
         .status(403)
         .json({ error: "Unauthorized to access this team" });
+    }
+
+    // Team membership alone would let a scoped member poll (and collect the
+    // presigned URLs of) a job in a room they were never assigned to.
+    if (
+      await enforceDataroomMemberScope({
+        userId,
+        teamId,
+        dataroomId,
+        res,
+        role: teamAccess.role,
+      })
+    ) {
+      return;
     }
 
     // Fetch the job from Redis
@@ -92,6 +107,7 @@ export default async function handler(
     return res.status(200).json({
       id: job.id,
       status: job.status,
+      phase: job.phase,
       progress: job.progress,
       totalFiles: job.totalFiles,
       processedFiles: job.processedFiles,
@@ -110,7 +126,6 @@ export default async function handler(
     console.error("Error fetching download:", error);
     return res.status(500).json({
       error: "Failed to fetch download",
-      details: (error as Error).message,
     });
   }
 }

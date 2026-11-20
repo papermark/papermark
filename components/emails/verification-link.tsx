@@ -7,11 +7,11 @@ import {
   Heading,
   Hr,
   Html,
-  Preview,
+  Link,
   Section,
   Tailwind,
   Text,
-} from "@react-email/components";
+} from "react-email";
 
 const VerificationCodeEmail = ({
   email = "user@example.com",
@@ -23,7 +23,6 @@ const VerificationCodeEmail = ({
   return (
     <Html>
       <Head />
-      <Preview>Your login code for Papermark: {code}</Preview>
       <Tailwind>
         <Body className="mx-auto my-auto bg-white font-sans">
           <Container className="mx-auto my-10 max-w-[600px] rounded border border-solid border-neutral-200 px-10 py-5">
@@ -36,12 +35,17 @@ const VerificationCodeEmail = ({
               Your login code
             </Heading>
             <Text className="text-sm leading-6 text-neutral-600">
-              Enter this code to sign in to your Papermark account:
+              A login code was requested for Papermark. Use this code to
+              continue in Papermark:
             </Text>
             <Section className="my-6">
               <Text
-                className="m-0 rounded-lg bg-neutral-100 px-4 py-3 text-center text-2xl font-bold tracking-[0.3em] text-black"
-                style={{ fontFamily: "monospace", letterSpacing: "0.3em" }}
+                className="m-0 rounded-lg bg-neutral-100 px-4 py-3 text-center text-xl font-semibold text-black"
+                style={{
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+                  letterSpacing: "0.15em",
+                }}
               >
                 {code}
               </Text>
@@ -50,8 +54,9 @@ const VerificationCodeEmail = ({
               This code will expire in 15 minutes.
             </Text>
             <Text className="mt-4 text-sm leading-5 text-neutral-500">
-              If you didn&apos;t request this code, you can safely ignore this
-              email.
+              This email was intended for{" "}
+              <span className="text-black">{email}</span>. If you didn&apos;t
+              request this code, you can safely ignore this email.
             </Text>
             <Hr className="my-6" />
             <Section className="text-gray-400">

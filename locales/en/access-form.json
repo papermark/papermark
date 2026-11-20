@@ -1,0 +1,56 @@
+{
+  "welcome": {
+    "fallback": "Your action is requested to continue"
+  },
+  "buttons": {
+    "continue": "Continue",
+    "verifying": "Verifying..."
+  },
+  "fields": {
+    "email": {
+      "label": "Email address",
+      "placeholder": "Enter email",
+      "errorInvalid": "Please enter a valid email address",
+      "sharedWithSender": "This data will be shared with the sender.",
+      "sharedWithProvider": "This data will be shared with the content provider."
+    },
+    "password": {
+      "label": "Passcode",
+      "placeholder": "Enter passcode"
+    },
+    "name": {
+      "label": "Name",
+      "placeholder": "Enter your full name"
+    },
+    "url": {
+      "errorInvalid": "Please enter a valid URL starting with https://"
+    },
+    "phone": {
+      "placeholderDefault": "+1 123 456 7890"
+    }
+  },
+  "agreement": {
+    "fallbackPrefix": "I have reviewed and agree to the terms of this"
+  },
+  "verification": {
+    "title": "Verify your email address",
+    "description": "Enter the six digit verification code sent to <email>{{email}}</email>",
+    "errorInvalid": "Invalid code. Please try again.",
+    "noEmail": "Didn't receive the email?",
+    "resending": "Resending code...",
+    "resendIn": "Resend Code ({{seconds}}s)",
+    "resend": "Resend Code"
+  },
+  "footer": {
+    "sharedSecurelyVia": "This document is securely shared with you using",
+    "sharedSecurelyViaDataroom": "This data room is securely shared with you using",
+    "papermark": "Papermark",
+    "seeHowWeProtect": "See how we protect your data in our",
+    "privacyPolicy": "Privacy Policy"
+  },
+  "reauth": {
+    "title": "Verify it's you",
+    "description": "This file was uploaded by you. To reopen it, confirm you control <email>{{email}}</email>.",
+    "otpDescription": "We sent a 6-digit code to <email>{{email}}</email>. Enter it below to access your uploaded file."
+  }
+}

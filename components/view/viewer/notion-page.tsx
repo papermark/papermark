@@ -3,14 +3,19 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import React from "react";
 
+import { ConfidentialViewOverlay } from "@/ee/features/permissions/components/confidential-view/confidential-view-overlay";
 import { Slash } from "lucide-react";
 import { ExtendedRecordMap } from "notion-types";
-import { parsePageId } from "notion-utils";
 import { useQueryState } from "nuqs";
 import { NotionRenderer } from "react-notion-x";
 // core styles shared by all of react-notion-x (required)
 import "react-notion-x/src/styles.css";
 
+import { getExternalRelationLinks } from "@/lib/notion/external-relation-links";
+import {
+  classifyViewerHref,
+  toViewerPageHref,
+} from "@/lib/notion/viewer-page-url";
 import { useSafePageViewTracker } from "@/lib/tracking/safe-page-view-tracker";
 import { getTrackingOptions } from "@/lib/tracking/tracking-config";
 import { NotionTheme } from "@/lib/types";
@@ -109,7 +114,7 @@ const obfuscateNotionIds = (container: HTMLElement) => {
   const anchors = container.querySelectorAll("a[href]:not([target])");
   anchors.forEach((anchor) => {
     const href = anchor.getAttribute("href");
-    if (href && uuidPattern.test(href)) {
+    if (href && !href.includes("pageid=") && uuidPattern.test(href)) {
       const newHref = href.replace(uuidPattern, (match) =>
         getObfuscatedId(match),
       );
@@ -124,6 +129,7 @@ export const NotionPage = ({
   versionNumber,
   theme,
   screenshotProtectionEnabled,
+  confidentialViewEnabled,
   textSelectionEnabled,
   navData,
 }: {
@@ -131,6 +137,7 @@ export const NotionPage = ({
   versionNumber: number;
   theme?: NotionTheme | null;
   screenshotProtectionEnabled: boolean;
+  confidentialViewEnabled?: boolean;
   textSelectionEnabled: boolean;
   navData: TNavData;
 }) => {
@@ -263,7 +270,20 @@ export const NotionPage = ({
     if (!screenshotProtectionEnabled) return;
 
     const handleFocus = () => setIsWindowFocused(true);
-    const handleBlur = () => setIsWindowFocused(false);
+    const handleBlur = () => {
+      // When the user interacts with an embedded iframe (e.g. a YouTube video),
+      // focus moves into the iframe and the window emits a "blur" event. This is
+      // not the window actually losing focus, so we must not blur the page —
+      // otherwise the video would be unplayable behind a blur overlay.
+      const activeElement = document.activeElement;
+      if (
+        activeElement instanceof HTMLIFrameElement &&
+        notionContainerRef.current?.contains(activeElement)
+      ) {
+        return;
+      }
+      setIsWindowFocused(false);
+    };
 
     window.addEventListener("focus", handleFocus);
     window.addEventListener("blur", handleBlur);
@@ -283,9 +303,7 @@ export const NotionPage = ({
           const firstBlockId = Object.keys(currentRecordMap.block)[0];
           const firstBlock = currentRecordMap.block[firstBlockId];
           const blockValue = firstBlock?.value as Record<string, any>;
-          setSubTitle(
-            blockValue?.properties?.title?.[0]?.[0] || "Untitled",
-          );
+          setSubTitle(blockValue?.properties?.title?.[0]?.[0] || "Untitled");
           window.scrollTo({ top: 0, behavior: "smooth" });
           return;
         }
@@ -305,9 +323,7 @@ export const NotionPage = ({
           const firstBlockId = Object.keys(newRecordMap.block)[0];
           const firstBlock = newRecordMap.block[firstBlockId];
           const blockValue = firstBlock?.value as Record<string, any>;
-          setSubTitle(
-            blockValue?.properties?.title?.[0]?.[0] || "Untitled",
-          );
+          setSubTitle(blockValue?.properties?.title?.[0]?.[0] || "Untitled");
           window.scrollTo({ top: 0, behavior: "smooth" });
         } catch (error) {
           console.error("Error fetching subpage:", error);
@@ -454,44 +470,71 @@ export const NotionPage = ({
     };
   }, [scrollToHashElement]);
 
-  const PageLinkComponent = useMemo(
+  const ViewerNotionLink = useMemo(
     () =>
-      function PageLink({
+      function ViewerNotionLink({
         href,
         className,
         children,
         style,
+        target,
+        rel,
+        ...rest
       }: {
         href?: string;
         className?: string;
         children?: React.ReactNode;
         style?: React.CSSProperties;
+        target?: string;
+        rel?: string;
         [key: string]: any;
       }) {
-        const handleClick = (e: React.MouseEvent) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (!href) return;
+        const classified = classifyViewerHref(href);
 
-          const pageId =
-            parsePageId(href, { uuid: false }) ??
-            href.split("/").pop()?.split("?")[0]?.split("#")[0];
+        if (!classified) {
+          return (
+            <a className={className} style={style} href={href} {...rest}>
+              {children}
+            </a>
+          );
+        }
 
-          if (pageId) {
-            setSubPageId(pageId);
+        switch (classified.kind) {
+          case "page":
+            return (
+              <a
+                className={className}
+                style={style}
+                href={toViewerPageHref(classified.pageId)}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setSubPageId(classified.pageId);
+                }}
+              >
+                {children}
+              </a>
+            );
+          case "other":
+            return (
+              <a
+                className={className}
+                style={style}
+                href={classified.href}
+                target={classified.openInNewTab ? (target ?? "_blank") : target}
+                rel={
+                  classified.openInNewTab ? (rel ?? "noopener noreferrer") : rel
+                }
+                {...rest}
+              >
+                {children}
+              </a>
+            );
+          default: {
+            const _exhaustive: never = classified;
+            return _exhaustive;
           }
-        };
-
-        return (
-          <a
-            className={className}
-            style={style}
-            href={href}
-            onClick={handleClick}
-          >
-            {children}
-          </a>
-        );
+        }
       },
     [setSubPageId],
   );
@@ -500,9 +543,35 @@ export const NotionPage = ({
     () => ({
       Collection,
       Code,
-      PageLink: PageLinkComponent,
+      PageLink: ViewerNotionLink,
+      Link: ViewerNotionLink,
+      propertyRelationValue: (
+        props: { data?: any[] },
+        defaultValueFn: () => React.ReactNode,
+      ) => {
+        const externalLinks = getExternalRelationLinks(props.data);
+
+        if (!externalLinks) {
+          return defaultValueFn();
+        }
+
+        return externalLinks.map((link, index) => (
+          <React.Fragment key={`${link.url}-${index}`}>
+            {index > 0 ? ", " : null}
+            <a
+              className="notion-link"
+              href={link.url}
+              target="_blank"
+              rel="noreferrer noopener"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {link.text}
+            </a>
+          </React.Fragment>
+        ));
+      },
     }),
-    [PageLinkComponent],
+    [ViewerNotionLink],
   );
 
   // Obfuscate Notion IDs in the DOM after rendering
@@ -598,6 +667,7 @@ export const NotionPage = ({
           fullPage={true}
           darkMode={theme ? theme === "dark" : false}
           disableHeader={true}
+          mapPageUrl={toViewerPageHref}
           components={notionComponents}
         />
       </div>

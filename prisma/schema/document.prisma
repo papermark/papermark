@@ -27,9 +27,10 @@ model Document {
   folderId String? // Optional Folder ID for documents in folders
   folder   Folder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
-  datarooms   DataroomDocument[] // Datarooms associated with this document
-  tags        TagItem[]
-  annotations DocumentAnnotation[] // Annotations for this document
+  datarooms      DataroomDocument[] // Datarooms associated with this document
+  tags           TagItem[]
+  annotations    DocumentAnnotation[] // Annotations for this document
+  redactionJobs  DocumentRedactionJob[] // Redaction jobs for this document
 
   // upload external documents
   uploadedDocument DocumentUpload[]
@@ -60,6 +61,7 @@ model DocumentVersion {
   fileId            String? // This is the file ID of the OpenAI File API
   vectorStoreFileId String? // OpenAI vector store file ID for AI search
   pages             DocumentPage[]
+  redactionJobs     DocumentRedactionJob[] // Redaction jobs that target this version
   hasPages          Boolean             @default(false) // Indicates if the document has pages
   length            Int? // This is the length of the video in seconds
   createdAt         DateTime            @default(now())
@@ -135,6 +137,11 @@ model DocumentUpload {
   dataroomDocumentId String?
   dataroomDocument   DataroomDocument? @relation(fields: [dataroomDocumentId], references: [id], onDelete: SetNull)
 
+  // Optional Request List task this upload fulfills. Set when a visitor uploads
+  // directly from an UPLOAD task card so admins can see the file on the request.
+  taskId String?
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
   // Additional metadata
   originalFilename String?
   fileSize         BigInt?
@@ -152,4 +159,21 @@ model DocumentUpload {
   @@index([teamId])
   @@index([dataroomId])
   @@index([dataroomDocumentId])
+  @@index([taskId])
+}
+
+model PendingDocumentUpload {
+  id          String              @id @default(cuid())
+  uploadId    String              @unique
+  teamId      String
+  tokenId     String
+  key         String
+  contentType String
+  storageType DocumentStorageType @default(S3_PATH)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime            @default(now())
+
+  @@index([teamId, expiresAt])
+  @@index([tokenId, expiresAt])
 }

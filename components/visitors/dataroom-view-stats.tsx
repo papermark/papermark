@@ -11,6 +11,7 @@ import {
   UploadCloudIcon,
 } from "lucide-react";
 
+import { useTeam } from "@/context/team-context";
 import { useDataroomVisitHistory } from "@/lib/swr/use-dataroom";
 import {
   DocumentViewStats,
@@ -30,6 +31,7 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { TimestampTooltip } from "@/components/ui/timestamp-tooltip";
 
 import { DocumentPageChart } from "./document-view-stats";
+import VisitorVideoChart from "./visitor-video-chart";
 
 export function DataroomViewStats({
   viewId,
@@ -241,8 +243,16 @@ function DocumentViewRow({
   dataroomViewId: string;
   timestamp: Date;
 }) {
-  const [showPageByPage, setShowPageByPage] = useState(false);
-  const hasPages = stats && stats.totalPages > 0;
+  const [showDetail, setShowDetail] = useState(false);
+  const teamId = useTeam()?.currentTeam?.id;
+  const documentType =
+    stats?.documentType ??
+    view.document?.type ??
+    view.document?.versions?.[0]?.type ??
+    null;
+  const isVideo = documentType === "video";
+  const hasPages = Boolean(stats && stats.totalPages > 0);
+  const canExpand = isVideo || hasPages;
 
   return (
     <>
@@ -260,18 +270,20 @@ function DocumentViewRow({
                 <ArrowUpRightIcon className="h-4 w-4" />
               </Link>
             </div>
-            {hasPages && (
+            {canExpand && (
               <button
-                onClick={() => setShowPageByPage((prev) => !prev)}
+                onClick={() => setShowDetail((prev) => !prev)}
                 className="flex shrink-0 items-center gap-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
               >
                 <ChevronRightIcon
                   className={cn(
                     "h-3 w-3 transition-transform",
-                    showPageByPage && "rotate-90",
+                    showDetail && "rotate-90",
                   )}
                 />
-                <span className="hidden sm:inline">page-by-page</span>
+                <span className="hidden sm:inline">
+                  {isVideo ? "playback" : "page-by-page"}
+                </span>
               </button>
             )}
           </div>
@@ -308,7 +320,18 @@ function DocumentViewRow({
         </TableCell>
         <TableCell />
       </TableRow>
-      {showPageByPage && hasPages && (
+      {showDetail && isVideo && view.document?.id && teamId ? (
+        <TableRow>
+          <TableCell colSpan={5} className="p-0 px-4 pb-3 pt-0">
+            <VisitorVideoChart
+              documentId={view.document.id}
+              viewId={view.id}
+              teamId={teamId}
+            />
+          </TableCell>
+        </TableRow>
+      ) : null}
+      {showDetail && hasPages && !isVideo && stats ? (
         <TableRow>
           <TableCell colSpan={5} className="p-0 px-4 pb-3 pt-0">
             <DocumentPageChart
@@ -322,7 +345,7 @@ function DocumentViewRow({
             />
           </TableCell>
         </TableRow>
-      )}
+      ) : null}
     </>
   );
 }

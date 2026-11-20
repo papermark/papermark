@@ -15,12 +15,14 @@ interface DocumentPreviewModalProps {
   documentId: string;
   isOpen: boolean;
   onClose: () => void;
+  initialPage?: number;
 }
 
 export function DocumentPreviewModal({
   documentId,
   isOpen,
   onClose,
+  initialPage,
 }: DocumentPreviewModalProps) {
   const {
     document: documentData,
@@ -86,7 +88,11 @@ export function DocumentPreviewModal({
 
         {/* Document preview */}
         {documentData && !loading && !error && (
-          <PreviewViewer documentData={documentData} onClose={handleClose} />
+          <PreviewViewer
+            documentData={documentData}
+            onClose={handleClose}
+            initialPage={initialPage}
+          />
         )}
       </DialogContent>
     </Dialog>

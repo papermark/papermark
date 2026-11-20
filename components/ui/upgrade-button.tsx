@@ -16,6 +16,7 @@ interface UpgradeButtonProps {
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
   highlightItem?: string[];
+  hideItems?: string[];
   onClick?: () => void;
   useModal?: boolean;
   customText?: string;
@@ -31,6 +32,7 @@ export function UpgradeButton({
   size = "default",
   className,
   highlightItem,
+  hideItems,
   onClick,
   useModal = true,
   customText,
@@ -74,6 +76,7 @@ export function UpgradeButton({
         open={open}
         setOpen={setOpen}
         highlightItem={highlightItem}
+        hideItems={hideItems}
       />
     </>
   );

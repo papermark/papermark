@@ -10,6 +10,7 @@ import {
   DATAROOMS_UNLIMITED_PLAN_LIMITS,
   FREE_PLAN_LIMITS,
   PRO_PLAN_LIMITS,
+  TFileSizeLimits,
   TPlanLimits,
 } from "./constants";
 
@@ -30,24 +31,38 @@ const planLimitsMap: Record<string, TPlanLimits> = {
   "datarooms-unlimited": DATAROOMS_UNLIMITED_PLAN_LIMITS,
 };
 
+const optionalNumericLimitSchema = z
+  .preprocess(
+    (value) =>
+      value === null ? Infinity : value !== undefined ? Number(value) : undefined,
+    z.number(),
+  )
+  .optional();
+
+const normalizeFileSizeLimit = (value: number | null | undefined) =>
+  value === null ? Infinity : value;
+
+const normalizeFileSizeLimits = (fileSizeLimits?: TFileSizeLimits) => {
+  if (!fileSizeLimits) {
+    return undefined;
+  }
+
+  return {
+    video: normalizeFileSizeLimit(fileSizeLimits.video),
+    document: normalizeFileSizeLimit(fileSizeLimits.document),
+    image: normalizeFileSizeLimit(fileSizeLimits.image),
+    excel: normalizeFileSizeLimit(fileSizeLimits.excel),
+    maxFiles: normalizeFileSizeLimit(fileSizeLimits.maxFiles),
+    maxPages: normalizeFileSizeLimit(fileSizeLimits.maxPages),
+  };
+};
+
 export const configSchema = z.object({
-  datarooms: z
-    .preprocess((v) => (v === null ? Infinity : v !== undefined ? Number(v) : undefined), z.number())
-    .optional(),
-  links: z
-    .preprocess((v) => (v === null ? Infinity : Number(v)), z.number())
-    .optional()
-    .default(50),
-  documents: z
-    .preprocess((v) => (v === null ? Infinity : Number(v)), z.number())
-    .optional()
-    .default(50),
-  users: z
-    .preprocess((v) => (v === null ? Infinity : v !== undefined ? Number(v) : undefined), z.number())
-    .optional(),
-  domains: z
-    .preprocess((v) => (v === null ? Infinity : v !== undefined ? Number(v) : undefined), z.number())
-    .optional(),
+  datarooms: optionalNumericLimitSchema,
+  links: optionalNumericLimitSchema.default(50),
+  documents: optionalNumericLimitSchema.default(50),
+  users: optionalNumericLimitSchema,
+  domains: optionalNumericLimitSchema,
   customDomainOnPro: z.boolean().optional(),
   customDomainInDataroom: z.boolean().optional(),
   advancedLinkControlsOnPro: z.boolean().nullish(),
@@ -57,12 +72,12 @@ export const configSchema = z.object({
   linkCustomFields: z.number().nullish(),
   fileSizeLimits: z
     .object({
-      video: z.number().optional(), // in MB
-      document: z.number().optional(), // in MB
-      image: z.number().optional(), // in MB
-      excel: z.number().optional(), // in MB
-      maxFiles: z.number().optional(), // in amount of files
-      maxPages: z.number().optional(), // in amount of pages
+      video: optionalNumericLimitSchema, // in MB
+      document: optionalNumericLimitSchema, // in MB
+      image: optionalNumericLimitSchema, // in MB
+      excel: optionalNumericLimitSchema, // in MB
+      maxFiles: optionalNumericLimitSchema, // in amount of files
+      maxPages: optionalNumericLimitSchema, // in amount of pages
     })
     .optional(),
 });
@@ -109,17 +124,30 @@ export async function getLimits({
   // {datarooms: 1, users: 1, domains: 1, customDomainOnPro: boolean, customDomainInDataroom: boolean}
 
   try {
-    let parsedData = configSchema.parse(team.limits);
+    const parsedData = configSchema.parse(team.limits);
 
     const basePlan = getBasePlan(team.plan);
     const isTrial = isTrialPlan(team.plan);
-    const defaultLimits = planLimitsMap[basePlan];
+    const defaultLimits = planLimitsMap[basePlan] || FREE_PLAN_LIMITS;
+    const mergedFileSizeLimits = {
+      ...(normalizeFileSizeLimits(defaultLimits.fileSizeLimits) ?? {}),
+      ...(parsedData.fileSizeLimits ?? {}),
+    };
+    const hasMergedFileSizeLimits = Object.values(mergedFileSizeLimits).some(
+      (value) => value !== undefined,
+    );
+    const mergedLimits = {
+      ...defaultLimits,
+      ...parsedData,
+      ...(hasMergedFileSizeLimits
+        ? { fileSizeLimits: mergedFileSizeLimits }
+        : {}),
+    };
 
     // Adjust limits based on the plan if they're at the default value
     if (isFreePlan(team.plan)) {
       return {
-        ...defaultLimits,
-        ...parsedData,
+        ...mergedLimits,
         usage: { documents: documentCount, links: linkCount, users: userCount },
         ...(isTrial && {
           users: 3,
@@ -128,8 +156,7 @@ export async function getLimits({
       };
     } else {
       return {
-        ...defaultLimits,
-        ...parsedData,
+        ...mergedLimits,
         // if account is paid, but link and document limits are not set, then set them to Infinity
         links: parsedData.links === 50 ? Infinity : parsedData.links,
         documents:

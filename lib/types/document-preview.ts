@@ -1,3 +1,5 @@
+import type { PageLink } from "./page-link";
+
 export interface DocumentPreviewData {
   documentId: string;
   documentName: string;
@@ -10,14 +12,10 @@ export interface DocumentPreviewData {
     file: string | null;
     pageNumber: string;
     embeddedLinks: string[];
-    pageLinks: {
-      href: string;
-      coords: string;
-      isInternal?: boolean;
-      targetPage?: number;
-    }[];
-    metadata: { width: number; height: number; scaleFactor: number };
+    pageLinks?: PageLink[] | null;
+    metadata: { width: number; height: number; scaleFactor: number } | null;
   }[];
   file?: string;
   sheetData?: any;
+  htmlContent?: string;
 }

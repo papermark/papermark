@@ -1,10 +1,16 @@
 import { NextApiRequest, NextApiResponse } from "next";
 
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
-import { DefaultPermissionStrategy, ItemType } from "@prisma/client";
-import { safeSlugify } from "@/lib/utils";
+import {
+  DefaultPermissionStrategy,
+  ItemType,
+  RootItemAccess,
+} from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 
+import { enforceDataroomMemberScope } from "@/lib/api/rbac/guard";
+import { resolveRootItemAccessFlags } from "@/lib/dataroom/root-item-access";
+import { resolveFreeFolderPath } from "@/lib/folders/bulk-create";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
 
@@ -31,6 +37,9 @@ async function applyDefaultFolderPermissions(
       where: { id: dataroomId },
       select: {
         defaultPermissionStrategy: true,
+        defaultGroupPermissionStrategy: true,
+        defaultRootItemAccess: true,
+        defaultGroupRootItemAccess: true,
         teamId: true,
       },
     }),
@@ -51,162 +60,164 @@ async function applyDefaultFolderPermissions(
 
   if (!dataroom) return;
 
-  if (
+  // Resolve parent folder once if any side wants to inherit. We can't bail
+  // out early for both sides anymore because the group strategy and the
+  // link strategy can disagree.
+  const groupInherits =
+    dataroom.defaultGroupPermissionStrategy ===
+    DefaultPermissionStrategy.INHERIT_FROM_PARENT;
+  const linkInherits =
     dataroom.defaultPermissionStrategy ===
-      DefaultPermissionStrategy.INHERIT_FROM_PARENT &&
-    folderPath
-  ) {
-    // If we have a folder path, inherit from parent folder
-    await inheritFolderPermissionsFromParent(dataroomId, folderId, folderPath);
-    return;
-  }
+    DefaultPermissionStrategy.INHERIT_FROM_PARENT;
 
-  // Fallback to default behavior (for root folders or non-inherit strategies)
-  const allPermissionGroupData: {
-    groupId: string;
-    itemId: string;
-    itemType: ItemType;
-    canView: boolean;
-    canDownload: boolean;
-    canDownloadOriginal: boolean;
-  }[] = [];
-
-  if (permissionGroups.length > 0) {
-    if (
-      dataroom.defaultPermissionStrategy ===
-      DefaultPermissionStrategy.INHERIT_FROM_PARENT
-    ) {
-      permissionGroups.forEach((group) => {
-        allPermissionGroupData.push({
-          groupId: group.id,
-          itemId: folderId,
-          itemType: ItemType.DATAROOM_FOLDER,
-          canView: true, // Root folders get view permissions by default
-          canDownload: false,
-          canDownloadOriginal: false,
-        });
+  let parentFolderId: string | null = null;
+  if ((groupInherits || linkInherits) && folderPath) {
+    const pathSegments = folderPath.split("/").filter(Boolean);
+    const parentPath = "/" + pathSegments.slice(0, -1).join("/");
+    if (parentPath !== "/") {
+      const parent = await prisma.dataroomFolder.findUnique({
+        where: { dataroomId_path: { dataroomId, path: parentPath } },
+        select: { id: true },
       });
+      parentFolderId = parent?.id ?? null;
     }
-    // For other strategies (ASK_EVERY_TIME, HIDDEN_BY_DEFAULT), don't auto-create permissions
   }
-
-  const viewerGroupData = viewerGroups.map((group) => ({
-    groupId: group.id,
-    itemId: folderId,
-    itemType: ItemType.DATAROOM_FOLDER,
-    canView:
-      dataroom.defaultPermissionStrategy ===
-      DefaultPermissionStrategy.INHERIT_FROM_PARENT,
-    canDownload: false,
-  }));
 
   await Promise.all([
-    viewerGroupData.length > 0 &&
-      dataroom.defaultPermissionStrategy ===
-        DefaultPermissionStrategy.INHERIT_FROM_PARENT &&
-      prisma.viewerGroupAccessControls.createMany({
-        data: viewerGroupData,
-        skipDuplicates: true,
-      }),
-    allPermissionGroupData.length > 0 &&
-      prisma.permissionGroupAccessControls.createMany({
-        data: allPermissionGroupData,
-        skipDuplicates: true,
-      }),
+    applyForViewerGroups({
+      dataroomId,
+      folderId,
+      viewerGroups,
+      strategy: dataroom.defaultGroupPermissionStrategy,
+      rootItemAccess: dataroom.defaultGroupRootItemAccess,
+      parentFolderId,
+    }),
+    applyForPermissionGroups({
+      dataroomId,
+      folderId,
+      permissionGroups,
+      strategy: dataroom.defaultPermissionStrategy,
+      rootItemAccess: dataroom.defaultRootItemAccess,
+      parentFolderId,
+    }),
   ]);
 }
 
-async function inheritFolderPermissionsFromParent(
-  dataroomId: string,
-  folderId: string,
-  folderPath: string,
-) {
-  // Get parent folder path
-  const pathSegments = folderPath.split("/").filter(Boolean);
-  const parentPath = "/" + pathSegments.slice(0, -1).join("/");
+async function applyForViewerGroups(opts: {
+  dataroomId: string;
+  folderId: string;
+  viewerGroups: { id: string }[];
+  strategy: DefaultPermissionStrategy;
+  rootItemAccess: RootItemAccess;
+  parentFolderId: string | null;
+}) {
+  const { folderId, viewerGroups, strategy, rootItemAccess, parentFolderId } =
+    opts;
 
-  // If this is a root folder, apply default permissions
-  if (parentPath === "/") {
-    await applyDefaultFolderPermissions(dataroomId, folderId);
+  if (strategy !== DefaultPermissionStrategy.INHERIT_FROM_PARENT) return;
+  if (viewerGroups.length === 0) return;
+
+  if (parentFolderId) {
+    const parentPerms = await prisma.viewerGroupAccessControls.findMany({
+      where: {
+        itemId: parentFolderId,
+        itemType: ItemType.DATAROOM_FOLDER,
+      },
+      select: { groupId: true, canView: true, canDownload: true },
+    });
+
+    if (parentPerms.length === 0) return;
+
+    await prisma.viewerGroupAccessControls.createMany({
+      data: parentPerms.map((p) => ({
+        groupId: p.groupId,
+        itemId: folderId,
+        itemType: ItemType.DATAROOM_FOLDER,
+        canView: p.canView,
+        canDownload: p.canDownload,
+      })),
+      skipDuplicates: true,
+    });
     return;
   }
 
-  const parentFolder = await prisma.dataroomFolder.findUnique({
-    where: {
-      dataroomId_path: { dataroomId, path: parentPath },
-    },
-    select: { id: true },
+  const flags = resolveRootItemAccessFlags(rootItemAccess);
+  if (!flags) return;
+
+  await prisma.viewerGroupAccessControls.createMany({
+    data: viewerGroups.map((group) => ({
+      groupId: group.id,
+      itemId: folderId,
+      itemType: ItemType.DATAROOM_FOLDER,
+      canView: flags.canView,
+      canDownload: flags.canDownload,
+    })),
+    skipDuplicates: true,
   });
+}
 
-  if (!parentFolder) {
-    // If no parent folder found, apply default permissions
-    await applyDefaultFolderPermissions(dataroomId, folderId);
+async function applyForPermissionGroups(opts: {
+  dataroomId: string;
+  folderId: string;
+  permissionGroups: { id: string }[];
+  strategy: DefaultPermissionStrategy;
+  rootItemAccess: RootItemAccess;
+  parentFolderId: string | null;
+}) {
+  const {
+    folderId,
+    permissionGroups,
+    strategy,
+    rootItemAccess,
+    parentFolderId,
+  } = opts;
+
+  if (strategy !== DefaultPermissionStrategy.INHERIT_FROM_PARENT) return;
+  if (permissionGroups.length === 0) return;
+
+  if (parentFolderId) {
+    const parentPerms = await prisma.permissionGroupAccessControls.findMany({
+      where: {
+        itemId: parentFolderId,
+        itemType: ItemType.DATAROOM_FOLDER,
+      },
+      select: {
+        groupId: true,
+        canView: true,
+        canDownload: true,
+        canDownloadOriginal: true,
+      },
+    });
+
+    if (parentPerms.length === 0) return;
+
+    await prisma.permissionGroupAccessControls.createMany({
+      data: parentPerms.map((p) => ({
+        groupId: p.groupId,
+        itemId: folderId,
+        itemType: ItemType.DATAROOM_FOLDER,
+        canView: p.canView,
+        canDownload: p.canDownload,
+        canDownloadOriginal: p.canDownloadOriginal,
+      })),
+      skipDuplicates: true,
+    });
     return;
   }
 
-  // Get existing permissions for the parent folder
-  const [parentViewerPermissions, parentPermissionGroupPermissions] =
-    await Promise.all([
-      prisma.viewerGroupAccessControls.findMany({
-        where: {
-          itemId: parentFolder.id,
-          itemType: ItemType.DATAROOM_FOLDER,
-        },
-        select: { groupId: true, canView: true, canDownload: true },
-      }),
-      prisma.permissionGroupAccessControls.findMany({
-        where: {
-          itemId: parentFolder.id,
-          itemType: ItemType.DATAROOM_FOLDER,
-        },
-        select: {
-          groupId: true,
-          canView: true,
-          canDownload: true,
-          canDownloadOriginal: true,
-        },
-      }),
-    ]);
+  const flags = resolveRootItemAccessFlags(rootItemAccess);
+  if (!flags) return;
 
-  // Apply parent permissions to the new folder
-  await prisma.$transaction(async (tx) => {
-    const viewerGroupPermissionsToCreate: any[] = [];
-    const permissionGroupPermissionsToCreate: any[] = [];
-
-    parentViewerPermissions.forEach((parentPerm) => {
-      viewerGroupPermissionsToCreate.push({
-        groupId: parentPerm.groupId,
-        itemId: folderId,
-        itemType: ItemType.DATAROOM_FOLDER,
-        canView: parentPerm.canView,
-        canDownload: parentPerm.canDownload,
-      });
-    });
-
-    parentPermissionGroupPermissions.forEach((parentPerm) => {
-      permissionGroupPermissionsToCreate.push({
-        groupId: parentPerm.groupId,
-        itemId: folderId,
-        itemType: ItemType.DATAROOM_FOLDER,
-        canView: parentPerm.canView,
-        canDownload: parentPerm.canDownload,
-        canDownloadOriginal: parentPerm.canDownloadOriginal,
-      });
-    });
-
-    if (viewerGroupPermissionsToCreate.length > 0) {
-      await tx.viewerGroupAccessControls.createMany({
-        data: viewerGroupPermissionsToCreate,
-        skipDuplicates: true,
-      });
-    }
-
-    if (permissionGroupPermissionsToCreate.length > 0) {
-      await tx.permissionGroupAccessControls.createMany({
-        data: permissionGroupPermissionsToCreate,
-        skipDuplicates: true,
-      });
-    }
+  await prisma.permissionGroupAccessControls.createMany({
+    data: permissionGroups.map((group) => ({
+      groupId: group.id,
+      itemId: folderId,
+      itemType: ItemType.DATAROOM_FOLDER,
+      canView: flags.canView,
+      canDownload: flags.canDownload,
+      canDownloadOriginal: false,
+    })),
+    skipDuplicates: true,
   });
 }
 
@@ -234,17 +245,20 @@ export default async function handle(
       include_documents?: string;
     };
 
+    // Scoped members may only read folders for their assigned rooms.
+    if (await enforceDataroomMemberScope({ userId, teamId, dataroomId, res })) {
+      return;
+    }
+
     try {
-      // Check if the user is part of the team
+      // Check team membership and dataroom ownership together.
       const team = await prisma.team.findUnique({
         where: {
           id: teamId,
-          users: {
-            some: {
-              userId: userId,
-            },
-          },
+          users: { some: { userId } },
+          datarooms: { some: { id: dataroomId } },
         },
+        select: { id: true },
       });
 
       if (!team) {
@@ -447,19 +461,22 @@ export default async function handle(
       color?: string;
     };
 
+    // Scoped members may only create folders within their assigned rooms.
+    if (await enforceDataroomMemberScope({ userId, teamId, dataroomId, res })) {
+      return;
+    }
+
     const parentFolderPath = path ? "/" + path : "/";
 
     try {
-      // Check if the user is part of the team
+      // Check team membership and dataroom ownership together.
       const team = await prisma.team.findUnique({
         where: {
           id: teamId,
-          users: {
-            some: {
-              userId: userId,
-            },
-          },
+          users: { some: { userId } },
+          datarooms: { some: { id: dataroomId } },
         },
+        select: { id: true },
       });
 
       if (!team) {
@@ -480,35 +497,19 @@ export default async function handle(
         },
       });
 
-      // Duplicate name handling
-      let folderName = name;
-      let counter = 1;
-      const MAX_RETRIES = 50;
-
-      // Split path into segments
-      // Slugify the final folder name
-      const pathSegments = path ? path.split("/").filter(Boolean) : [];
-      const basePath =
-        pathSegments.length > 0 ? "/" + pathSegments.join("/") + "/" : "/";
-
-      let childFolderPath = basePath + safeSlugify(folderName);
-
-      while (counter <= MAX_RETRIES) {
-        const existingFolder = await prisma.dataroomFolder.findUnique({
-          where: {
-            dataroomId_path: {
-              dataroomId: dataroomId,
-              path: childFolderPath,
-            },
-          },
-        });
-        if (!existingFolder) break;
-        folderName = `${name} (${counter})`;
-        childFolderPath = basePath + safeSlugify(folderName);
-        counter++;
-      }
-
-      if (counter > MAX_RETRIES) {
+      const resolved = await resolveFreeFolderPath({
+        name,
+        parentPath: parentFolderPath,
+        findExisting: (candidates) =>
+          prisma.dataroomFolder.findMany({
+            where: { dataroomId, path: { in: candidates } },
+            select: { path: true },
+          }),
+      }).catch((err) => {
+        if (err?.code === "SLUG_EXHAUSTED") return null;
+        throw err;
+      });
+      if (!resolved) {
         return res.status(400).json({
           error: "Failed to create folder",
           message: "Too many folders with similar names",
@@ -517,8 +518,8 @@ export default async function handle(
 
       const folder = await prisma.dataroomFolder.create({
         data: {
-          name: folderName,
-          path: childFolderPath,
+          name: resolved.name,
+          path: resolved.path,
           parentId: parentFolder?.id ?? null,
           dataroomId: dataroomId,
           icon: icon ?? null,
@@ -526,7 +527,7 @@ export default async function handle(
         },
       });
 
-      await applyFolderPermissions(dataroomId, folder.id, childFolderPath);
+      await applyFolderPermissions(dataroomId, folder.id, resolved.path);
 
       const folderWithDocs = {
         ...folder,

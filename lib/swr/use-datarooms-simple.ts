@@ -4,7 +4,7 @@ import useSWR from "swr";
 
 import { fetcher } from "@/lib/utils";
 
-export type DataroomSimple = Pick<Dataroom, "id" | "name" | "internalName" | "createdAt">;
+export type DataroomSimple = Pick<Dataroom, "id" | "name" | "internalName" | "isFrozen" | "createdAt">;
 
 type DataroomsSimpleResponse = {
   datarooms: DataroomSimple[];

@@ -7,7 +7,7 @@ import {
   Preview,
   Tailwind,
   Text,
-} from "@react-email/components";
+} from "react-email";
 
 interface UpgradeCheckinEmailProps {
   name: string | null | undefined;

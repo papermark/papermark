@@ -35,7 +35,7 @@ export default function IndexFileSection({
   return (
     <div className="pb-5">
       <LinkItem
-        title="Enable index file generation"
+        title="Index file generation"
         enabled={enabled}
         link="https://www.papermark.com/help/article/link-settings"
         action={handleEnableIndexFile}
@@ -46,6 +46,7 @@ export default function IndexFileSection({
             state: true,
             trigger: "link_sheet_index_file_section",
             plan: "Data Rooms Plus",
+            highlightItem: ["indexing"],
           })
         }
         tooltipContent="Allow visitors to generate an index file of all documents in the dataroom."

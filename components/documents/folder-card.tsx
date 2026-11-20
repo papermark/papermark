@@ -9,7 +9,9 @@ import {
   ChevronRight,
   ClipboardCopyIcon,
   CopyIcon,
+  DownloadIcon,
   EyeOffIcon,
+  FileSlidersIcon,
   FolderIcon,
   FolderInputIcon,
   FolderPenIcon,
@@ -39,6 +41,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { DownloadProgressModal } from "../datarooms/download-progress-modal";
+import { SetUnifiedPermissionsModal } from "../datarooms/groups/set-unified-permissions-modal";
 import { MoveToDataroomFolderModal } from "../datarooms/move-dataroom-folder-modal";
 import { EditFolderModal } from "../folders/edit-folder-modal";
 import { AddFolderToDataroomModal } from "./add-folder-to-dataroom-modal";
@@ -76,6 +80,9 @@ export default function FolderCard({
   const [openFolder, setOpenFolder] = useState<boolean>(false);
   const [menuOpen, setMenuOpen] = useState<boolean>(false);
   const [addDataroomOpen, setAddDataroomOpen] = useState<boolean>(false);
+  const [groupPermissionOpen, setGroupPermissionOpen] =
+    useState<boolean>(false);
+  const [downloadJobId, setDownloadJobId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   // Get hierarchical display name for dataroom folders
@@ -149,6 +156,38 @@ export default function FolderCard({
         error: (error) => {
           return error.message;
         },
+      },
+    );
+  };
+
+  const handleDownloadFolder = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMenuOpen(false);
+
+    // The job is created before the modal opens, so an empty folder surfaces
+    // as a toast instead of a modal that immediately shows an error.
+    toast.promise(
+      fetch(
+        `/api/teams/${teamInfo?.currentTeam?.id}/datarooms/${dataroomId}/download/bulk`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ folderId: folder.id }),
+        },
+      ).then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to start download");
+        }
+        setDownloadJobId(data.jobId);
+      }),
+      {
+        loading: "Preparing download...",
+        success: "Download started.",
+        error: (err) => err.message || "Failed to download folder. Try again.",
       },
     );
   };
@@ -346,6 +385,24 @@ export default function FolderCard({
                   ? "Copy folder to other dataroom"
                   : "Add folder to dataroom"}
               </DropdownMenuItem>
+              {isDataroom && dataroomId ? (
+                <>
+                  <DropdownMenuItem onClick={handleDownloadFolder}>
+                    <DownloadIcon className="mr-2 h-4 w-4" />
+                    Download folder
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setGroupPermissionOpen(true);
+                    }}
+                  >
+                    <FileSlidersIcon className="mr-2 h-4 w-4" />
+                    Set Group Permissions
+                  </DropdownMenuItem>
+                </>
+              ) : null}
               <DropdownMenuItem
                 onClick={(e) => {
                   e.preventDefault();
@@ -436,6 +493,30 @@ export default function FolderCard({
           folderIds={[folder.id]}
           folderParentId={folder.parentId!}
           itemName={folder.name}
+        />
+      ) : null}
+      {groupPermissionOpen && isDataroom && dataroomId ? (
+        <SetUnifiedPermissionsModal
+          open={groupPermissionOpen}
+          setOpen={setGroupPermissionOpen}
+          dataroomId={dataroomId}
+          uploadedFiles={[
+            {
+              dataroomFolderId: folder.id,
+              fileName: folder.name,
+              itemType: "folder",
+            },
+          ]}
+        />
+      ) : null}
+      {downloadJobId && dataroomId && teamInfo?.currentTeam?.id ? (
+        <DownloadProgressModal
+          isOpen
+          onClose={() => setDownloadJobId(null)}
+          jobId={downloadJobId}
+          folderName={folder.name}
+          teamId={teamInfo.currentTeam.id}
+          dataroomId={dataroomId}
         />
       ) : null}
     </>

@@ -6,11 +6,14 @@ import { useMemo } from "react";
 
 import { fetcher } from "@/lib/utils";
 
+import type { VisitorRecord } from "@/lib/api/visitors/get-visitors";
+
 type ViewerWithViews = {
   id: string;
   email: string;
   createdAt: Date;
   updatedAt: Date;
+  access?: VisitorRecord | null;
   views: {
     documentId: string;
     viewCount: number;

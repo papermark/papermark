@@ -1,16 +1,14 @@
-import { useRouter } from "next/router";
 import type { CSSProperties } from "react";
 
+import { useBrandingPreviewParams } from "@/ee/features/branding/lib/use-branding-preview-params";
 import { createAdaptiveSurfacePalette } from "@/lib/utils/create-adaptive-surface-palette";
 
 import { Button } from "@/components/ui/button";
 
 export default function ViewPage() {
-  const router = useRouter();
-  const { accentColor, welcomeMessage } = router.query as {
-    accentColor: string;
-    welcomeMessage?: string;
-  };
+  // Seeded from the URL on first paint, then live-updated over postMessage so
+  // the editor never has to reload (and therefore never flashes) this iframe.
+  const { accentColor, welcomeMessage } = useBrandingPreviewParams();
   const palette = createAdaptiveSurfacePalette(accentColor);
 
   return (

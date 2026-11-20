@@ -22,8 +22,9 @@ export default async function handle(
     return res.status(401).end("Unauthorized");
   }
 
+  const userId = (session.user as CustomUser).id;
   const { success } = await ratelimit(150, "1 m").limit(
-    `get-thumbnail:${(session.user as CustomUser).id}`,
+    `get-thumbnail:${userId}`,
   );
   if (!success) {
     return res.status(429).json({ message: "Too many requests" });
@@ -36,11 +37,17 @@ export default async function handle(
   };
 
   try {
-    const imageUrl = await getFileForDocumentPage(
-      Number(pageNumber),
+    const parsedVersionNumber =
+      versionNumber && versionNumber !== "undefined"
+        ? Number(versionNumber)
+        : undefined;
+
+    const imageUrl = await getFileForDocumentPage({
+      pageNumber: Number(pageNumber),
       documentId,
-      versionNumber === "undefined" ? undefined : Number(versionNumber),
-    );
+      userId,
+      versionNumber: parsedVersionNumber,
+    });
 
     return res.status(200).json({ imageUrl });
   } catch (error) {

@@ -103,17 +103,39 @@ export default async function handle(
         return res.status(410).json("Invitation link has expired");
       }
 
-      await prisma.team.update({
-        where: {
-          id: teamId,
-        },
-        data: {
-          users: {
-            create: {
-              userId,
-            },
+      // Apply the invited role (defaults to MEMBER for legacy invitations) and,
+      // for dataroom-scoped members, create the per-room assignments. Only
+      // datarooms that still belong to the team are assigned.
+      const invitedRole = invitation.role;
+      const assignableDataroomIds =
+        invitedRole === "DATAROOM_MEMBER" && invitation.dataroomIds.length > 0
+          ? (
+              await prisma.dataroom.findMany({
+                where: { id: { in: invitation.dataroomIds }, teamId },
+                select: { id: true },
+              })
+            ).map((d) => d.id)
+          : [];
+
+      await prisma.$transaction(async (tx) => {
+        await tx.userTeam.create({
+          data: {
+            userId,
+            teamId,
+            role: invitedRole,
           },
-        },
+        });
+
+        if (assignableDataroomIds.length > 0) {
+          await tx.userDataroom.createMany({
+            data: assignableDataroomIds.map((dataroomId) => ({
+              userId,
+              teamId,
+              dataroomId,
+            })),
+            skipDuplicates: true,
+          });
+        }
       });
 
       await identifyUser(invitation.email);

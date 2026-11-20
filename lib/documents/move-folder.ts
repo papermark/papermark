@@ -61,7 +61,7 @@ export const moveFolderToFolder = async ({
       `/api/teams/${teamId}/folders${newPath ? `${newPath}` : "?root=true"}`,
     );
     mutate(
-      `/api/teams/${teamId}${newPath ? `/folders/documents/${newPath}` : "/documents"}`,
+      `/api/teams/${teamId}${newPath ? `/folder-documents/${newPath}` : "/documents"}`,
     );
     toast.success(
       `${updatedCount} folder${updatedCount > 1 ? "s" : ""} moved successfully`,

@@ -12,7 +12,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from "@react-email/components";
+} from "react-email";
 
 import { Footer } from "./shared/footer";
 
@@ -24,21 +24,21 @@ const DataroomTrialEnd = ({ name }: DataroomTrialEnd) => {
   return (
     <Html>
       <Head />
-      <Preview>Upgrade to continue using Data Room plan features</Preview>
+      <Preview>Upgrade to continue using Data Room Plus plan features</Preview>
       <Tailwind>
         <Body className="mx-auto my-auto bg-white font-sans">
           <Container className="mx-auto my-10 w-[465px] p-5">
             <Text className="mb-8 mt-4 text-center text-2xl font-normal">
               <span className="font-bold tracking-tighter">Papermark</span>
             </Text>
-            <Text className="font-seminbold mb-8 mt-4 text-center text-xl">
-              Your Data Room plan trial has expired
+            <Text className="mb-8 mt-4 text-center text-xl">
+              Your Data Room Plus plan trial has expired
             </Text>
             <Text className="text-sm leading-6 text-black">
               Hey{name && ` ${name}`}!
             </Text>
             <Text className="text-sm leading-6 text-black">
-              Your Papermark Data Room trial has expired.
+              Your Papermark Data Room Plus trial has expired.
               <br />
               <Link
                 href={`https://app.papermark.com/settings/billing`}

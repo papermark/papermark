@@ -5,7 +5,7 @@ import {
   FolderTemplate,
 } from "@/ee/features/templates/constants/dataroom-templates";
 import { applyTemplateSchema } from "@/ee/features/templates/schemas/dataroom-templates";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { getServerSession } from "next-auth/next";
 
 import prisma from "@/lib/prisma";

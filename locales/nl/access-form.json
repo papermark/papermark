@@ -1,0 +1,56 @@
+{
+  "welcome": {
+    "fallback": "Er is een actie van u nodig om door te gaan"
+  },
+  "buttons": {
+    "continue": "Doorgaan",
+    "verifying": "Verifiëren ..."
+  },
+  "fields": {
+    "email": {
+      "label": "E-mailadres",
+      "placeholder": "E-mailadres invoeren",
+      "errorInvalid": "Voer een geldig e-mailadres in",
+      "sharedWithSender": "Deze gegevens worden gedeeld met de afzender.",
+      "sharedWithProvider": "Deze gegevens worden gedeeld met de aanbieder van de inhoud."
+    },
+    "password": {
+      "label": "Toegangscode",
+      "placeholder": "Toegangscode invoeren"
+    },
+    "name": {
+      "label": "Naam",
+      "placeholder": "Voer uw volledige naam in"
+    },
+    "url": {
+      "errorInvalid": "Voer een geldige URL in die begint met https://"
+    },
+    "phone": {
+      "placeholderDefault": "+31 6 12345678"
+    }
+  },
+  "agreement": {
+    "fallbackPrefix": "Ik heb de voorwaarden gelezen en ga akkoord met:"
+  },
+  "verification": {
+    "title": "Verifieer uw e-mailadres",
+    "description": "Voer de zescijferige verificatiecode in die naar <email>{{email}}</email> is verzonden",
+    "errorInvalid": "Ongeldige code. Probeer het opnieuw.",
+    "noEmail": "Geen e-mail ontvangen?",
+    "resending": "Code wordt opnieuw verzonden ...",
+    "resendIn": "Code opnieuw verzenden ({{seconds}} s)",
+    "resend": "Code opnieuw verzenden"
+  },
+  "footer": {
+    "sharedSecurelyVia": "Dit document wordt veilig met u gedeeld via",
+    "sharedSecurelyViaDataroom": "Deze dataroom wordt veilig met u gedeeld via",
+    "papermark": "Papermark",
+    "seeHowWeProtect": "Lees hoe wij uw gegevens beschermen in ons",
+    "privacyPolicy": "Privacybeleid"
+  },
+  "reauth": {
+    "title": "Bevestig dat u het bent",
+    "description": "Dit bestand is door u geüpload. Bevestig dat u <email>{{email}}</email> beheert om het opnieuw te openen.",
+    "otpDescription": "We hebben een 6-cijferige code naar <email>{{email}}</email> verzonden. Voer deze hieronder in om toegang te krijgen tot uw geüploade bestand."
+  }
+}

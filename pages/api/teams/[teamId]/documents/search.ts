@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
+import { isDataroomScopedRole } from "@/lib/api/rbac/permissions";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
@@ -32,6 +33,13 @@ export default async function handle(
 
       if (!teamAccess) {
         return res.status(401).end("Unauthorized");
+      }
+
+      // Team-wide document search is not part of the dataroom-scoped surface.
+      if (isDataroomScopedRole(teamAccess.role)) {
+        return res
+          .status(403)
+          .json({ error: "You do not have permission to perform this action." });
       }
 
       // First, get documents without expensive counts

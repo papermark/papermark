@@ -11,6 +11,7 @@ SQL >
     WHERE
         dataroomId = {{ String(dataroomId, required=true) }}
         AND time >= {{ Int64(since, required=true) }}
+        AND time <= {{ Int64(until, 9999999999999) }}
         AND linkId NOT IN {{ Array(excludedLinkIds, String) }}
         AND viewId NOT IN {{ Array(excludedViewIds, String) }}
     GROUP BY

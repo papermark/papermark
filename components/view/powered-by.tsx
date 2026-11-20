@@ -1,6 +1,9 @@
 import { createPortal } from "react-dom";
 
+import { useTranslation } from "react-i18next";
+
 export const PoweredBy = ({ linkId }: { linkId: string }) => {
+  const { t } = useTranslation("viewer");
   return createPortal(
     <div className="absolute bottom-0 right-0 z-[100] w-fit">
       <div className="p-6">
@@ -12,7 +15,7 @@ export const PoweredBy = ({ linkId }: { linkId: string }) => {
             className="rounded-sm text-sm"
             style={{ paddingInlineStart: "12px", paddingInlineEnd: "12px" }}
           >
-            Share docs via{" "}
+            {t("poweredBy.shareDocsVia", "Share docs via")}{" "}
             <span className="font-semibold tracking-tighter">Papermark</span>
           </a>
         </div>

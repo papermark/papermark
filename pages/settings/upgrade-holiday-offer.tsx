@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import React from "react";
 
 import { useTeam } from "@/context/team-context";
-import { getStripe } from "@/ee/stripe/client";
 import { Feature, PlanEnum, getPlanFeatures } from "@/ee/stripe/constants";
 import { PLANS } from "@/ee/stripe/utils";
 import { CheckIcon, Users2Icon, XIcon } from "lucide-react";
@@ -374,9 +373,12 @@ export default function UpgradeHolidayOfferPage() {
                             }
 
                             const data = await res.json();
-                            const { id: sessionId } = data;
-                            const stripe = await getStripe(isOldAccount);
-                            stripe?.redirectToCheckout({ sessionId });
+                            if (!data.url) {
+                              throw new Error(
+                                "Something went wrong. Please try again.",
+                              );
+                            }
+                            window.location.href = data.url;
                           })
                           .catch((err) => {
                             alert(err);
@@ -565,9 +567,12 @@ export default function UpgradeHolidayOfferPage() {
                             }
 
                             const data = await res.json();
-                            const { id: sessionId } = data;
-                            const stripe = await getStripe(isOldAccount);
-                            stripe?.redirectToCheckout({ sessionId });
+                            if (!data.url) {
+                              throw new Error(
+                                "Something went wrong. Please try again.",
+                              );
+                            }
+                            window.location.href = data.url;
                           })
                           .catch((err) => {
                             alert(err);
@@ -756,9 +761,12 @@ export default function UpgradeHolidayOfferPage() {
                             }
 
                             const data = await res.json();
-                            const { id: sessionId } = data;
-                            const stripe = await getStripe(isOldAccount);
-                            stripe?.redirectToCheckout({ sessionId });
+                            if (!data.url) {
+                              throw new Error(
+                                "Something went wrong. Please try again.",
+                              );
+                            }
+                            window.location.href = data.url;
                           })
                           .catch((err) => {
                             alert(err);

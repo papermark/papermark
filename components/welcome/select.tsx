@@ -183,7 +183,7 @@ export default function Select() {
       >
         <button
           onClick={() => handleDocSelect("pitchdeck")}
-          className={`flex min-h-[200px] flex-col items-center justify-center space-y-5 overflow-hidden p-5 transition-colors md:p-10 ${
+          className={`flex min-h-[100px] flex-col items-center justify-center space-y-5 overflow-hidden p-5 transition-colors md:min-h-[200px] md:p-10 ${
             selectedDoc === "pitchdeck"
               ? "bg-primary/5 ring-2 ring-inset ring-primary"
               : "hover:bg-gray-200 hover:dark:bg-gray-800"
@@ -195,7 +195,7 @@ export default function Select() {
 
         <button
           onClick={() => handleDocSelect("sales-document")}
-          className={`flex min-h-[200px] flex-col items-center justify-center space-y-5 overflow-hidden p-5 transition-colors md:p-10 ${
+          className={`flex min-h-[100px] flex-col items-center justify-center space-y-5 overflow-hidden p-5 transition-colors md:min-h-[200px] md:p-10 ${
             selectedDoc === "sales-document"
               ? "bg-primary/5 ring-2 ring-inset ring-primary"
               : "hover:bg-gray-200 hover:dark:bg-gray-800"
@@ -207,7 +207,7 @@ export default function Select() {
 
         <button
           onClick={() => handleDocSelect("notion")}
-          className={`flex min-h-[200px] flex-col items-center justify-center space-y-5 overflow-hidden p-5 transition-colors md:p-10 ${
+          className={`flex min-h-[100px] flex-col items-center justify-center space-y-5 overflow-hidden p-5 transition-colors md:min-h-[200px] md:p-10 ${
             selectedDoc === "notion"
               ? "bg-primary/5 ring-2 ring-inset ring-primary"
               : "hover:bg-gray-200 hover:dark:bg-gray-800"
@@ -219,7 +219,7 @@ export default function Select() {
 
         <button
           onClick={() => handleDocSelect("document")}
-          className={`flex min-h-[200px] flex-col items-center justify-center space-y-5 overflow-hidden p-5 transition-colors md:p-10 ${
+          className={`flex min-h-[100px] flex-col items-center justify-center space-y-5 overflow-hidden p-5 transition-colors md:min-h-[200px] md:p-10 ${
             selectedDoc === "document"
               ? "bg-primary/5 ring-2 ring-inset ring-primary"
               : "hover:bg-gray-200 hover:dark:bg-gray-800"

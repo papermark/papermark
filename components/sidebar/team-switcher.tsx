@@ -5,6 +5,8 @@ import * as React from "react";
 import { useLimits } from "@/ee/limits/swr-handler";
 import { PlanEnum } from "@/ee/stripe/constants";
 import { ChevronsUpDown, UserRoundPlusIcon } from "lucide-react";
+
+import { useSelfMembership } from "@/lib/hooks/use-self-membership";
 import { usePlan } from "@/lib/swr/use-billing";
 import { Team } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -46,6 +48,8 @@ export function TeamSwitcher({
   const { isMobile } = useSidebar();
   const { canAddUsers, showUpgradePlanModal } = useLimits();
   const { isTrial, isDataroomsPremium } = usePlan();
+  // Dataroom-scoped members can't invite teammates; hide the invite control.
+  const { isDataroomMember } = useSelfMembership();
 
   const switchTeam = (team: Team) => {
     localStorage.setItem("currentTeamId", team.id);
@@ -109,13 +113,15 @@ export function TeamSwitcher({
             {isDataroomsPremium ? (
               <AddTeamModal setCurrentTeam={setCurrentTeam}>
                 <DropdownMenuItem
-                  className="gap-2 p-2 cursor-pointer"
+                  className="cursor-pointer gap-2 p-2"
                   onSelect={(e) => e.preventDefault()}
                 >
                   <div className="flex size-6 items-center justify-center rounded-md border bg-background">
                     <UserRoundPlusIcon className="size-4" />
                   </div>
-                  <div className="font-medium text-muted-foreground">Add new team</div>
+                  <div className="font-medium text-muted-foreground">
+                    Add new team
+                  </div>
                 </DropdownMenuItem>
               </AddTeamModal>
             ) : (
@@ -125,55 +131,63 @@ export function TeamSwitcher({
                 highlightItem={["teams"]}
               >
                 <DropdownMenuItem
-                  className="gap-2 p-2 cursor-pointer"
+                  className="cursor-pointer gap-2 p-2"
                   onSelect={(e) => e.preventDefault()}
                 >
                   <div className="flex size-6 items-center justify-center rounded-md border bg-background">
                     <UserRoundPlusIcon className="size-4" />
                   </div>
-                  <div className="font-medium text-muted-foreground">Add new team</div>
+                  <div className="font-medium text-muted-foreground">
+                    Add new team
+                  </div>
                 </DropdownMenuItem>
               </UpgradePlanModal>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
-      <SidebarMenuItem>
-        {showUpgradePlanModal ? (
-          <UpgradePlanModal
-            clickedPlan={isTrial ? PlanEnum.Business : PlanEnum.Pro}
-            trigger={"invite_team_members"}
-          >
-            <SidebarMenuButton
-              size="lg"
-              className="size-12 justify-center border data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:hidden"
+      {!isDataroomMember && (
+        <SidebarMenuItem>
+          {showUpgradePlanModal ? (
+            <UpgradePlanModal
+              clickedPlan={PlanEnum.Business}
+              trigger={"invite_team_members"}
+              highlightItem={["users"]}
             >
-              <UserRoundPlusIcon className="!size-5" strokeWidth={1.5} />
-            </SidebarMenuButton>
-          </UpgradePlanModal>
-        ) : canAddUsers ? (
-          <AddTeamMembers
-            open={isTeamMemberInviteModalOpen}
-            setOpen={setTeamMemberInviteModalOpen}
-          >
-            <SidebarMenuButton
-              size="lg"
-              className="size-12 justify-center border data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:hidden"
+              <SidebarMenuButton
+                size="lg"
+                className="size-12 justify-center border data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:hidden"
+              >
+                <UserRoundPlusIcon className="!size-5" strokeWidth={1.5} />
+              </SidebarMenuButton>
+            </UpgradePlanModal>
+          ) : canAddUsers ? (
+            <AddTeamMembers
+              open={isTeamMemberInviteModalOpen}
+              setOpen={setTeamMemberInviteModalOpen}
             >
-              <UserRoundPlusIcon className="!size-5" strokeWidth={1.5} />
-            </SidebarMenuButton>
-          </AddTeamMembers>
-        ) : (
-          <AddSeatModal open={isAddSeatModalOpen} setOpen={setAddSeatModalOpen}>
-            <SidebarMenuButton
-              size="lg"
-              className="size-12 justify-center border data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:hidden"
+              <SidebarMenuButton
+                size="lg"
+                className="size-12 justify-center border data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:hidden"
+              >
+                <UserRoundPlusIcon className="!size-5" strokeWidth={1.5} />
+              </SidebarMenuButton>
+            </AddTeamMembers>
+          ) : (
+            <AddSeatModal
+              open={isAddSeatModalOpen}
+              setOpen={setAddSeatModalOpen}
             >
-              <UserRoundPlusIcon className="!size-5" strokeWidth={1.5} />
-            </SidebarMenuButton>
-          </AddSeatModal>
-        )}
-      </SidebarMenuItem>
+              <SidebarMenuButton
+                size="lg"
+                className="size-12 justify-center border data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:hidden"
+              >
+                <UserRoundPlusIcon className="!size-5" strokeWidth={1.5} />
+              </SidebarMenuButton>
+            </AddSeatModal>
+          )}
+        </SidebarMenuItem>
+      )}
     </SidebarMenu>
   );
 }

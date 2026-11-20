@@ -1,0 +1,141 @@
+{
+  "nav": {
+    "home": "Início",
+    "viewQA": "Ver Perguntas e Respostas",
+    "linksOnPage": "Links na página",
+    "linksOnCurrentPage": "Links na página atual",
+    "zoomIn": "Aumentar zoom",
+    "zoomOut": "Diminuir zoom",
+    "resetZoom": "Ajustar à tela",
+    "fullscreen": "Tela cheia",
+    "exitFullscreen": "Sair da tela cheia",
+    "downloadDocument": "Baixar documento",
+    "teamMemberTooltip": "Verificação ignorada porque você é membro da equipe; nenhuma análise será coletada",
+    "changeLanguage": "Alterar idioma"
+  },
+  "fullscreenControls": {
+    "rotate": "Girar",
+    "exitFullscreen": "Sair da tela cheia"
+  },
+  "toasts": {
+    "preparingDownload": "Preparando download...",
+    "preparingDownloadWatermark": "Preparando download com marca d'água...",
+    "downloadSuccess": "Arquivo baixado com sucesso",
+    "downloadFailed": "Falha ao baixar arquivo",
+    "cannotDownloadPreview": "Você não pode baixar documentos no modo de pré-visualização."
+  },
+  "downloadOnly": {
+    "title": "Baixar documento",
+    "description": "Este documento está disponível apenas para download",
+    "button": "Baixar agora"
+  },
+  "awayPoster": {
+    "title": "Pausamos para proteger sua sessão",
+    "description": "Você ficou inativo por {{duration}}, então pausamos a pré-visualização do documento para manter a sessão segura.",
+    "ariaTitle": "Notificação de sessão pausada automaticamente",
+    "ariaDescription": "Sua sessão foi pausada por inatividade. Clique em continuar ou mova o mouse para retomar.",
+    "badge": "Pausado automaticamente",
+    "idleFor": "{{duration}} inativo",
+    "minSec": "{{minutes}} min {{seconds}} s",
+    "minOnly": "{{minutes}} min",
+    "secOnly": "{{seconds}} s",
+    "resume": "Continue de onde parou",
+    "moveHint": "Ou simplesmente mova o mouse ou pressione qualquer tecla para continuar"
+  },
+  "poweredBy": {
+    "shareDocsVia": "Compartilhar documentos via"
+  },
+  "report": {
+    "trigger": "Denunciar abuso",
+    "title": "Reportar um problema",
+    "description": "Viu algo inapropriado? Vamos analisar e, se necessário, tomar providências.",
+    "submit": "Enviar denúncia",
+    "successToast": "Denúncia enviada com sucesso",
+    "selectTypeError": "Selecione um tipo de abuso.",
+    "types": {
+      "spam": "Spam, fraude ou golpe",
+      "malware": "Malware ou vírus",
+      "copyright": "Violação de direitos autorais",
+      "harmful": "Conteúdo prejudicial",
+      "notWorking": "O conteúdo não está funcionando corretamente",
+      "other": "Outro"
+    }
+  },
+  "qa": {
+    "header": {
+      "title": "Pergunte à equipe",
+      "composeTitle": "Fazer uma nova pergunta",
+      "subtitleWithName": "Perguntas sobre {{name}}",
+      "subtitle": "Perguntas sobre esta sala de dados",
+      "back": "Voltar",
+      "close": "Fechar"
+    },
+    "tabs": {
+      "home": "Início",
+      "messages": "Perguntas",
+      "faq": "FAQ"
+    },
+    "home": {
+      "askNew": "Fazer uma nova pergunta",
+      "recentReply": "Resposta recente",
+      "openConversation": "Abrir conversa",
+      "frequentlyAsked": "Perguntas frequentes"
+    },
+    "messages": {
+      "emptyTitle": "Ainda não há perguntas",
+      "emptyDescription": "Faça uma pergunta à equipe e ela aparecerá aqui.",
+      "askQuestion": "Fazer uma pergunta",
+      "newReply": "Nova resposta"
+    },
+    "compose": {
+      "aboutPage": "Sobre esta página",
+      "subjectPlaceholder": "Assunto (opcional)",
+      "messagePlaceholder": "Digite sua pergunta...",
+      "sending": "Enviando…",
+      "submit": "Enviar pergunta"
+    },
+    "thread": {
+      "you": "Você",
+      "team": "Equipe",
+      "page": "Página {{page}}",
+      "newDivider": "Novo",
+      "closed": "Esta conversa foi encerrada pela equipe.",
+      "messagePlaceholder": "Digite sua mensagem...",
+      "sendReply": "Enviar resposta"
+    },
+    "status": {
+      "answered": "Respondida",
+      "awaiting": "Aguardando resposta",
+      "closed": "Encerrada"
+    },
+    "snippet": {
+      "team": "Equipe: ",
+      "you": "Você: "
+    },
+    "time": {
+      "now": "agora",
+      "minutes": "{{n}} min",
+      "hours": "{{n}} h",
+      "days": "{{n}} d"
+    },
+    "toasts": {
+      "sendMessageFailed": "Falha ao enviar a mensagem",
+      "sendQuestionFailed": "Falha ao enviar a pergunta"
+    },
+    "untitled": "Pergunta sem título",
+    "faqEmpty": "Nenhuma pergunta publicada ainda."
+  },
+  "notFound": {
+    "eyebrow": "Erro 404",
+    "title": "Página não encontrada.",
+    "goHome": "Voltar ao início",
+    "reasons": {
+      "expired": "O link que você procura expirou.",
+      "archived": "O link que você procura foi arquivado.",
+      "dataroomClosed": "Esta sala de dados foi encerrada e não está mais disponível.",
+      "loadErrorRefresh": "Não foi possível carregar este link. Tente atualizar a página.",
+      "loadErrorRetry": "Não foi possível carregar este link. Tente novamente em instantes.",
+      "embedOnly": "Esta página só pode ser acessada quando incorporada em outro site."
+    }
+  }
+}

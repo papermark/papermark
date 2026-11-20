@@ -6,7 +6,7 @@ import {
   publishFAQSchema,
   updateFAQSchema,
 } from "@/ee/features/conversations/lib/schemas/faq";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/auth/auth-options";
 import { getServerSession } from "next-auth/next";
 
 import prisma from "@/lib/prisma";

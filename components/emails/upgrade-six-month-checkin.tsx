@@ -7,7 +7,7 @@ import {
   Preview,
   Tailwind,
   Text,
-} from "@react-email/components";
+} from "react-email";
 
 interface SixMonthMilestoneEmailProps {
   name: string | null | undefined;

@@ -3,10 +3,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
+import { teamPlanIsDataroomPlusTier } from "@/lib/billing/team-plan-custom-messaging";
 import { getFeatureFlags } from "@/lib/featureFlags";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
-import { calculateAndUpdateHierarchicalIndexes } from "@/lib/utils/calculate-hierarchical-indexes";
+import {
+  calculateAndUpdateHierarchicalIndexes,
+  clearHierarchicalIndexes,
+} from "@/lib/utils/calculate-hierarchical-indexes";
 
 export const config = {
   maxDuration: 300,
@@ -30,6 +34,14 @@ export default async function handler(
     id: string;
   };
   const userId = (session.user as CustomUser).id;
+
+  const action = (req.body as { action?: string } | undefined)?.action;
+  if (action !== undefined && action !== "rebuild" && action !== "clear") {
+    return res
+      .status(400)
+      .json({ message: "Invalid action. Use 'rebuild' or 'clear'." });
+  }
+  const shouldClear = action === "clear";
 
   if (!dataroomId || typeof dataroomId !== "string") {
     return res.status(400).json({ message: "Invalid dataroom ID" });
@@ -70,13 +82,9 @@ export default async function handler(
 
     // Check if user has access: feature flag enabled OR datarooms-plus plan
     const featureFlags = await getFeatureFlags({ teamId });
-    const hasDataroomsPlusPlan =
-      dataroom.team.plan === "datarooms-plus" ||
-      dataroom.team.plan === "datarooms-plus+old" ||
-      dataroom.team.plan === "datarooms-premium" ||
-      dataroom.team.plan === "datarooms-premium+old" ||
-      dataroom.team.plan === "datarooms-unlimited" ||
-      dataroom.team.plan === "datarooms-unlimited+old";
+    const hasDataroomsPlusPlan = teamPlanIsDataroomPlusTier(
+      dataroom.team.plan,
+    );
 
     if (!featureFlags.dataroomIndex && !hasDataroomsPlusPlan) {
       return res.status(403).json({
@@ -84,19 +92,31 @@ export default async function handler(
       });
     }
 
-    // Calculate and update hierarchical indexes
-    const result = await calculateAndUpdateHierarchicalIndexes(dataroomId);
+    // Calculate/update or clear hierarchical indexes
+    const result = shouldClear
+      ? await clearHierarchicalIndexes(dataroomId)
+      : await calculateAndUpdateHierarchicalIndexes(dataroomId);
 
     res.status(200).json({
-      message: "Hierarchical indexes calculated successfully",
+      message: shouldClear
+        ? "Hierarchical indexes removed successfully"
+        : "Hierarchical indexes calculated successfully",
+      action: shouldClear ? "clear" : "rebuild",
       foldersUpdated: result.foldersUpdated,
       documentsUpdated: result.documentsUpdated,
       totalUpdated: result.foldersUpdated + result.documentsUpdated,
     });
   } catch (error) {
-    console.error("Error calculating hierarchical indexes:", error);
+    console.error(
+      shouldClear
+        ? "Error removing hierarchical indexes:"
+        : "Error calculating hierarchical indexes:",
+      error,
+    );
     res.status(500).json({
-      message: "Error calculating hierarchical indexes",
+      message: shouldClear
+        ? "Error removing hierarchical indexes"
+        : "Error calculating hierarchical indexes",
       error: error instanceof Error ? error.message : "Unknown error",
     });
   }

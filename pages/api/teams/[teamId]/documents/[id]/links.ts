@@ -3,6 +3,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth/next";
 
+import { enforceDocumentMemberScope } from "@/lib/api/rbac/guard";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { CustomUser } from "@/lib/types";
@@ -21,6 +22,12 @@ export default async function handle(
 
     const { teamId, id: docId } = req.query as { teamId: string; id: string };
     const userId = (session.user as CustomUser).id;
+
+    if (
+      await enforceDocumentMemberScope({ userId, teamId, documentId: docId, res })
+    ) {
+      return;
+    }
 
     try {
       // First, ensure the requester belongs to the team

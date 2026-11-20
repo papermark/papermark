@@ -6,7 +6,15 @@ import { getServerSession } from "next-auth/next";
 import { errorhandler } from "@/lib/errorHandler";
 import prisma from "@/lib/prisma";
 import { getDataroomViewDocumentStats, getViewPageDuration } from "@/lib/tinybird";
+import { getVideoEventsByDocument } from "@/lib/tinybird/pipes";
 import { CustomUser } from "@/lib/types";
+import {
+  countablePlaybackEvents,
+  completionRate,
+  eventsForView,
+  resolveVideoLength,
+  watchTimeSeconds,
+} from "@/lib/video-analytics/playback";
 
 export default async function handle(
   req: NextApiRequest,
@@ -108,10 +116,11 @@ export default async function handle(
             select: {
               id: true,
               name: true,
+              type: true,
               versions: {
                 where: { isPrimary: true },
                 take: 1,
-                select: { numPages: true },
+                select: { numPages: true, length: true, type: true },
               },
             },
           },
@@ -124,17 +133,62 @@ export default async function handle(
 
       const viewIds = documentViews.map((v) => v.id).join(",");
 
-      const tinybirdStats = await getDataroomViewDocumentStats({ viewIds });
+      const videoDocumentIds = [
+        ...new Set(
+          documentViews
+            .filter(
+              (dv) =>
+                (dv.document?.type ?? dv.document?.versions?.[0]?.type) ===
+                "video",
+            )
+            .map((dv) => dv.documentId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
+
+      const [tinybirdStats, videoEventsByDocument] = await Promise.all([
+        getDataroomViewDocumentStats({ viewIds }),
+        Promise.all(
+          videoDocumentIds.map(async (id) => {
+            const response = await getVideoEventsByDocument({
+              document_id: id,
+            });
+            return [id, countablePlaybackEvents(response.data)] as const;
+          }),
+        ),
+      ]);
 
       const statsMap = new Map(
         tinybirdStats.data.map((s) => [`${s.viewId}:${s.documentId}`, s]),
       );
+      const videoEvents = new Map(videoEventsByDocument);
 
       const documentStats = documentViews.map((dv) => {
+        const documentType =
+          dv.document?.type ?? dv.document?.versions?.[0]?.type ?? null;
+        if (documentType === "video") {
+          const events = videoEvents.get(dv.documentId ?? "") ?? [];
+          const viewEvents = eventsForView(events, dv.id);
+          const { total, unique } = watchTimeSeconds(viewEvents);
+          const videoLength = resolveVideoLength(
+            dv.document?.versions?.[0]?.length,
+            events,
+          );
+          return {
+            viewId: dv.id,
+            documentId: dv.documentId,
+            totalDuration: total * 1000,
+            pagesViewed: unique,
+            totalPages: 0,
+            completionRate: Math.round(completionRate(unique, videoLength)),
+            documentType: "video",
+          };
+        }
+
         const stats = statsMap.get(`${dv.id}:${dv.documentId}`);
         const totalPages = dv.document?.versions?.[0]?.numPages ?? 0;
         const pagesViewed = stats?.pages_viewed ?? 0;
-        const completionRate =
+        const pageCompletion =
           totalPages > 0 ? Math.round((pagesViewed / totalPages) * 100) : 0;
 
         return {
@@ -143,7 +197,8 @@ export default async function handle(
           totalDuration: stats?.sum_duration ?? 0,
           pagesViewed,
           totalPages,
-          completionRate,
+          completionRate: pageCompletion,
+          documentType,
         };
       });
 

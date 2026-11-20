@@ -1,6 +1,12 @@
 import crypto from "crypto";
 
 /**
+ * Redis cache key for a team's fetched Slack channel list.
+ */
+export const slackChannelsCacheKey = (teamId: string) =>
+  `slack:channels:${teamId}`;
+
+/**
  * Derives a 32-byte encryption key from the environment variable using SHA-256
  * @param keyMaterial - The raw key material from environment
  * @returns 32-byte Buffer for AES-256

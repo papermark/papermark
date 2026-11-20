@@ -40,7 +40,7 @@ export function getFileNameWithPdfExtension(filename?: string): string {
   return `${nameWithoutExt}.pdf`;
 }
 
-interface SWRError extends Error {
+export interface SWRError extends Error {
   status: number;
 }
 
@@ -363,6 +363,52 @@ export function safeSlugify(input: string): string {
   return slugify(transliterate(input)) || nanoid();
 }
 
+/**
+ * RFC 5987 percent-encoder for Content-Disposition `filename*` values.
+ *
+ * `encodeURIComponent` leaves `! * ' ( ) ~` unencoded, but RFC 5987's
+ * `attr-char` set does not allow any of those, and strict parsers
+ * (e.g. Go's `mime.ParseMediaType` used by Gotenberg) reject them with
+ * `mime: invalid media parameter`.
+ */
+export function encodeRFC5987(value: string): string {
+  return encodeURIComponent(value).replace(
+    /['()*!~]/g,
+    (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase(),
+  );
+}
+
+/**
+ * Build a strictly RFC 5987-compliant Content-Disposition header so downstream
+ * tooling (Gotenberg/LibreOffice, etc.) can parse it without errors. The
+ * `filename` fallback uses the slugified ASCII name; `filename*` carries the
+ * original (possibly Unicode) name, percent-encoded per RFC 5987.
+ */
+export function buildContentDisposition(
+  originalFileName: string,
+  slugifiedName: string,
+): string {
+  return `attachment; filename="${slugifiedName}"; filename*=UTF-8''${encodeRFC5987(originalFileName)}`;
+}
+
+/**
+ * Build a Content-Disposition `attachment` header for a single download
+ * filename (already including its extension). This handles slugifying the
+ * ASCII fallback so the header is safe across browsers and proxies, while
+ * preserving the original Unicode name in `filename*` per RFC 5987.
+ *
+ * Use this for ad-hoc downloads (e.g. ResponseContentDisposition on S3
+ * presigned URLs) where the caller already produced a complete filename.
+ */
+export function buildAttachmentDispositionForName(filename: string): string {
+  const dotIdx = filename.lastIndexOf(".");
+  const base = dotIdx > 0 ? filename.slice(0, dotIdx) : filename;
+  const ext = dotIdx > 0 ? filename.slice(dotIdx) : "";
+  const sanitizedExt = /^\.[A-Za-z0-9]+$/.test(ext) ? ext : "";
+  const slug = safeSlugify(base) + sanitizedExt;
+  return buildContentDisposition(filename, slug);
+}
+
 export const daysLeft = (
   accountCreationDate: Date,
   maxDays: number,
@@ -546,21 +592,27 @@ export const generateGravatarHash = (email: string | null): string => {
   return hash;
 };
 
+export function stripTrailingPasswordWhitespace(password: string): string {
+  return password.trimEnd();
+}
+
 export async function generateEncrpytedPassword(
   password: string,
 ): Promise<string> {
   // If the password is empty, return an empty string
   if (!password) return "";
+  const normalized = stripTrailingPasswordWhitespace(password);
+  if (!normalized) return "";
   // If the password is already encrypted, return it
   // Check if it's encrypted by validating the format: 32-char hex IV + ":" + hex encrypted text
-  const textParts: string[] = password.split(":");
+  const textParts: string[] = normalized.split(":");
   if (
     textParts.length === 2 &&
     textParts[0].length === 32 &&
     /^[a-fA-F0-9]+$/.test(textParts[0]) &&
     /^[a-fA-F0-9]+$/.test(textParts[1])
   ) {
-    return password;
+    return normalized;
   }
   // Otherwise, encrypt the password
   const encryptedKey: string = crypto
@@ -570,19 +622,20 @@ export async function generateEncrpytedPassword(
     .substring(0, 32);
   const IV: Buffer = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv("aes-256-ctr", encryptedKey, IV);
-  let encryptedText: string = cipher.update(password, "utf8", "hex");
+  let encryptedText: string = cipher.update(normalized, "utf8", "hex");
   encryptedText += cipher.final("hex");
   return IV.toString("hex") + ":" + encryptedText;
 }
 
 export function decryptEncrpytedPassword(password: string): string {
   if (!password) return "";
+  const normalized = stripTrailingPasswordWhitespace(password);
   const encryptedKey: string = crypto
     .createHash("sha256")
     .update(String(process.env.NEXT_PRIVATE_DOCUMENT_PASSWORD_KEY))
     .digest("base64")
     .substring(0, 32);
-  const textParts: string[] = password.split(":");
+  const textParts: string[] = normalized.split(":");
   // Check if it's in the expected encrypted format: 32-char hex IV + ":" + hex encrypted text
   if (
     !textParts ||
@@ -591,7 +644,7 @@ export function decryptEncrpytedPassword(password: string): string {
     !/^[a-fA-F0-9]+$/.test(textParts[0]) ||
     !/^[a-fA-F0-9]+$/.test(textParts[1])
   ) {
-    return password; // Return as-is if not in encrypted format
+    return normalized; // Return as-is if not in encrypted format
   }
   try {
     const IV: Buffer = Buffer.from(textParts[0], "hex");
@@ -599,33 +652,75 @@ export function decryptEncrpytedPassword(password: string): string {
     const decipher = crypto.createDecipheriv("aes-256-ctr", encryptedKey, IV);
     let decrypted: string = decipher.update(encryptedText, "hex", "utf8");
     decrypted += decipher.final("utf8");
-    return decrypted;
+    return stripTrailingPasswordWhitespace(decrypted);
   } catch (error) {
-    return password;
+    return normalized;
   }
 }
 
 type FilterMode = "email" | "domain" | "both";
 
-export const sanitizeList = (
+const LIST_SEPARATOR_REGEX = /[,;\n\r\t]+/;
+
+export type ListValidation = {
+  /** All entries entered by the user (de-duplicated, lower-cased). */
+  all: string[];
+  /** Subset of `all` that passes validation for the requested mode. */
+  valid: string[];
+  /** Subset of `all` that did NOT pass validation. */
+  invalid: string[];
+};
+
+/**
+ * Splits a free-form text list of emails / domains by any combination of
+ * comma, semicolon, newline, carriage return, or tab characters and
+ * returns the unique, validated entries.
+ *
+ * Splits with the following separators: `,`, `;`, `\n`, `\r`, `\t`.
+ */
+export const validateList = (
   list: string,
   mode: FilterMode = "both",
-): string[] => {
+): ListValidation => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const domainRegex = /^@[^\s@]+\.[^\s@]+$/;
 
-  const sanitized = list
-    .split("\n")
-    .map((item) => item.trim().replace(/,$/, "").toLowerCase())
-    .filter((item) => item !== "")
-    .filter((item) => {
-      if (mode === "email") return emailRegex.test(item);
-      if (mode === "domain") return domainRegex.test(item);
-      return emailRegex.test(item) || domainRegex.test(item);
-    });
+  const isValid = (item: string): boolean => {
+    if (mode === "email") return emailRegex.test(item);
+    if (mode === "domain") return domainRegex.test(item);
+    return emailRegex.test(item) || domainRegex.test(item);
+  };
 
-  return [...new Set(sanitized)];
+  const seen = new Set<string>();
+  const all: string[] = [];
+  const valid: string[] = [];
+  const invalid: string[] = [];
+
+  for (const raw of list.split(LIST_SEPARATOR_REGEX)) {
+    const item = raw.trim().toLowerCase();
+    if (!item) continue;
+    if (seen.has(item)) continue;
+    seen.add(item);
+    all.push(item);
+    if (isValid(item)) {
+      valid.push(item);
+    } else {
+      invalid.push(item);
+    }
+  }
+
+  return { all, valid, invalid };
 };
+
+/**
+ * Backwards-compatible helper that returns only the valid, de-duplicated
+ * entries from a free-form list. Accepts comma, semicolon, newline,
+ * carriage return, and tab as separators.
+ */
+export const sanitizeList = (
+  list: string,
+  mode: FilterMode = "both",
+): string[] => validateList(list, mode).valid;
 
 export function hexToRgb(hex: string) {
   let bigint = parseInt(hex.slice(1), 16);

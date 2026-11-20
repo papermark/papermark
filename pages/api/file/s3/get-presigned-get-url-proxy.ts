@@ -20,7 +20,11 @@ export default async function handler(
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  const { key } = req.body as { key: string };
+  const { key, expiresIn, responseContentDisposition } = req.body as {
+    key: string;
+    expiresIn?: number;
+    responseContentDisposition?: string;
+  };
 
   if (!key) {
     return res.status(400).json({ message: "Key is required" });
@@ -63,7 +67,11 @@ export default async function handler(
           "Content-Type": "application/json",
           Authorization: `Bearer ${process.env.INTERNAL_API_KEY}`,
         },
-        body: JSON.stringify({ key: key }),
+        body: JSON.stringify({
+          key,
+          ...(expiresIn ? { expiresIn } : {}),
+          ...(responseContentDisposition ? { responseContentDisposition } : {}),
+        }),
       },
     );
 

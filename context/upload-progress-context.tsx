@@ -8,11 +8,25 @@ import {
 } from "react";
 
 import { UploadNotificationDrawer } from "@/components/upload-notification";
-import {
+// Type-only import so adding the reverse runtime dependency (UploadZone
+// importing this context) doesn't create a runtime circular import.
+import type {
   RejectedFile,
   UploadBatchState,
   UploadItemState,
 } from "@/components/upload-zone";
+
+/**
+ * Imperative triggers exposed by a mounted `UploadZone` so that callers
+ * elsewhere in the tree (e.g. the +Add dropdown rendered in the page
+ * toolbar) can open the file/folder picker without reaching into the DOM
+ * via `document.getElementById`. `null` when no zone is currently mounted
+ * — callers should fall back gracefully (e.g. open the single-file modal).
+ */
+export interface UploadZoneTriggers {
+  openFilesPicker: () => void;
+  openFolderPicker: () => void;
+}
 
 interface UploadProgressContextType {
   uploadBatch: UploadBatchState | null;
@@ -28,11 +42,37 @@ interface UploadProgressContextType {
   cancelItem: (itemId: string) => void;
   cancelledItemIds: Set<string>;
   cancelledItemIdsRef: React.RefObject<Set<string>>;
+  /**
+   * Triggers registered by the currently-mounted `UploadZone`, or `null`
+   * if none is mounted in the visible tree (e.g. while the dataroom search
+   * results are showing instead of the items list).
+   */
+  uploadTriggers: UploadZoneTriggers | null;
+  /**
+   * Registers the given triggers and returns an unregister function.
+   * Last-mount-wins; the unregister fn only clears state if the currently
+   * registered object is still the same one we registered (so a late
+   * unmount can't wipe out a newer registration).
+   */
+  registerUploadTriggers: (triggers: UploadZoneTriggers) => () => void;
 }
 
 const UploadProgressContext = createContext<UploadProgressContextType | null>(
   null,
 );
+
+function getActiveUploadByteTotals(items: UploadItemState[]) {
+  let bytesUploaded = 0;
+  let bytesTotal = 0;
+
+  for (const item of items) {
+    if (item.cancelled) continue;
+    bytesUploaded += item.bytesUploaded ?? 0;
+    bytesTotal += item.bytesTotal ?? 0;
+  }
+
+  return { bytesUploaded, bytesTotal };
+}
 
 export function UploadProgressProvider({
   children,
@@ -49,6 +89,23 @@ export function UploadProgressProvider({
   );
   const cancelledItemIdsRef = useRef(cancelledItemIds);
   cancelledItemIdsRef.current = cancelledItemIds;
+
+  const [uploadTriggers, setUploadTriggers] =
+    useState<UploadZoneTriggers | null>(null);
+
+  const registerUploadTriggers = useCallback(
+    (triggers: UploadZoneTriggers) => {
+      setUploadTriggers(triggers);
+      return () => {
+        // Identity guard: only clear if the same object is still registered.
+        // Prevents a late unmount from wiping out a newer registration.
+        setUploadTriggers((current) =>
+          current === triggers ? null : current,
+        );
+      };
+    },
+    [],
+  );
 
   const addCancelFn = useCallback((fn: () => void) => {
     cancelFnsRef.current.push(fn);
@@ -76,10 +133,14 @@ export function UploadProgressProvider({
         }
         return it;
       });
+      const { bytesUploaded, bytesTotal } =
+        getActiveUploadByteTotals(updatedItems);
       return {
         ...prev,
         cancelled: true,
         completedEntries: prev.completedEntries + addedCompleted,
+        bytesUploaded,
+        bytesTotal,
         items: updatedItems,
       };
     });
@@ -97,18 +158,23 @@ export function UploadProgressProvider({
       if (!target || target.cancelled) return prev;
       const remaining =
         target.totalEntries - target.completedEntries - target.failedEntries;
+      const updatedItems = prev.items.map((it) =>
+        it.itemId === itemId
+          ? ({
+              ...it,
+              cancelled: true,
+              completedEntries: it.totalEntries - it.failedEntries,
+            } as UploadItemState)
+          : it,
+      );
+      const { bytesUploaded, bytesTotal } =
+        getActiveUploadByteTotals(updatedItems);
       return {
         ...prev,
         completedEntries: prev.completedEntries + remaining,
-        items: prev.items.map((it) =>
-          it.itemId === itemId
-            ? ({
-                ...it,
-                cancelled: true,
-                completedEntries: it.totalEntries - it.failedEntries,
-              } as UploadItemState)
-            : it,
-        ),
+        bytesUploaded,
+        bytesTotal,
+        items: updatedItems,
       };
     });
   }, []);
@@ -146,6 +212,8 @@ export function UploadProgressProvider({
       cancelItem,
       cancelledItemIds,
       cancelledItemIdsRef,
+      uploadTriggers,
+      registerUploadTriggers,
     }),
     [
       uploadBatch,
@@ -156,6 +224,8 @@ export function UploadProgressProvider({
       addCancelFn,
       cancelItem,
       cancelledItemIds,
+      uploadTriggers,
+      registerUploadTriggers,
     ],
   );
 
@@ -262,6 +332,8 @@ export function useUploadCallbacks() {
             completedEntries:
               prev.completedEntries + batch.completedEntries,
             failedEntries: prev.failedEntries + batch.failedEntries,
+            bytesUploaded: (prev.bytesUploaded ?? 0) + (batch.bytesUploaded ?? 0),
+            bytesTotal: (prev.bytesTotal ?? 0) + (batch.bytesTotal ?? 0),
           };
         }
         return batch;
@@ -296,12 +368,16 @@ export function useUploadCallbacks() {
           completedEntries += it.completedEntries;
           failedEntries += it.failedEntries;
         }
+        const { bytesUploaded, bytesTotal } =
+          getActiveUploadByteTotals(mergedItems);
         return {
           ...prev,
           items: mergedItems,
           totalEntries,
           completedEntries,
           failedEntries,
+          bytesUploaded,
+          bytesTotal,
         };
       });
     },
