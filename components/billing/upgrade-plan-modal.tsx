@@ -319,27 +319,112 @@ export function UpgradePlanModal({
     : children;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{buttonChild}</DialogTrigger>
-      <DialogContent
-        mobileFullScreen
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        className="max-h-[90vh] min-h-fit overflow-hidden bg-gray-50 p-0 text-foreground dark:bg-gray-900"
-        style={{
-          width: "90vw",
-          maxWidth: "900px",
-        }}
-      >
-        <div className="flex max-h-[95vh] flex-col max-sm:h-full max-sm:max-h-none">
-          {/* Fixed header — billing period toggle stays visible while the cards scroll */}
-          <div className="flex-none bg-gray-50 px-4 pb-5 pt-10 dark:bg-gray-900 sm:px-6 sm:pb-5 sm:pt-6">
-            <div className="relative flex flex-col items-center gap-3 sm:block">
-              {!isCurrencyLocked && (
-                <div className="sm:absolute sm:left-0 sm:top-1/2 sm:-translate-y-1/2">
-                  <CurrencyToggle
-                    value={currency}
-                    onChange={setCurrencyOverride}
-                  />
+  <Dialog open={open} onOpenChange={setOpen}>
+    <DialogTrigger asChild>{buttonChild}</DialogTrigger>
+    <DialogContent
+      isPreviewDialog
+      className="flex max-h-[90svh] w-[calc(100vw-2rem)] flex-col overflow-hidden bg-gray-50 p-0 text-foreground dark:bg-gray-900 rounded-b-lg md:w-[90vw] md:max-w-[900px]"
+    >
+      <div className="overflow-y-auto p-4 sm:p-6 w-full">
+        {trigger === "invite_team_members" && (
+          <p
+            className="cursor-pointer text-center text-sm text-muted-foreground transition-colors hover:text-foreground mb-4"
+            onClick={() => setUnlimitedModalOpen(true)}
+          >
+            Interested in unlimited seats?{" "}
+            <span className="font-light underline underline-offset-4">
+              Get unlimited
+            </span>
+          </p>
+        )}
+
+        <div className="flex items-center justify-center">
+          <span className="mr-2 text-sm">Monthly</span>
+          <Switch
+            checked={period === "yearly"}
+            onCheckedChange={() =>
+              setPeriod(period === "monthly" ? "yearly" : "monthly")
+            }
+          />
+          <span className="ml-2 text-sm">
+            Annually <span className="text-[#fb7a00]">(Save up to 35%)</span>
+          </span>
+        </div>
+
+        {plansToShow.some(
+          (p) =>
+            p === PlanEnum.DataRooms ||
+            p === PlanEnum.DataRoomsPlus ||
+            p === PlanEnum.DataRoomsPremium,
+        ) && (
+          <p
+            className="mt-4 cursor-pointer text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+            onClick={() => setUnlimitedModalOpen(true)}
+          >
+            Deals with everything unlimited?{" "}
+            <span className="font-light underline underline-offset-4">
+              Get unlimited members, storage, and data rooms in one plan.
+            </span>
+          </p>
+        )}
+
+        <div className="isolate grid grid-cols-1 gap-4 rounded-xl p-2 sm:p-4 sm:grid-cols-2">
+          {plansToShow.map((planOption) => {
+            let effectivePlan = planOption;
+            let displayPlanName = planOption;
+
+            const isDataRoomsUpgrade = plansToShow.includes(PlanEnum.DataRooms);
+            const isDataRoomsPlusUpgrade = plansToShow.includes(PlanEnum.DataRooms) && plansToShow.includes(PlanEnum.DataRoomsPlus);
+
+            if (planOption === PlanEnum.DataRooms && isDataRoomsUpgrade && !isDataRoomsPlusUpgrade) {
+              if (dataRoomsPlanSelection === "plus") {
+                effectivePlan = PlanEnum.DataRoomsPlus;
+                displayPlanName = PlanEnum.DataRoomsPlus;
+              } else if (dataRoomsPlanSelection === "premium") {
+                effectivePlan = PlanEnum.DataRoomsPremium;
+                displayPlanName = PlanEnum.DataRoomsPremium;
+              }
+            }
+
+            if (planOption === PlanEnum.DataRoomsPlus && isDataRoomsPlusUpgrade) {
+              if (dataRoomsPlanSelection === "premium") {
+                effectivePlan = PlanEnum.DataRoomsPremium;
+                displayPlanName = PlanEnum.DataRoomsPremium;
+              }
+            }
+
+            const planFeatures = getPlanFeatures(effectivePlan, {
+              period,
+            });
+
+            return (
+              <div
+                key={displayPlanName}
+                className={`relative flex flex-col rounded-lg border ${planOption === PlanEnum.Business
+                  ? "border-[#fb7a00]"
+                  : planOption === PlanEnum.DataRoomsPlus &&
+                    isDataRoomsUpgrade
+                    ? "border-gray-900"
+                    : "border-gray-200"
+                  } bg-white p-4 sm:p-6 shadow-sm dark:bg-gray-900`}
+              >
+                <div className="mb-4 border-b border-gray-200 pb-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-balance text-xl font-medium text-gray-900 dark:text-white">
+                      {displayPlanName}
+                    </h3>
+                  </div>
+                  <span
+                    className={cn(
+                      "absolute right-2 top-2 rounded px-2 py-1 text-xs text-white",
+                      planOption === PlanEnum.Business && "bg-[#fb7a00]",
+                      displayPlanName === PlanEnum.DataRoomsPlus &&
+                      "bg-gray-800 dark:bg-gray-200 dark:text-gray-900",
+                    )}
+                  >
+                    {planOption === PlanEnum.Business && "Most popular"}
+                    {displayPlanName === PlanEnum.DataRoomsPlus && "Best deal"}
+                  </span>
                 </div>
               )}
               <div className="flex items-center justify-center gap-2">
@@ -351,24 +436,14 @@ export function UpgradePlanModal({
             </div>
           </div>
 
-          {/* Scrollable middle — only the plan cards scroll */}
-          <div
-            ref={scrollRefCallback}
-            className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6"
-          >
-            {trigger === "invite_team_members" &&
-              [
-                PlanEnum.DataRooms,
-                PlanEnum.DataRoomsPlus,
-                PlanEnum.DataRoomsPremium,
-              ].includes(clickedPlan) && (
-                <p
-                  className="cursor-pointer pb-4 text-center text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  onClick={() => setUnlimitedModalOpen(true)}
-                >
-                  Interested in unlimited seats?{" "}
-                  <span className="font-light underline underline-offset-4">
-                    Get unlimited
+                <div className="mb-2">
+                  <span className="text-balance text-3xl sm:text-4xl font-medium tabular-nums text-gray-900 dark:text-white">
+                    €
+                    {
+                      PLANS.find((p) => p.name === displayPlanName)?.price[
+                        period
+                      ].amount
+                    }
                   </span>
                 </p>
               )}
@@ -590,251 +665,114 @@ export function UpgradePlanModal({
                           value={dataRoomsPlanSelection}
                           onChange={setDataRoomsPlanSelection}
                         />
-                      )}
-                    {planOption === PlanEnum.DataRoomsPlus &&
-                      isDataRoomsPlusUpgrade && (
-                        <div className="mt-1 flex w-full rounded-lg border border-gray-200 p-1">
-                          <button
-                            className={cn(
-                              "flex-1 rounded-md px-3 py-1 text-sm transition-colors",
-                              dataRoomsPlanSelection !== "premium"
-                                ? "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900"
-                                : "text-gray-600 hover:text-gray-900 dark:text-muted-foreground dark:hover:text-white",
-                            )}
-                            onClick={() => setDataRoomsPlanSelection("plus")}
-                          >
-                            Plus
-                          </button>
-                          <button
-                            className={cn(
-                              "flex-1 rounded-md px-3 py-1 text-sm transition-colors",
-                              dataRoomsPlanSelection === "premium"
-                                ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
-                                : "text-gray-600 hover:text-gray-900 dark:text-muted-foreground dark:hover:text-white",
-                            )}
-                            onClick={() => setDataRoomsPlanSelection("premium")}
-                          >
-                            Premium
-                          </button>
-                        </div>
-                      )}
+                      </li>
+                    );
+                  })}
+                </ul>
 
-                    <p className="mt-4 text-sm text-gray-600 dark:text-white">
-                      {planFeatures.featureIntro}
-                    </p>
+                <div className="mt-auto">
+                  <Button
+                    variant={
+                      planOption === PlanEnum.Business ? "default" : "outline"
+                    }
+                    className={`w-full py-2 text-sm ${planOption === PlanEnum.Business
+                      ? "bg-[#fb7a00]/90 text-white hover:bg-[#fb7a00]"
+                      : "bg-gray-800 text-white hover:bg-gray-900 hover:text-white dark:hover:bg-gray-700/80"
+                      }`}
+                    loading={selectedPlan === planOption}
+                    disabled={selectedPlan !== null}
+                    onClick={() => {
+                      const priceId = getPriceIdFromPlan({
+                        planName: displayPlanName,
+                        period,
+                        isOld: isOldAccount,
+                      });
 
-                    <ul className="mb-2 mt-2 space-y-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                      {planFeatures.features
-                        .filter((feature) => {
-                          // Hide the generic "Unlimited data rooms" line on the
-                          // higher data room tiers (Plus/Premium/Unlimited) — the
-                          // base Data Rooms card already communicates it. Keep it
-                          // for data-room popups (data rooms tab / trial) and for
-                          // generic Plus/Premium-only comparisons, but not for
-                          // feature-specific upsells (e.g. API, SSO).
-                          const isHigherDataRoomTier =
-                            effectivePlan === PlanEnum.DataRoomsPlus ||
-                            effectivePlan === PlanEnum.DataRoomsPremium ||
-                            effectivePlan === PlanEnum.DataRoomsUnlimited;
-                          const showUnlimitedDataRoomsLine =
-                            isDataRoomContextPopup ||
-                            (onlyPlusAndPremiumShown &&
-                              !hasSpecificFeatureHighlight);
-                          if (
-                            feature.id === "datarooms" &&
-                            isHigherDataRoomTier &&
-                            !showUnlimitedDataRoomsLine
-                          ) {
-                            return false;
-                          }
-                          // "Assign team members" is only shown (and highlighted)
-                          // when the upsell originates from the assign-team-members
-                          // flow; otherwise keep it off every plan card.
-                          if (
-                            feature.id === "assign" &&
-                            !(
-                              highlightItem?.includes("assign") ||
-                              feature.aliasIds?.some((alias) =>
-                                highlightItem?.includes(alias),
-                              )
-                            )
-                          ) {
-                            return false;
-                          }
-                          if (!hideItems?.length) return true;
-                          if (hideItems.includes(feature.id)) return false;
-                          if (
-                            feature.aliasIds?.some((alias) =>
-                              hideItems.includes(alias),
-                            )
-                          ) {
-                            return false;
-                          }
-                          return true;
+                      setSelectedPlan(planOption);
+                      if (isCustomer && teamPlan !== "free") {
+                        fetch(`/api/teams/${teamId}/billing/manage`, {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                          },
+                          body: JSON.stringify({
+                            priceId,
+                            upgradePlan: true,
+                          }),
                         })
-                        .map((feature, i) => {
-                          const isDataRoomPlan =
-                            effectivePlan === PlanEnum.DataRooms ||
-                            effectivePlan === PlanEnum.DataRoomsPlus ||
-                            effectivePlan === PlanEnum.DataRoomsPremium;
-                          return (
-                            <li key={i}>
-                              <FeatureItem
-                                feature={{
-                                  ...feature,
-                                  isHighlighted:
-                                    feature.isHighlighted ||
-                                    highlightItem?.includes(feature.id) ||
-                                    feature.aliasIds?.some((alias) =>
-                                      highlightItem?.includes(alias),
-                                    ),
-                                }}
-                                onUnlimitedClick={
-                                  feature.isUsers && isDataRoomPlan
-                                    ? () => setUnlimitedModalOpen(true)
-                                    : undefined
-                                }
-                              />
-                            </li>
-                          );
-                        })}
-                    </ul>
-
-                    <div className="sticky bottom-0 z-10 -mx-6 -mb-6 mt-auto rounded-b-lg bg-white px-6 pb-6 pt-2 dark:bg-gray-900">
-                      <Button
-                        variant={
-                          planOption === PlanEnum.Business &&
-                          !isBusinessDataRoomsView
-                            ? "default"
-                            : "outline"
-                        }
-                        className={cn(
-                          "w-full py-2 text-sm",
-                          (() => {
-                            if (
-                              isBusinessDataRoomsView &&
-                              planOption === PlanEnum.DataRooms &&
-                              displayPlanName === PlanEnum.DataRooms
-                            )
-                              return "bg-[#fb7a00]/90 text-white hover:bg-[#fb7a00] hover:text-white";
-                            if (
-                              isDataRoomsDataRoomsPlusView &&
-                              planOption === PlanEnum.DataRooms
-                            )
-                              return "bg-[#fb7a00]/90 text-white hover:bg-[#fb7a00] hover:text-white";
-                            if (
-                              planOption === PlanEnum.Business &&
-                              !isBusinessDataRoomsView
-                            )
-                              return "bg-[#fb7a00]/90 text-white hover:bg-[#fb7a00] hover:text-white";
-                            return "bg-gray-800 text-white hover:bg-gray-900 hover:text-white dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200";
-                          })(),
-                        )}
-                        loading={selectedPlan === planOption}
-                        disabled={selectedPlan !== null}
-                        onClick={() => {
-                          const priceId = getPriceIdFromPlan({
-                            planName: displayPlanName,
-                            period,
-                            isOld: isOldAccount,
+                          .then(async (res) => {
+                            const url = await res.json();
+                            router.push(url);
+                          })
+                          .catch((err) => {
+                            alert(err);
+                            setSelectedPlan(null);
                           });
-
-                          setSelectedPlan(planOption);
-                          if (isCustomer && teamPlan !== "free") {
-                            fetch(`/api/teams/${teamId}/billing/manage`, {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json",
-                              },
-                              body: JSON.stringify({
-                                priceId,
-                                upgradePlan: true,
-                              }),
-                            })
-                              .then(async (res) => {
-                                const url = await res.json();
-                                router.push(url);
-                              })
-                              .catch((err) => {
-                                alert(err);
-                                setSelectedPlan(null);
-                              });
-                          } else {
-                            fetch(
-                              `/api/teams/${teamId}/billing/upgrade?priceId=${
-                                priceId
-                              }&currency=${currency}`,
-                              {
-                                method: "POST",
-                                headers: {
-                                  "Content-Type": "application/json",
-                                },
-                              },
-                            )
-                              .then(async (res) => {
-                                const data = await res.json();
-                                if (data.url) {
-                                  window.location.href = data.url;
-                                }
-                              })
-                              .catch((err) => {
-                                alert(err);
-                                setSelectedPlan(null);
-                              });
-                          }
-                        }}
-                      >
-                        {selectedPlan === planOption
-                          ? "Redirecting to Stripe..."
-                          : `Upgrade to ${displayPlanName} ${capitalize(period)}`}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          {/* Fixed footer — actions and trial stay visible without scrolling */}
-          <div
-            className={cn(
-              "flex-none bg-gray-50 px-4 pb-5 pt-4 text-center text-sm text-muted-foreground dark:bg-gray-900 sm:px-6",
-              isScrollable && "border-t border-gray-200 dark:border-gray-800",
-            )}
-          >
-            All plans include{" "}
-            <span className="font-medium text-foreground">
-              unlimited visitors
-            </span>{" "}
-            and page by page document analytics.{" "}
+                      } else {
+                        fetch(
+                          `/api/teams/${teamId}/billing/upgrade?priceId=${priceId}`,
+                          {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                            },
+                          },
+                        )
+                          .then(async (res) => {
+                            const data = await res.json();
+                            const { id: sessionId } = data;
+                            const stripe = await getStripe(isOldAccount);
+                            stripe?.redirectToCheckout({ sessionId });
+                          })
+                          .catch((err) => {
+                            alert(err);
+                            setSelectedPlan(null);
+                          });
+                      }
+                    }}
+                  >
+                    {selectedPlan === planOption
+                      ? "Redirecting to Stripe..."
+                      : `Upgrade to ${displayPlanName} ${capitalize(period)}`}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex flex-col items-center px-4 pb-4 sm:px-6 sm:pb-6 text-center text-sm text-muted-foreground">
+          <p>
+            All plans include unlimited visitors and page by page document analytics.
+          </p>
+          <div className="flex items-center gap-2 mt-2">
             <Link
-              href={`/settings/billing/upgrade${
-                clickedPlan === PlanEnum.Pro
-                  ? "?view=documents"
-                  : clickedPlan === PlanEnum.Business
-                    ? "?view=business-datarooms"
-                    : ""
-              }`}
+              href={`/settings/upgrade${clickedPlan === PlanEnum.Pro
+                ? "?view=documents"
+                : clickedPlan === PlanEnum.Business
+                  ? "?view=business-datarooms"
+                  : ""
+                }`}
               className="underline underline-offset-4 hover:text-foreground"
             >
               See all plans
             </Link>
             {((teamPlan === "free" && !isTrial) ||
               (teamPlan === "pro" && !isTrial)) && (
-              <>
-                {" | "}
-                <StartDataRoomTrialButton teamId={teamId} />
-              </>
-            )}
+                <>
+                  <span>|</span>
+                  <StartDataRoomTrialButton teamId={teamId} />
+                </>
+              )}
           </div>
-
-          <UnlimitedPlanModal
-            period={period}
-            currency={currency}
-            open={unlimitedModalOpen}
-            setOpen={setUnlimitedModalOpen}
-          />
         </div>
-      </DialogContent>
-    </Dialog>
-  );
+      </div>
+
+      <UnlimitedPlanModal
+        period={period}
+        open={unlimitedModalOpen}
+        setOpen={setUnlimitedModalOpen}
+      />
+    </DialogContent>
+  </Dialog>
+);
 }
