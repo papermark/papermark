@@ -324,13 +324,13 @@ export function UpgradePlanModal({
       <DialogContent
         mobileFullScreen
         onOpenAutoFocus={(e) => e.preventDefault()}
-        className="max-h-[90vh] min-h-fit overflow-hidden bg-gray-50 p-0 text-foreground dark:bg-gray-900"
+        className="max-h-[90vh] overflow-hidden bg-gray-50 p-0 text-foreground dark:bg-gray-900"
         style={{
           width: "90vw",
           maxWidth: "900px",
         }}
       >
-        <div className="flex max-h-[95vh] flex-col max-sm:h-full max-sm:max-h-none">
+        <div className="flex max-h-[90vh] flex-col max-sm:h-full max-sm:max-h-none">
           {/* Fixed header — billing period toggle stays visible while the cards scroll */}
           <div className="flex-none bg-gray-50 px-4 pb-5 pt-10 dark:bg-gray-900 sm:px-6 sm:pb-5 sm:pt-6">
             <div className="relative flex flex-col items-center gap-3 sm:block">
